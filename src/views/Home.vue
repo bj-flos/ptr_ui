@@ -59,9 +59,12 @@ html {
   max-width: 90vw;
 }
 .map-display {
-  margin-top: 2rem;
+  margin: 2rem auto 0;
   height: 100%;
   max-height: 450px;
-  width: 100vw;
+  width: 100%;
+  // Matches one world at zoom 2 (256 * 2^2). A wider box would be filled with
+  // duplicate copies of the world rather than stretched.
+  max-width: 1024px;
 }
 </style>
