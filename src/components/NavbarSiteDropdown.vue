@@ -185,8 +185,10 @@ export default {
 }
 
 .navbar-dropdown-wrapper {
-  max-height: 50vh;
-  overflow-y: scroll;
+  // Fill the viewport below the 75px navbar rather than half the window, and
+  // only show a scrollbar when the list actually overflows.
+  max-height: calc(100vh - 75px);
+  overflow-y: auto;
 }
 .wema-and-obs {
   background-color: rgba(66, 66, 66, 0.044);
