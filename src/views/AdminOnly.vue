@@ -8,11 +8,6 @@
       <div class="has-text">
         <p>This page should only be accessible if you are an admin</p>
       </div>
-      <div class="has-text subtitle">
-        <router-link to="/">
-          home page
-        </router-link>
-      </div>
     </div>
   </div>
 </template>
