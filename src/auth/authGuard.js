@@ -12,7 +12,10 @@ export const authGuard = (to, from, next) => {
       if (to.meta.requiresRole) {
         console.log('requires admin role')
         const requiredRole = to.meta.requiresRole
-        const userRoles = authService.user['https://photonranch.org/user_metadata'].roles
+        // Treat a missing claim as no roles rather than throwing: this runs
+        // inside the router guard, so an exception blocks navigation.
+        const metadata = (authService.user || {})['https://photonranch.org/user_metadata'] || {}
+        const userRoles = metadata.roles || []
         if (userRoles.includes(requiredRole)) {
           return next()
         }

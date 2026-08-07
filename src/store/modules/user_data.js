@@ -106,7 +106,11 @@ const actions = {
   },
 
   newUserLogin ({ state, commit, dispatch }, user) {
-    const roles = user['https://photonranch.org/user_metadata'].roles
+    // The user_metadata claim is injected by an Auth0 Action on the
+    // photonranch tenant. Other tenants won't have it, and throwing here
+    // happens before the app mounts, so a missing claim blanks the page.
+    const metadata = (user || {})['https://photonranch.org/user_metadata'] || {}
+    const roles = metadata.roles || []
     const userIsAdmin = roles.includes('admin')
     const isGoogle = user.sub && user.sub.startsWith('google-oauth2')
 
