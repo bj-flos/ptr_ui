@@ -12,8 +12,17 @@ import './style/buefy-styles.scss'
 import JsonViewer from 'vue-json-viewer'
 
 // Import the Auth0 configuration and plugin
-import { domain, clientId, audience } from '../auth_config.json'
+import authConfig from '../auth_config.json'
 import { Auth0Plugin, getInstance } from './auth'
+
+// A tenant set in .env.local fully overrides auth_config.json, so a local or
+// dev tenant can be used without editing tracked config. With no env vars set,
+// the checked-in photonranch tenant is used exactly as before.
+const envDomain = process.env.VUE_APP_AUTH0_DOMAIN
+const domain = envDomain || authConfig.domain
+const clientId = envDomain ? process.env.VUE_APP_AUTH0_CLIENT_ID : authConfig.clientId
+const audience = envDomain ? process.env.VUE_APP_AUTH0_AUDIENCE : authConfig.audience
+const redirectUri = process.env.VUE_APP_AUTH0_REDIRECT_URI || window.location.origin
 
 // Hide the 'you are running in development mode!' warning in the console.
 Vue.config.productionTip = false
@@ -24,7 +33,10 @@ Vue.use(Buefy)
 Vue.use(Auth0Plugin, {
   domain,
   clientId,
-  audience,
+  redirectUri,
+  // Omitted entirely when unset — an unregistered audience makes Auth0 reject
+  // the authorize request with "Service not found".
+  ...(audience ? { audience } : {}),
   onRedirectCallback: appState => {
     router.push(
       appState && appState.targetUrl
