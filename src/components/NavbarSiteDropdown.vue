@@ -11,6 +11,16 @@
       paddingless
     >
       <ul
+        v-if="!hasSites"
+        style="width: 100%;"
+        class="navbar-dropdown-wrapper"
+      >
+        <li class="no-sites">
+          There are no sites currently available
+        </li>
+      </ul>
+      <ul
+        v-else
         style="width: 100%;"
         class="navbar-dropdown-wrapper"
       >
@@ -77,6 +87,12 @@ export default {
     ...mapGetters('site_config', ['all_sites', 'all_sites_real', 'all_sites_simulated']),
     ...mapState('sitestatus', ['site_open_status', 'stale_age_ms']),
     ...mapGetters('sitestatus', ['all_sites_status_color']),
+
+    // dropdownSitesData is keyed by wema id rather than being a list, so it
+    // has no length to test.
+    hasSites () {
+      return Object.keys(this.dropdownSitesData).length > 0
+    },
 
     dropdownSitesData () {
       const state = this.$store.state.site_config
@@ -182,6 +198,13 @@ export default {
   @include fullhd {
     left: -100px;
   }
+}
+
+.no-sites {
+  padding: 1.5em 1em;
+  text-align: center;
+  font-style: italic;
+  opacity: 0.7;
 }
 
 .navbar-dropdown-wrapper {
