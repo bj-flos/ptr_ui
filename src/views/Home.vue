@@ -43,9 +43,6 @@ export default {
   /*font: 70px 'Faster One', cursive;*/
   margin: 20px;
 }
-html {
-  overflow: hidden;
-}
 .page-content {
   position:absolute;
   //top: 75px;
