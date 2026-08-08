@@ -82,6 +82,37 @@ function status_age_seconds (timestamp_ms) {
   return parseInt(timestamp_ms) + 's '
 }
 
+/**
+ * Read a status value out of its {val, timestamp} envelope.
+ *
+ * photonranch-status wraps whatever it is handed, so a value posted already
+ * wrapped comes back as {val: {val: X}} and a single .val yields an object,
+ * which the panel then prints as raw JSON. Unwrap until we reach something
+ * that is not an envelope. parseTrueFalse below already does this for
+ * booleans; this is the same idea for every other value.
+ */
+function unwrapVal (entry, fallback = '-') {
+  let node = entry
+  for (let depth = 0; depth < 5; depth++) {
+    if (node === null || typeof node !== 'object' || !('val' in node)) { break }
+    node = node.val
+  }
+  return node ?? fallback
+}
+
+/**
+ * Round a numeric status value to fit its display box, appending a unit.
+ * Non-numeric values ('-', 'n/a', booleans) are passed through untouched so a
+ * missing reading still reads as '-' rather than 'NaN'.
+ */
+function displayNumber (value, decimals, unit = '') {
+  const n = typeof value === 'number' ? value : parseFloat(value)
+  // A missing reading should read as '-' or 'n/a', not '-%' or 'null%',
+  // so non-numeric values keep their own text and drop the unit.
+  if (!Number.isFinite(n)) { return value ?? '-' }
+  return `${n.toFixed(decimals)}${unit}`
+}
+
 const parseTrueFalse = s => {
   if (typeof s == 'object') {
     return parseTrueFalse(s.val)
@@ -102,5 +133,7 @@ export {
   display_colors,
   isItemStale,
   statusAgeDisplay,
-  parseTrueFalse
+  parseTrueFalse,
+  unwrapVal,
+  displayNumber
 }

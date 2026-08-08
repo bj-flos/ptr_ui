@@ -1,8 +1,8 @@
-import { isItemStale, display_colors } from './status_utils'
+import { isItemStale, display_colors, unwrapVal, displayNumber } from './status_utils'
 
 // Handle status before and after the individual timestamp inclusion
 function get_val (getters, key) {
-  return getters.weather_state[key]?.val ?? '-'
+  return unwrapVal(getters.weather_state[key])
 }
 
 const weather_state = (state, getters, rootState) => {
@@ -54,28 +54,28 @@ const open_ok = (state, getters) => {
 
 const sky_temp = (state, getters) => {
   const name = 'Sky Temp'
-  const val = get_val(getters, 'sky_temp_C') + ' °C'
+  const val = displayNumber(get_val(getters, 'sky_temp_C'), 2, ' °C')
   const is_stale = isItemStale(getters, 'weather_state', 'sky_temp_C')
   return { name, val, is_stale }
 }
 
 const air_temp = (state, getters) => {
   const name = 'Air Temp'
-  const val = get_val(getters, 'temperature_C') + ' °C'
+  const val = displayNumber(get_val(getters, 'temperature_C'), 2, ' °C')
   const is_stale = isItemStale(getters, 'weather_state', 'temperature_C')
   return { name, val, is_stale }
 }
 
 const humidity = (state, getters) => {
   const name = 'Humidity'
-  const val = get_val(getters, 'humidity_%') + ' %'
+  const val = displayNumber(get_val(getters, 'humidity_%'), 1, '%')
   const is_stale = isItemStale(getters, 'weather_state', 'humidity_%')
   return { name, val, is_stale }
 }
 
 const dewpoint = (state, getters) => {
   const name = 'Dewpoint'
-  const val = get_val(getters, 'dewpoint_C') + ' °C'
+  const val = displayNumber(get_val(getters, 'dewpoint_C'), 2, ' °C')
   const is_stale = isItemStale(getters, 'weather_state', 'dewpoint_C')
   return { name, val, is_stale }
 }

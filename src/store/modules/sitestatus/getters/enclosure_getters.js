@@ -1,8 +1,8 @@
-import { isItemStale } from './status_utils'
+import { isItemStale, unwrapVal } from './status_utils'
 
 // Handle status before and after the individual timestamp inclusion
 function get_val (getters, key) {
-  return getters.enclosure_state[key]?.val ?? '-'
+  return unwrapVal(getters.enclosure_state[key])
 }
 
 const enclosure_state = (state, getters, rootState) => {
