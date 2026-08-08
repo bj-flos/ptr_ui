@@ -336,7 +336,33 @@ const mutations = {
 
 }
 
+// Handle for the periodic config refresh, kept at module scope so the action
+// cannot start a second interval if it is dispatched more than once.
+let configRefreshTimer = null
+
 const actions = {
+
+  /**
+   * Re-fetch the site config periodically so changes an observatory makes to
+   * its obs_config appear without a page reload.
+   *
+   * Safe to repeat: update_config only commits setGlobalConfig, leaving the
+   * selected site and device untouched, and it falls back to its localStorage
+   * copy if the request fails.
+   *
+   * Interval comes from VUE_APP_CONFIG_REFRESH_SECONDS; 0 disables it.
+   */
+  startConfigRefresh ({ dispatch }) {
+    const seconds = Number(process.env.VUE_APP_CONFIG_REFRESH_SECONDS || 300)
+    if (!seconds || configRefreshTimer) { return }
+    configRefreshTimer = setInterval(() => {
+      // No point polling a tab nobody is looking at; the next tick catches up.
+      if (typeof document !== 'undefined' && document.hidden) { return }
+      dispatch('update_config').catch(error => {
+        console.error('Periodic site config refresh failed:', error)
+      })
+    }, seconds * 1000)
+  },
 
   /**
      * This action gets the most recent config from AWS, which applies to all

@@ -66,6 +66,8 @@ async function initAuth () {
 store.dispatch('site_config/update_config').then(() => {
   // Use config to set defaults for script settings
   store.dispatch('scriptSettings/setAllDefaults')
+  // Keep the config current without needing a page reload
+  store.dispatch('site_config/startConfigRefresh')
   // Chck for auth configuration and then mount the Vue app
   initAuth().then(() => {
     new Vue({
