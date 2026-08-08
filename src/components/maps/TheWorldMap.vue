@@ -88,14 +88,14 @@ export default {
       await this.getSiteOpenStatus
       const sun_pos = { lat: nite.calculatePositionOfSun().lat(), lng: nite.calculatePositionOfSun().lng() }
       const map_center_latitude = 15 // puts sites at a more visibly comfortable location
-      // One world is 256 * 2^zoom px wide, so zoom 2 is exactly 1024px. The
+      // One world is 256 * 2^zoom px wide, so zoom 3 is exactly 2048px. The
       // container is capped to match in Home.vue: any space the world does not
       // cover gets filled with repeat copies, and markers only ever attach to
       // one of them. minZoom keeps that invariant when the user zooms.
       const mapElement = document.getElementById(this.mapName)
       this.map = new google.maps.Map(mapElement, {
-        zoom: 2,
-        minZoom: 2,
+        zoom: 3,
+        minZoom: 3,
         center: new google.maps.LatLng(map_center_latitude, sun_pos.lng + 180),
         styles: google_map_styles,
         // Keeps panning inside a single world; on its own this does not stop

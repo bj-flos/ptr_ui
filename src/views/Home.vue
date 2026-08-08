@@ -50,6 +50,12 @@ html {
   position:absolute;
   //top: 75px;
   //height: calc(100vh - 75px);
+  // An absolutely positioned box with width:auto and only one of left/right
+  // shrink-wraps its content, so a child width:100% resolved against the
+  // content rather than the window. Setting both makes the width resolve to
+  // the containing block.
+  left: 0;
+  right: 0;
   height: 100vh;
   overflow-y: auto;
 }
@@ -61,10 +67,11 @@ html {
 .map-display {
   margin: 2rem auto 0;
   height: 100%;
-  max-height: 450px;
+  max-height: 900px;
   width: 100%;
-  // Matches one world at zoom 2 (256 * 2^2). A wider box would be filled with
-  // duplicate copies of the world rather than stretched.
-  max-width: 1024px;
+  // Matches one world at zoom 3 (256 * 2^3). A wider box would be filled with
+  // duplicate copies of the world rather than stretched. Width and height are
+  // doubled together so the same span of latitude stays visible.
+  max-width: 2048px;
 }
 </style>
