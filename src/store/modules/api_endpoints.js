@@ -14,25 +14,25 @@ const state = {
     respective backend repositories.
     */
 
-  active_api: 'https://api.photonranch.org/api', // prod
+  active_api: process.env.VUE_APP_ACTIVE_API || 'https://api.photonranch.org/api', // prod
   // active_api: 'https://api.photonranch.org/dev', // dev
 
-  jobs_api: 'https://jobs.photonranch.org/jobs', // prod
+  jobs_api: process.env.VUE_APP_JOBS_API || 'https://jobs.photonranch.org/jobs', // prod
   // jobs_api: 'https://jobs.photonranch.org/dev', // dev
 
-  calendar_api: 'https://calendar.photonranch.org/calendar', // prod
+  calendar_api: process.env.VUE_APP_CALENDAR_API || 'https://calendar.photonranch.org/calendar', // prod
   // calendar_api: 'https://calendar.photonranch.org/dev', // dev
 
-  projects_endpoint: 'https://projects.photonranch.org/projects', // prod
+  projects_endpoint: process.env.VUE_APP_PROJECTS_ENDPOINT || 'https://projects.photonranch.org/projects', // prod
   // projects_endpoint: 'https://projects.photonranch.org/dev', // dev
 
-  logs_endpoint: 'https://logs.photonranch.org/logs', // prod
+  logs_endpoint: process.env.VUE_APP_LOGS_ENDPOINT || 'https://logs.photonranch.org/logs', // prod
   // logs_endpoint: 'https://logs.photonranch.org/dev',  // dev
 
   quickanalysis_endpoint: 'https://quickanalysis.photonranch.org',
   // quickanalysis_endpoint: 'http://localhost:5000',
 
-  status_endpoint: 'https://status.photonranch.org/status' // prod
+  status_endpoint: process.env.VUE_APP_STATUS_ENDPOINT || 'https://status.photonranch.org/status' // prod
   // status_endpoint: 'https://status.photonranch.org/dev' // dev
 }
 
