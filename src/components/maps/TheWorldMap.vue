@@ -55,6 +55,10 @@ export default {
 
   methods: {
 
+    // NB still google.maps.Marker, deliberately. OverlappingMarkerSpiderfier
+    // 1.0.3 calls marker.setMap() and listens for 'position_changed' and
+    // 'visible_changed', none of which AdvancedMarkerElement provides, so this
+    // path cannot move until the spiderfier is replaced.
     addMarkerWithData (markerData) {
       const white = { r: 255, g: 255, b: 255 }
       const marker = new google.maps.Marker({
@@ -97,6 +101,12 @@ export default {
         zoom: 3,
         minZoom: 3,
         center: new google.maps.LatLng(map_center_latitude, sun_pos.lng + 180),
+        // AdvancedMarkerElement only renders on a map that has a Map ID.
+        // NB supplying one makes Google ignore the `styles` option below in
+        // favour of cloud styling attached to the Map ID, so the palette in
+        // google-styles.js has to be recreated against the ID in the Cloud
+        // console. DEMO_MAP_ID is the unstyled development fallback.
+        mapId: process.env.VUE_APP_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID',
         styles: google_map_styles,
         // Keeps panning inside a single world; on its own this does not stop
         // the repeats, which is what the capped container width is for.
@@ -157,26 +167,44 @@ export default {
     // Draw the sun for the first time
     drawSunMarker () {
       const sun_pos = { lat: nite.getSunPosition().lat(), lng: nite.getSunPosition().lng() }
-      this.sunMapMarker = new google.maps.Marker({
+      this.sunMapMarker = new google.maps.marker.AdvancedMarkerElement({
         position: sun_pos,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: 'gold',
-          fillOpacity: 0.7,
-          strokeColor: 'gold',
-          strokeWeight: 3,
-          strokeOpacity: 0.8
-        },
+        content: this.makeSunElement(),
         title: 'Sun',
         map: this.map
       })
     },
 
+    // AdvancedMarkerElement takes a DOM node instead of a SymbolPath icon.
+    // Reproduces the previous circle: radius 8 (so 16px across), gold at 0.7,
+    // with a 3px gold stroke at 0.8.
+    makeSunElement () {
+      const el = document.createElement('div')
+      el.style.cssText = [
+        'width: 16px',
+        'height: 16px',
+        'border-radius: 50%',
+        'background: rgba(255, 215, 0, 0.7)',
+        'border: 3px solid rgba(255, 215, 0, 0.8)',
+        'box-sizing: content-box'
+      ].join(';')
+      return el
+    },
+
+    // Site dot, matching the SVG the spiderfied markers use.
+    makeSiteElement (rgb, title) {
+      const img = document.createElement('img')
+      img.src = makeIcon(rgb, { r: 255, g: 255, b: 255 })
+      img.width = 23
+      img.height = 32
+      img.alt = title || ''
+      return img
+    },
+
     // Reposition the sun to its current position
     updateSunPosition () {
       const sun_pos = { lat: nite.getSunPosition().lat(), lng: nite.getSunPosition().lng() }
-      this.sunMapMarker.setPosition(sun_pos)
+      this.sunMapMarker.position = sun_pos
     },
 
     renderSiteContent (name, sitecode, openStatus) {
@@ -308,13 +336,15 @@ export default {
 
         const icon_color = this.getSiteMapColor(site.site)
 
-        const marker = new google.maps.Marker({
+        // NB getSiteMapColor returns an {r,g,b} object, so the previous
+        // `${icon_color}-dot.png` URL interpolated to '[object Object]-dot.png'
+        // and 404'd. Use the same SVG the other markers use.
+        const marker = new google.maps.marker.AdvancedMarkerElement({
           position: { lat: site.latitude, lng: site.longitude },
           map: this.map,
-          icon: {
-            url: `http://maps.google.com/mapfiles/ms/icons/${icon_color}-dot.png`
-          },
-          title: site.name
+          content: this.makeSiteElement(icon_color, site.name),
+          title: site.name,
+          gmpClickable: true
         })
         const siteInfoWindow = new google.maps.InfoWindow({
           content: this.renderSiteContent(site.name, site.site, this.site_open_status[site.site])
@@ -322,7 +352,8 @@ export default {
         this.infoWindows.push(siteInfoWindow)
         marker.addListener('click', () => {
           this.infoWindows.map(x => x.close())
-          siteInfoWindow.open(this.map, marker)
+          // Advanced markers anchor by option object rather than (map, marker).
+          siteInfoWindow.open({ anchor: marker, map: this.map })
         })
       })
     }
