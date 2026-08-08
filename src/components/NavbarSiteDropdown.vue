@@ -16,7 +16,7 @@
         class="navbar-dropdown-wrapper"
       >
         <li class="no-sites">
-          There are no sites currently available
+          No sites have announced their presence
         </li>
       </ul>
       <ul
