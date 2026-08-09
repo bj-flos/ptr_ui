@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="ra_hours_decimal"
+    v-if="ra_hours_decimal != null && !isNaN(ra_hours_decimal)"
     class="wrapper"
   >
     <div
@@ -41,7 +41,9 @@ export default {
     },
     decimal_degrees_precision: {
       type: Number,
-      default: 6
+      // 4, matching DecDisplay: at 6 the value is 11 characters with the
+      // degree sign and overflows the 10ch status box.
+      default: 4
     }
   },
 

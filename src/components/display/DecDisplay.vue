@@ -1,7 +1,7 @@
 
 <template>
   <div
-    v-if="dec_deg_decimal"
+    v-if="dec_deg_decimal != null && !isNaN(dec_deg_decimal)"
     class="wrapper"
   >
     <div

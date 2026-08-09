@@ -94,7 +94,7 @@ $status-value-background-color: $input-background-color;
   padding: 0 8px;
   white-space: nowrap;
   grid-column-start:2;
-  width: 10ch;
+  min-width: 10ch;
 }
 .is-stale {
     background-color: rgba(0,0,0,0);
