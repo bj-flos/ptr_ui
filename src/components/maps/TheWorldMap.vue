@@ -36,6 +36,9 @@ export default {
   },
   async mounted () {
     this.global_config = this.$store.state.site_config.global_config
+    // The Maps API is loaded with loading=async, so google.maps may not exist
+    // yet. index.html resolves this promise from the loader callback.
+    if (window.googleMapsReady) { await window.googleMapsReady }
     this.initMap()
   },
   beforeDestroy () {
@@ -326,6 +329,10 @@ export default {
     },
 
     async redrawMapSites () {
+      // Can be triggered by the all_sites_real watcher before initMap has run,
+      // which with an async Maps API means google.maps may not exist yet.
+      if (!this.map) { return }
+
       // Fetch the list of sites to display on the map
       const sites = this.all_sites_real.reverse()
 

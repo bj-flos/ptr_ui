@@ -21,7 +21,17 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- Map scripts -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=<%= VUE_APP_GOOGLE_MAPS_KEY %>&libraries=marker&v=weekly"></script>
+  <!-- The Maps API loads asynchronously (Google's recommended pattern), so it
+       is not ready when Vue mounts. The callback resolves googleMapsReady,
+       which map components await before touching google.maps. Defined before
+       the loader so the callback exists when the API calls it. -->
+  <script>
+    window.googleMapsReady = new Promise(function (resolve) {
+      window.__onGoogleMapsReady = resolve
+    })
+  </script>
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=<%= VUE_APP_GOOGLE_MAPS_KEY %>&libraries=marker&v=weekly&loading=async&callback=__onGoogleMapsReady"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/OverlappingMarkerSpiderfier/1.0.3/oms.min.js"></script>
 
   <!-- D3-Celestial Sky Chart -->
