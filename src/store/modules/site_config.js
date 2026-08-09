@@ -138,7 +138,11 @@ const getters = {
           name,
           latitude,
           longitude,
-          TZ_database_name
+          TZ_database_name,
+          // Needed to tell a wema from the observatories it hosts: they share
+          // coordinates, so consumers that plot sites need to distinguish them.
+          wema_name: config.wema_name,
+          instance_type: config.instance_type
         }
         sites.push(site_info)
       } catch (error) {
@@ -146,9 +150,10 @@ const getters = {
       }
     })
 
-    // Don't include sites that are missing the wema
+    // Don't include sites that are missing the wema. The test used to be
+    // inverted, and site_info did not carry wema_name, so it never ran.
     const allSiteNames = new Set(Object.keys(state.global_config))
-    sites = sites.filter(site => !allSiteNames.has(site.wema_name))
+    sites = sites.filter(site => allSiteNames.has(site.wema_name))
 
     sites = _.orderBy(sites, [s => s.site], ['asc'])
     return sites

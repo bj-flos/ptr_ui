@@ -336,8 +336,15 @@ export default {
       // Fetch the list of sites to display on the map
       const sites = this.all_sites_real.reverse()
 
+      // One marker per wema: the observatories it hosts share its coordinates,
+      // so plotting each of them stacks markers on the same point. A site with
+      // no wema peer still gets one, so nothing is silently dropped.
+      const wema_names = new Set(sites.map(s => s.wema_name))
+      const mapped = sites.filter(s =>
+        s.instance_type === 'wema' || !wema_names.has(s.wema_name) || s.site === s.wema_name)
+
       // For each site, draw a marker with a popup (on click) to visit the site.
-      sites.forEach(site => {
+      mapped.forEach(site => {
         // Skip if the site doesn't have any status available
         if (!Object.keys(this.site_open_status).includes(site.site)) { return }
 
