@@ -1,4 +1,4 @@
-import { isItemStale, display_colors, unwrapVal, displayNumber } from './status_utils'
+import { isItemStale, display_colors, unwrapVal, displayNumber, withUnit } from './status_utils'
 
 // Handle status before and after the individual timestamp inclusion
 function get_val (getters, key) {
@@ -82,7 +82,7 @@ const dewpoint = (state, getters) => {
 
 const wind = (state, getters) => {
   const name = 'Wind'
-  const val = get_val(getters, 'wind_m/s') + ' m/s'
+  const val = withUnit(get_val(getters, 'wind_m/s'), ' m/s')
   const is_stale = isItemStale(getters, 'weather_state', 'wind_m/s')
   return { name, val, is_stale }
 }
@@ -90,7 +90,7 @@ const wind = (state, getters) => {
 // surface brightness
 const surface = (state, getters) => {
   const name = 'Surface'
-  const val = get_val(getters, 'calc_HSI_lux') + ' lux'
+  const val = withUnit(get_val(getters, 'calc_HSI_lux'), ' lux')
   const is_stale = isItemStale(getters, 'weather_state', 'calc_HSI_lux')
   return { name, val, is_stale }
 }

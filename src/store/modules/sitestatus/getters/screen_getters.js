@@ -1,4 +1,4 @@
-import { isItemStale } from './status_utils'
+import { isItemStale, withUnit } from './status_utils'
 
 // Handle status before and after the individual timestamp inclusion
 function get_val (getters, key) {
@@ -18,7 +18,7 @@ const screen_status = (state, getters) => {
 
 const screen_bright_setting = (state, getters) => {
   const name = 'Brightness'
-  const val = get_val(getters, 'bright_setting') + ' %'
+  const val = withUnit(get_val(getters, 'bright_setting'), ' %')
   const is_stale = isItemStale(getters, 'screen_state', 'bright_setting')
   return { name, val, is_stale }
 }

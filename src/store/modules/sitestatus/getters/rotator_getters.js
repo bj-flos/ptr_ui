@@ -1,8 +1,8 @@
-import { isItemStale, parseTrueFalse } from './status_utils'
+import { isItemStale, parseTrueFalse, unwrapVal, displayNumber } from './status_utils'
 
 // Handle status before and after the individual timestamp inclusion
 function get_val (getters, key) {
-  return getters.rotator_state[key]?.val ?? '-'
+  return unwrapVal(getters.rotator_state[key])
 }
 
 const rotator_state = (state, getters, rootState) => {
@@ -11,7 +11,7 @@ const rotator_state = (state, getters, rootState) => {
 
 const rotator_position = (state, getters) => {
   const name = 'Position Angle'
-  const val = get_val(getters, 'position_angle') + '°'
+  const val = displayNumber(get_val(getters, 'position_angle'), 4, ' °')
   const is_stale = isItemStale(getters, 'rotator_state', 'position_angle')
   return { name, val, is_stale }
 }

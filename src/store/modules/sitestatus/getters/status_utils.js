@@ -113,6 +113,20 @@ function displayNumber (value, decimals, unit = '') {
   return `${n.toFixed(decimals)}${unit}`
 }
 
+/**
+ * Append a unit to a reading, unless the reading is missing.
+ *
+ * get_val() returns '-' when a key is absent, and '-' + ' °' reads as '- °'.
+ * A missing value should carry no unit at all. The numeric value itself is
+ * returned unchanged, so this does not alter how present values are formatted;
+ * use displayNumber() when the number also needs rounding.
+ */
+function withUnit (value, unit) {
+  const n = typeof value === 'number' ? value : parseFloat(value)
+  if (!Number.isFinite(n)) { return value ?? '-' }
+  return `${value}${unit}`
+}
+
 const parseTrueFalse = s => {
   if (typeof s == 'object') {
     return parseTrueFalse(s.val)
@@ -135,5 +149,6 @@ export {
   statusAgeDisplay,
   parseTrueFalse,
   unwrapVal,
-  displayNumber
+  displayNumber,
+  withUnit
 }

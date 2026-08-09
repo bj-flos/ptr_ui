@@ -1,4 +1,4 @@
-import { isItemStale, parseTrueFalse } from './status_utils'
+import { isItemStale, parseTrueFalse, withUnit } from './status_utils'
 
 function get_val (getters, key) {
   return getters.focuser_state[key]?.val ?? '-'
@@ -10,28 +10,28 @@ const focuser_state = (state, getters, rootState) => {
 
 const focus_position = (state, getters) => {
   const name = 'Focus Pos.'
-  const val = get_val(getters, 'focus_position') + ' μm'
+  const val = withUnit(get_val(getters, 'focus_position'), ' μm')
   const is_stale = isItemStale(getters, 'focuser_state', 'focus_position')
   return { name, val, is_stale }
 }
 
 const focus_comp = (state, getters) => {
   const name = 'Focus Comp.'
-  const val = get_val(getters, 'comp') + ' μm'
+  const val = withUnit(get_val(getters, 'comp'), ' μm')
   const is_stale = isItemStale(getters, 'focuser_state', 'comp')
   return { name, val, is_stale }
 }
 
 const focus_filter_offset = (state, getters) => {
   const name = 'Filter Offset'
-  const val = get_val(getters, 'filter_offset') + ' μm'
+  const val = withUnit(get_val(getters, 'filter_offset'), ' μm')
   const is_stale = isItemStale(getters, 'focuser_state', 'filter_offset')
   return { name, val, is_stale }
 }
 
 const focus_temperature = (state, getters) => {
   const name = 'Focus Temp'
-  const val = get_val(getters, 'focus_temperature') + ' ℃'
+  const val = withUnit(get_val(getters, 'focus_temperature'), ' ℃')
   const is_stale = isItemStale(getters, 'focuser_state', 'focus_temperature')
   return { name, val, is_stale }
 }
