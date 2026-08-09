@@ -92,6 +92,24 @@ const getters = {
     const enclosure_not_stale = getters.enclosure_status_age < stale_age_s
     const weather_not_stale = getters.weather_status_age < stale_age_s
 
+    // A single word cannot say which subsystem stopped reporting or why, so
+    // carry the evidence alongside it for the UI to reveal on demand.
+    const age = s => (Number.isFinite(s) ? Math.round(s) + 's ago' : 'never')
+    const enclosure_message = (() => {
+      let m = getters.enclosure_state?.enclosure_message
+      while (m && typeof m === 'object') { m = m.val }
+      return m && m !== '-' ? m : null
+    })()
+    const details = [
+      { label: 'device status', value: age(getters.device_status_age), stale: !device_not_stale },
+      { label: 'enclosure status', value: age(getters.enclosure_status_age), stale: !enclosure_not_stale },
+      { label: 'weather status', value: age(getters.weather_status_age), stale: !weather_not_stale },
+      { label: 'considered stale after', value: Math.round(stale_age_s) + 's', stale: false }
+    ]
+    if (enclosure_message) {
+      details.push({ label: 'enclosure reported', value: enclosure_message, stale: true })
+    }
+
     // First handle WEMA sites
     // if (rootState.site_config.global_config[rootState.site_config.selected_site].instance_type == 'wema') {
     if (rootGetters['site_config/site_is_wema']) {
@@ -99,25 +117,29 @@ const getters = {
       if (enclosure_not_stale && weather_not_stale) {
         return {
           text: 'operational',
-          colorClass: 'is-green'
+          colorClass: 'is-green',
+          details
         }
       // enclosure and weather both stale
       } else if (!enclosure_not_stale && !weather_not_stale) {
         return {
           text: 'offline',
-          colorClass: 'is-grey'
+          colorClass: 'is-grey',
+          details
         }
       // enclosure is stale
       } else if (!enclosure_not_stale && weather_not_stale) {
         return {
           text: 'enclosure not reporting',
-          colorClass: 'is-yellow'
+          colorClass: 'is-yellow',
+          details
         }
       // weather is stale
-      } else if (!enclosure_not_stale && weather_not_stale) {
+      } else if (enclosure_not_stale && !weather_not_stale) {
         return {
-          text: 'enclosure not reporting',
-          colorClass: 'is-yellow'
+          text: 'weather not reporting',
+          colorClass: 'is-yellow',
+          details
         }
       }
     }
@@ -128,7 +150,8 @@ const getters = {
     if (!device_not_stale && !enclosure_not_stale) {
       return {
         text: 'offline',
-        colorClass: 'is-grey'
+        colorClass: 'is-grey',
+        details
       }
     }
 
@@ -136,7 +159,8 @@ const getters = {
     if (!device_not_stale || !enclosure_not_stale) {
       return {
         text: 'technical difficulty',
-        colorClass: 'is-yellow'
+        colorClass: 'is-yellow',
+        details
       }
     }
 
@@ -146,12 +170,14 @@ const getters = {
       if (enclosure_is_open) {
         return {
           text: 'operational',
-          colorClass: 'is-green'
+          colorClass: 'is-green',
+          details
         }
       } else {
         return {
           text: 'enclosure closed',
-          colorClass: 'is-blue'
+          colorClass: 'is-blue',
+          details
         }
       }
     }

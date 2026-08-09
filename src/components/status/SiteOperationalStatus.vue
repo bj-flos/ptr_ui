@@ -6,10 +6,33 @@
     />
     <p
       class="status-text"
-      :class="operational_status_color_class"
+      :class="[operational_status_color_class, { clickable: has_details }]"
+      :title="has_details ? 'Click for details' : null"
+      @click="toggle_details"
     >
       {{ operational_status }}
+      <span
+        v-if="has_details"
+        class="details-caret"
+      >{{ show_details ? '▾' : '▸' }}</span>
     </p>
+
+    <!-- The status is a rollup of several signals; without this there is no
+         way to tell which one degraded, or what the site said about it. -->
+    <div
+      v-if="show_details && has_details"
+      class="status-details"
+    >
+      <div
+        v-for="detail in details"
+        :key="detail.label"
+        class="detail-row"
+        :class="{ 'detail-stale': detail.stale }"
+      >
+        <span class="detail-label">{{ detail.label }}</span>
+        <span class="detail-value">{{ detail.value }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -26,6 +49,12 @@ export default {
     manual_status: {
       type: String,
       default: null
+    }
+  },
+
+  data () {
+    return {
+      show_details: false
     }
   },
 
@@ -46,6 +75,15 @@ export default {
       return status
     },
 
+    details () {
+      return this.site_operational_status.details ?? []
+    },
+
+    // A manually supplied status has no diagnostics behind it.
+    has_details () {
+      return this.manual_status === null && this.details.length > 0
+    },
+
     /**
          * operational: green
          * technical difficulty: yellow
@@ -54,54 +92,48 @@ export default {
     operational_status_color_class () {
       return this.site_operational_status.colorClass
     }
+  },
+
+  methods: {
+    toggle_details () {
+      if (this.has_details) {
+        this.show_details = !this.show_details
+      }
+    }
   }
 }
 </script>
 
-<style lang="scss" scoped>
-@import "@/style/_variables.scss";
-
-// Important (and perhaps questionable design): keep these color
-// classes on top so they can be overridden if needed.
-.is-green {
-    background-color: $ptr-green;
-    color: $ptr-green;
+<style scoped>
+.status-text.clickable {
+  cursor: pointer;
 }
-.is-yellow {
-    background-color: $ptr-yellow;
-    color: $ptr-yellow;
+.details-caret {
+  font-size: 0.75em;
+  opacity: 0.7;
 }
-.is-red {
-    background-color: $ptr-red;
-    color: $ptr-red;
+.status-details {
+  margin-top: 0.35em;
+  padding: 0.4em 0.6em;
+  border-left: 2px solid currentColor;
+  font-size: 0.85em;
+  line-height: 1.5;
+  opacity: 0.9;
 }
-.is-grey {
-    background-color: $ptr-grey;
-    color: $ptr-grey;
-}
-.is-blue {
-  background-color: $ptr-blue;
-  color: $ptr-blue;
-}
-
-.online-status-wrapper {
+.detail-row {
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  gap: 1.5em;
+  white-space: nowrap;
 }
-.status-text {
-    font-weight: bold;
-    background-color: unset;
+.detail-label {
+  opacity: 0.75;
 }
-.status-dot {
-  /* Center the content */
-  align-items: center;
-  display: flex;
-  justify-content: center;
-  margin-right: 10px;
-
-  /* Rounded border */
-  border-radius: 9999px;
-  height: 12px;
-  width: 12px;
+.detail-value {
+  font-family: monospace;
+}
+/* The signals that are actually degraded are the point of opening this. */
+.detail-stale .detail-value {
+  font-weight: bold;
 }
 </style>
