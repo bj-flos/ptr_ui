@@ -116,10 +116,10 @@ export default {
     },
     rightAscension () {
       if (this.displayFormat == 'decimalHours') {
-        return this.ra_hours_decimal.toFixed(this.decimal_hours_precision) + 'h'
+        return this.ra_hours_decimal.toFixed(this.decimal_hours_precision) + ' h'
       }
       if (this.displayFormat == 'decimalDegrees') {
-        return this.toDecimalDegrees(this.ra_hours_decimal).toFixed(this.decimal_degrees_precision) + '°'
+        return this.toDecimalDegrees(this.ra_hours_decimal).toFixed(this.decimal_degrees_precision) + ' °'
       }
       if (this.displayFormat == 'sexagesimalPlain') {
         return this.toSexagesimal(this.ra_hours_decimal, false)

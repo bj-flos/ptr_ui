@@ -1,5 +1,5 @@
 
-import { isItemStale, parseTrueFalse } from './status_utils'
+import { isItemStale, parseTrueFalse, displayNumber } from './status_utils'
 
 function get_val (getters, key) {
   return getters.mount_state[key]?.val ?? '-'
@@ -21,14 +21,14 @@ const dec = (state, getters) => {
 
 const azimuth = (state, getters) => {
   const name = 'Azimuth'
-  const val = parseFloat(getters.mount_state.azimuth?.val)?.toFixed(4) ?? '-'
+  const val = displayNumber(getters.mount_state.azimuth?.val, 4, ' °')
   const is_stale = isItemStale(getters, 'mount_state', 'azimuth')
   return { name, val, is_stale }
 }
 
 const altitude = (state, getters) => {
   const name = 'Altitude'
-  const val = parseFloat(getters.mount_state.altitude?.val)?.toFixed(4) ?? '-'
+  const val = displayNumber(getters.mount_state.altitude?.val, 4, ' °')
   const is_stale = isItemStale(getters, 'mount_state', 'altitude')
   return { name, val, is_stale }
 }
@@ -42,35 +42,35 @@ const sidereal_time = (state, getters) => {
 
 const zenith_distance = (state, getters) => {
   const name = 'Zenith Dist.'
-  const val = parseFloat(getters.mount_state.zenith_distance?.val)?.toFixed(4) ?? '-'
+  const val = displayNumber(getters.mount_state.zenith_distance?.val, 4, ' °')
   const is_stale = isItemStale(getters, 'mount_state', 'zenith_distance')
   return { name, val, is_stale }
 }
 
 const airmass = (state, getters) => {
   const name = 'Airmass'
-  const val = parseFloat(getters.mount_state.airmass?.val)?.toFixed(4) ?? '-'
+  const val = displayNumber(getters.mount_state.airmass?.val, 4, '')
   const is_stale = isItemStale(getters, 'mount_state', 'airmass')
   return { name, val, is_stale }
 }
 
 const transition_time = (state, getters) => {
   const name = 'Trans. Time'
-  const val = parseFloat(getters.mount_state.transition_time?.val)?.toFixed(4) ?? '-'
+  const val = displayNumber(getters.mount_state.transition_time?.val, 4, '')
   const is_stale = isItemStale(getters, 'mount_state', 'transition_time')
   return { name, val, is_stale }
 }
 
 const transition_airmass = (state, getters) => {
   const name = 'Trans. Airmass'
-  const val = parseFloat(getters.mount_state.transition_airmass?.val)?.toFixed(4) ?? '-'
+  const val = displayNumber(getters.mount_state.transition_airmass?.val, 4, '')
   const is_stale = isItemStale(getters, 'mount_state', 'transition_airmass')
   return { name, val, is_stale }
 }
 
 const refraction = (state, getters) => {
   const name = 'Refraction'
-  const val = parseFloat(getters.mount_state.refraction?.val)?.toFixed(4) ?? '-'
+  const val = displayNumber(getters.mount_state.refraction?.val, 4, '')
   const is_stale = isItemStale(getters, 'mount_state', 'refraction')
   return { name, val, is_stale }
 }
@@ -89,7 +89,7 @@ const hour_angle = (state, getters) => {
     if (ha > 12) { ha -= 24 } // hours, since we're in decimal
     ha = ha.toFixed(3)
     if (ha > 0) { ha = '+' + ha }
-    val = ha
+    val = ha + ' h'
   }
   return { name, val, is_stale }
 }

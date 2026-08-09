@@ -107,7 +107,7 @@ export default {
     },
     declinationDisplayVal () {
       if (this.displayFormat == 'decimalDegrees') {
-        return this.dec_deg_decimal.toFixed(this.decimal_precision) + '°'
+        return this.dec_deg_decimal.toFixed(this.decimal_precision) + ' °'
       }
       if (this.displayFormat == 'sexagesimalPlain') {
         return this.toSexagesimal(this.dec_deg_decimal, false)
