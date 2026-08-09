@@ -4,36 +4,27 @@
 
 // initial state
 const state = {
-  /* Prod API urls are used by default by both the prod and dev branches currently,
-    except in cases (calendar, projects, status) where the dev endpoint is in use.
+  /* Every endpoint comes from the environment; see .env.local.
 
-    Eventual switch to prod site using prod endpoints, dev site using dev endpoints,
-    and all other testing on test endpoints to come.
-
-    Endpoints listed as 'nonexistent currently' have not yet been defined in their
-    respective backend repositories.
+    The fallbacks are empty on purpose. An unset variable then resolves to a
+    same-origin relative URL, which fails locally and visibly, rather than
+    silently sending this development build's traffic to LCO production.
     */
 
-  active_api: process.env.VUE_APP_ACTIVE_API || 'https://api.photonranch.org/api', // prod
-  // active_api: 'https://api.photonranch.org/dev', // dev
+  active_api: process.env.VUE_APP_ACTIVE_API || '', // prod
 
-  jobs_api: process.env.VUE_APP_JOBS_API || 'https://jobs.photonranch.org/jobs', // prod
-  // jobs_api: 'https://jobs.photonranch.org/dev', // dev
+  jobs_api: process.env.VUE_APP_JOBS_API || '', // prod
 
-  calendar_api: process.env.VUE_APP_CALENDAR_API || 'https://calendar.photonranch.org/calendar', // prod
-  // calendar_api: 'https://calendar.photonranch.org/dev', // dev
+  calendar_api: process.env.VUE_APP_CALENDAR_API || '', // prod
 
-  projects_endpoint: process.env.VUE_APP_PROJECTS_ENDPOINT || 'https://projects.photonranch.org/projects', // prod
-  // projects_endpoint: 'https://projects.photonranch.org/dev', // dev
+  projects_endpoint: process.env.VUE_APP_PROJECTS_ENDPOINT || '', // prod
 
-  logs_endpoint: process.env.VUE_APP_LOGS_ENDPOINT || 'https://logs.photonranch.org/logs', // prod
-  // logs_endpoint: 'https://logs.photonranch.org/dev',  // dev
+  logs_endpoint: process.env.VUE_APP_LOGS_ENDPOINT || '', // prod
 
-  quickanalysis_endpoint: 'https://quickanalysis.photonranch.org',
+  quickanalysis_endpoint: process.env.VUE_APP_QUICKANALYSIS_ENDPOINT || '',
   // quickanalysis_endpoint: 'http://localhost:5000',
 
-  status_endpoint: process.env.VUE_APP_STATUS_ENDPOINT || 'https://status.photonranch.org/status' // prod
-  // status_endpoint: 'https://status.photonranch.org/dev' // dev
+  status_endpoint: process.env.VUE_APP_STATUS_ENDPOINT || '' // prod
 }
 
 // getters
