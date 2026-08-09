@@ -68,7 +68,7 @@ const air_temp = (state, getters) => {
 
 const humidity = (state, getters) => {
   const name = 'Humidity'
-  const val = displayNumber(get_val(getters, 'humidity_%'), 1, '%')
+  const val = displayNumber(get_val(getters, 'humidity_%'), 1, ' %')
   const is_stale = isItemStale(getters, 'weather_state', 'humidity_%')
   return { name, val, is_stale }
 }
