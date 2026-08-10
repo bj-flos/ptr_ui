@@ -26,6 +26,9 @@ export default {
 
       mapName: this.name + '-map',
       infoWindows: [],
+      // Markers have to be tracked to be removable: a redraw that cannot
+      // clear its predecessors just stacks another set on top.
+      siteMarkers: [],
 
       iw: '', // infoWindow
       oms: '', // OverlappingMarkerSpiderfier
@@ -89,6 +92,22 @@ export default {
         this.iw.setContent(markerData.content)
         this.iw.open(this.map, marker)
       })
+      this.siteMarkers.push(marker)
+    },
+
+    // Remove every site marker drawn so far. The spiderfier keeps its own
+    // list, so it has to be told as well or it goes on managing markers that
+    // are no longer on the map.
+    clearSiteMarkers () {
+      this.siteMarkers.forEach(marker => {
+        if (this.oms && typeof this.oms.removeMarker === 'function') {
+          this.oms.removeMarker(marker)
+        }
+        marker.setMap(null)
+      })
+      this.siteMarkers = []
+      this.infoWindows.forEach(w => w.close())
+      this.infoWindows = []
     },
 
     // The sites to draw: one marker per wema, not per observatory.
@@ -159,18 +178,9 @@ export default {
       function iwClose () { iw.close() }
       google.maps.event.addListener(this.map, 'click', iwClose)
 
-      // Consolidate additional data used to render sites to the map
-      this.mapSites().forEach(site => {
-        const markerData = {
-          lat: site.latitude,
-          lng: site.longitude,
-          rgb: this.getSiteMapColor(site.site),
-          content: this.renderSiteContent(site.name, site.site, this.site_open_status[site.site]),
-          name: site.site.toUpperCase()
-        }
-
-        this.addMarkerWithData(markerData)
-      })
+      // One implementation, called from both places, so the two cannot draw
+      // different markers for the same site.
+      this.redrawMapSites()
     },
 
     // Draw the sun for the first time
@@ -198,16 +208,6 @@ export default {
         'box-sizing: content-box'
       ].join(';')
       return el
-    },
-
-    // Site dot, matching the SVG the spiderfied markers use.
-    makeSiteElement (rgb, title) {
-      const img = document.createElement('img')
-      img.src = makeIcon(rgb, { r: 255, g: 255, b: 255 })
-      img.width = 23
-      img.height = 32
-      img.alt = title || ''
-      return img
     },
 
     // Reposition the sun to its current position
@@ -339,28 +339,20 @@ export default {
       // which with an async Maps API means google.maps may not exist yet.
       if (!this.map) { return }
 
+      // The spiderfier is set up by initMap and is what renders the site code
+      // into the icon, so there is nothing to draw before it exists.
+      if (!this.oms) { return }
+
+      this.clearSiteMarkers()
+
       // For each site, draw a marker with a popup (on click) to visit the site.
       this.mapSites().forEach(site => {
-        const icon_color = this.getSiteMapColor(site.site)
-
-        // NB getSiteMapColor returns an {r,g,b} object, so the previous
-        // `${icon_color}-dot.png` URL interpolated to '[object Object]-dot.png'
-        // and 404'd. Use the same SVG the other markers use.
-        const marker = new google.maps.marker.AdvancedMarkerElement({
-          position: { lat: site.latitude, lng: site.longitude },
-          map: this.map,
-          content: this.makeSiteElement(icon_color, site.name),
-          title: site.name,
-          gmpClickable: true
-        })
-        const siteInfoWindow = new google.maps.InfoWindow({
-          content: this.renderSiteContent(site.name, site.site, this.site_open_status[site.site])
-        })
-        this.infoWindows.push(siteInfoWindow)
-        marker.addListener('click', () => {
-          this.infoWindows.map(x => x.close())
-          // Advanced markers anchor by option object rather than (map, marker).
-          siteInfoWindow.open({ anchor: marker, map: this.map })
+        this.addMarkerWithData({
+          lat: site.latitude,
+          lng: site.longitude,
+          rgb: this.getSiteMapColor(site.site),
+          content: this.renderSiteContent(site.name, site.site, this.site_open_status[site.site]),
+          name: site.site.toUpperCase()
         })
       })
     }
