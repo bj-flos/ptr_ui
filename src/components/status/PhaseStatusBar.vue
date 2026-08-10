@@ -40,7 +40,7 @@
 <script>
 
 /* TODO: handle phase status in vuex so we can use the site-wide datastreamer
-    websocket connection and we don't need to open a separate one for this component. 
+    websocket connection and we don't need to open a separate one for this component.
 */
 
 import ReconnectingWebSocket from 'reconnecting-websocket'
@@ -75,7 +75,12 @@ export default {
   mounted () {
     this.get_recent_phase_status()
 
-    const datastreamurl = 'wss://datastream.photonranch.org/dev' +
+    // Same endpoint as the datastreamer, and configured the same way: unset
+    // means no live phase updates rather than a connection to LCO production.
+    const datastreamBase = process.env.VUE_APP_DATASTREAM_URL || ''
+    if (!datastreamBase) { return }
+
+    const datastreamurl = datastreamBase +
                         `?site=${encodeURIComponent(this.site)}`
     this.websocket = new ReconnectingWebSocket(datastreamurl)
     this.websocket.onmessage = msg => {
@@ -86,7 +91,11 @@ export default {
     }
   },
   beforeDestroy () {
-    this.websocket.close()
+    // There may be no socket: mounted() returns early when no datastream is
+    // configured, and closing undefined throws on the way out of the page.
+    if (this.websocket) {
+      this.websocket.close()
+    }
   },
   watch: {
     $route (to, from) {

@@ -9,7 +9,13 @@ import { NotificationProgrammatic as Notification, DialogProgrammatic as Dialog 
 // }
 
 const UiSyncPlugin = (store) => {
-  const websocketServerUrl = 'https://uisync.photonranch.org'
+  // Unset means no ui sync, as with every other endpoint. This was hardcoded
+  // to production and was the second of the two things still reaching LCO.
+  const websocketServerUrl = process.env.VUE_APP_UISYNC_URL || ''
+  if (!websocketServerUrl) {
+    console.info('ui_sync: VUE_APP_UISYNC_URL is unset, ui sync is off')
+    return
+  }
   const socket = io(websocketServerUrl) // eslint-disable-line
 
   socket.on('confirm_connect', payload => {

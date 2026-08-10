@@ -1,6 +1,13 @@
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import topic_handlers from './topic_handlers'
 import store from '../store'
+
+// The live status stream. Unset means no datastream, which is the right
+// default: the address that used to be here was LCO production.
+const DATASTREAM_URL = process.env.VUE_APP_DATASTREAM_URL || ''
+if (!DATASTREAM_URL) {
+  console.info('datastreamer: VUE_APP_DATASTREAM_URL is unset, live updates are off')
+}
 class Datastreamer {
   constructor (site) {
     this.primary_websocket = ''
@@ -23,7 +30,11 @@ class Datastreamer {
   }
 
   openPrimaryConnection () {
-    const primary_datastreamurl = 'wss://datastream.photonranch.org/dev' +
+    // Empty means do not connect, as with every other endpoint in
+    // api_endpoints.js. This was hardcoded to production, and a development
+    // stack has no datastream of its own to point it at.
+    if (!DATASTREAM_URL) { return }
+    const primary_datastreamurl = DATASTREAM_URL +
       `?site=${encodeURIComponent(this.site)}`
     this.primary_websocket = new ReconnectingWebSocket(primary_datastreamurl)
     this.primary_websocket.onmessage = this.handle_msg
@@ -34,7 +45,8 @@ class Datastreamer {
     if (this.wema == this.site) {
       return
     }
-    const wema_datastreamurl = 'wss://datastream.photonranch.org/dev' +
+    if (!DATASTREAM_URL) { return }
+    const wema_datastreamurl = DATASTREAM_URL +
       `?site=${encodeURIComponent(this.wema)}`
     this.wema_websocket = new ReconnectingWebSocket(wema_datastreamurl)
     this.wema_websocket.onmessage = this.handle_msg
