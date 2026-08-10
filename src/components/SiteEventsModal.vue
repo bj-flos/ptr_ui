@@ -46,10 +46,14 @@ export default {
 
     columns () {
       return [
+        // Widths are fixed so the table does not re-lay out when the site
+        // changes: without them each column sizes to its widest cell, and a
+        // wema's code is shorter than its instrument's.
         {
           field: 'key',
           label: 'key',
           searchable: false,
+          width: '40%',
           cellClass: 'site-events-table-key-cell'
         },
         {
@@ -63,24 +67,28 @@ export default {
           field: 'date',
           label: 'date',
           searchable: false,
+          width: '22%',
           sortable: true
         },
         {
           field: 'observatory',
           label: 'site',
           visible: true,
+          width: '13%',
           sortable: true
         },
         {
           field: 'user',
           label: 'user',
           visible: true,
+          width: '12%',
           sortable: true
         },
         {
           field: 'UTC',
           label: 'UTC',
           searchable: false,
+          width: '13%',
           sortable: true
         },
         {
