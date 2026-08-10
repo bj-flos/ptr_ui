@@ -395,7 +395,10 @@ const actions = {
       // Extra variable (in site timezone) for the end date noon, initialized same as noonDate
       endDate = moment(response[0].capture_date).tz(siteTimezone).hours(12).minutes(0).seconds(0).milliseconds(0)
 
-      if (siteDate.format('HH') > 12) {
+      // Compare the moments, not the formatted hour: '12' > 12 is false, so
+      // an image taken at 12:41 counted as morning and the window below became
+      // yesterday noon to today noon -- excluding the image that anchored it.
+      if (siteDate.isSameOrAfter(noonDate)) {
         // If the image was taken later than noon, set the start of query to noon today
         queryStart = noonDate
 
