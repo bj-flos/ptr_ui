@@ -168,7 +168,13 @@ export default {
         markersWontHide: true,
         keepSpiderfied: true,
         circleFootSeparation: 35,
-        nearbyDistance: 35
+        // Group only markers that actually overlap. This is not a clusterer:
+        // it keeps every marker in place and replaces each icon with a '+', so
+        // a group of two shows two plus glyphs, not one combined symbol. At
+        // 35px it caught sites merely in the same region -- ARO and DPO are
+        // 300km apart, 15px at zoom 3 -- and both lost their labels. 12px is
+        // narrower than the icon, so grouping now means genuine overlap.
+        nearbyDistance: 12
       })
       this.oms = oms
 
