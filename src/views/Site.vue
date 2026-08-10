@@ -153,10 +153,19 @@ export default {
     const new_site = match || to.params.sitecode
     // console.log('in BEFORE ROUTE UPDATE, site: ', new_site)
 
-    if (new_site != this.sitecode) { // only if site changes
-      this.site_changed_routine(new_site)
+    // next() in a finally: a guard's one obligation is to resolve the
+    // transition. Letting site_changed_routine throw past it left the URL and
+    // the navbar updated with the page never arriving, and nothing in the
+    // console to say why.
+    try {
+      if (new_site != this.sitecode) { // only if site changes
+        this.site_changed_routine(new_site)
+      }
+    } catch (error) {
+      console.error('site change failed for', new_site, error)
+    } finally {
+      next()
     }
-    next()
   },
 
   beforeRouteLeave (to, from, next) {

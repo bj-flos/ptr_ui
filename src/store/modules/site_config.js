@@ -461,9 +461,16 @@ const actions = {
       console.warn(`set_default_active_devices: no config for site '${site}'`)
       return
     }
-    const defaults = site_config.defaults || {}
-
     commit('selected_site', site)
+
+    // A wema has no devices to select -- no camera, no mount, no focuser -- so
+    // its config carries no defaults. Picking through it for them means
+    // dispatching undefined device names and, below, Object.keys(undefined).
+    const defaults = site_config.defaults
+    if (!defaults) {
+      return
+    }
+
     commit('selected_weather', defaults.observing_conditions || 'observing_conditions1')
     commit('selected_enclosure', defaults.enclosure || 'enclosure1')
     commit('selected_mount', defaults.mount)
