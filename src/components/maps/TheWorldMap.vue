@@ -91,6 +91,23 @@ export default {
       })
     },
 
+    // The sites to draw: one marker per wema, not per observatory.
+    //
+    // A wema hosts the roof and weather for any number of observatories, and
+    // they inherit its coordinates -- so a marker per obs stacks them all on
+    // one point and labels it with an arbitrary member of the set. A site with
+    // no wema peer still gets a marker, so nothing is silently dropped.
+    //
+    // Both draw paths use this. They used to filter separately and disagreed:
+    // initMap kept the observatories, redrawMapSites kept the wemas.
+    mapSites () {
+      const known = Object.keys(this.site_open_status)
+      const sites = this.all_sites_real.filter(site => known.includes(site.site))
+      const wema_names = new Set(sites.map(s => s.wema_name))
+      return sites.filter(s =>
+        s.instance_type === 'wema' || !wema_names.has(s.wema_name) || s.site === s.wema_name)
+    },
+
     async initMap () {
       await this.getSiteOpenStatus
       const sun_pos = { lat: nite.calculatePositionOfSun().lat(), lng: nite.calculatePositionOfSun().lng() }
@@ -142,19 +159,8 @@ export default {
       function iwClose () { iw.close() }
       google.maps.event.addListener(this.map, 'click', iwClose)
 
-      let sites = this.all_sites_real
-
-      // First, remove sites that don't have an available status
-      sites = sites.filter(site => {
-        return Object.keys(this.site_open_status).includes(site.site)
-      })
-
-      // Remove the WEMAs from the map
-      console.log(this.global_config)
-      sites = sites.filter(site => this.global_config[site.site].instance_type == 'obs')
-
       // Consolidate additional data used to render sites to the map
-      sites.forEach(site => {
+      this.mapSites().forEach(site => {
         const markerData = {
           lat: site.latitude,
           lng: site.longitude,
@@ -333,21 +339,8 @@ export default {
       // which with an async Maps API means google.maps may not exist yet.
       if (!this.map) { return }
 
-      // Fetch the list of sites to display on the map
-      const sites = this.all_sites_real.reverse()
-
-      // One marker per wema: the observatories it hosts share its coordinates,
-      // so plotting each of them stacks markers on the same point. A site with
-      // no wema peer still gets one, so nothing is silently dropped.
-      const wema_names = new Set(sites.map(s => s.wema_name))
-      const mapped = sites.filter(s =>
-        s.instance_type === 'wema' || !wema_names.has(s.wema_name) || s.site === s.wema_name)
-
       // For each site, draw a marker with a popup (on click) to visit the site.
-      mapped.forEach(site => {
-        // Skip if the site doesn't have any status available
-        if (!Object.keys(this.site_open_status).includes(site.site)) { return }
-
+      this.mapSites().forEach(site => {
         const icon_color = this.getSiteMapColor(site.site)
 
         // NB getSiteMapColor returns an {r,g,b} object, so the previous
