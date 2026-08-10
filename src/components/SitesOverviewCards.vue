@@ -111,8 +111,15 @@ export default {
           return 0
         }
       }
+      // Only observatories take images. A wema owns the roof and the weather
+      // and has no camera, so a card for one is permanently empty -- these
+      // cards are image previews. The map does the opposite, and for the same
+      // kind of reason: one marker per enclosure, one card per camera.
+      // An entry that does not declare which it is still gets a card.
+      const imaging = this.sites.filter(s => s.instance_type !== 'wema')
+
       // copy the sites array; avoid mutating the prop
-      const sitesCopy = [...this.sites]
+      const sitesCopy = [...imaging]
 
       sitesCopy.sort((a, b) => {
         return getImgDate(b) - getImgDate(a)

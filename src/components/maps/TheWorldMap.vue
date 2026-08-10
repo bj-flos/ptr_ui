@@ -10,7 +10,6 @@
 <script>
 import nite from './nite-overlay'
 import { mapState, mapGetters, mapActions } from 'vuex'
-import google_map_styles from './google-styles'
 import { makeIcon } from './mapHelpers'
 
 export default {
@@ -140,13 +139,13 @@ export default {
         zoom: 3,
         minZoom: 3,
         center: new google.maps.LatLng(map_center_latitude, sun_pos.lng + 180),
-        // AdvancedMarkerElement only renders on a map that has a Map ID.
-        // NB supplying one makes Google ignore the `styles` option below in
-        // favour of cloud styling attached to the Map ID, so the palette in
-        // google-styles.js has to be recreated against the ID in the Cloud
-        // console. DEMO_MAP_ID is the unstyled development fallback.
+        // AdvancedMarkerElement only renders on a map that has a Map ID, so
+        // this is not optional -- and Google rejects `styles` whenever a mapId
+        // is present, logging it on every load. Styling therefore lives in the
+        // Cloud console against the Map ID; the palette in google-styles.js is
+        // kept as the thing to recreate there. DEMO_MAP_ID is the unstyled
+        // development fallback.
         mapId: process.env.VUE_APP_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID',
-        styles: google_map_styles,
         // Keeps panning inside a single world; on its own this does not stop
         // the repeats, which is what the capped container width is for.
         restriction: {
