@@ -21,9 +21,20 @@ import { authGuard } from './auth/authGuard'
 import UserData from './views/UserData.vue'
 import NotFound from './views/NotFound'
 
-import _ from 'lodash'
-
 Vue.use(VueRouter)
+
+/**
+ * Match a site code from the URL to a configured site, ignoring case.
+ *
+ * Site codes are stored in the config API exactly as written, and that case has
+ * changed over time. Lowercasing the URL parameter made every lookup miss once
+ * the codes became uppercase; comparing case-insensitively and returning the
+ * stored spelling means a link or bookmark in either case resolves.
+ */
+const resolveSitecode = code => {
+  const sites = store.getters['site_config/available_sites'] || []
+  return sites.find(s => String(s).toLowerCase() === String(code).toLowerCase())
+}
 
 const router = new VueRouter({
   mode: 'history',
@@ -50,7 +61,7 @@ const router = new VueRouter({
       path: '/site/:sitecode/:subpage',
       name: 'site',
       beforeEnter: (to, from, next) => {
-        if (!_.includes(store.getters['site_config/available_sites'], to.params.sitecode)) {
+        if (!resolveSitecode(to.params.sitecode)) {
           return next('/')
         }
         next()
@@ -58,7 +69,9 @@ const router = new VueRouter({
       component: Site,
       props: route => {
         return {
-          sitecode: route.params.sitecode.toLowerCase(),
+          // Canonical spelling, not lowercased: the config API is keyed by the
+          // site code exactly as stored, and store lookups are case-sensitive.
+          sitecode: resolveSitecode(route.params.sitecode) || route.params.sitecode,
           subpage: route.params.subpage.toLowerCase()
         }
       }
