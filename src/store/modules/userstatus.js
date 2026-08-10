@@ -41,8 +41,15 @@ const actions = {
       const new_logs_list = [...logs.data].sort((a, b) => a.timestamp - b.timestamp)
       commit('replace_logs_list', new_logs_list)
     }).catch(error => {
-      console.log(Object.keys(error.response))
-      console.log(error.response.status)
+      // Not every failure here is an HTTP one. A body of the wrong shape makes
+      // the handler above throw, and that error has no .response -- so reading
+      // it unguarded threw a second time, and the console showed the error
+      // handler failing rather than the request.
+      if (error.response) {
+        console.error('recent-logs failed', error.response.status, error.response.data)
+      } else {
+        console.error('recent-logs failed', error.message)
+      }
     })
   }
 
