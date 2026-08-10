@@ -185,7 +185,13 @@ export default {
 
       // One implementation, called from both places, so the two cannot draw
       // different markers for the same site.
-      this.redrawMapSites()
+      //
+      // Deferred to the map's first 'idle': the spiderfier throws if a marker
+      // is added before then, since it cannot tell what overlaps until the map
+      // has a viewport. If the map is already idle this fires immediately.
+      google.maps.event.addListenerOnce(this.map, 'idle', () => {
+        this.redrawMapSites()
+      })
     },
 
     // Draw the sun for the first time
