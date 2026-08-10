@@ -6,7 +6,14 @@ class Datastreamer {
     this.primary_websocket = ''
     this.wema_websocket = ''
     this.site = site
-    this.wema = store.state.site_config.global_config[this.site].wema_name
+    // An unknown site code reaches here from a stale URL. Falling back to the
+    // site itself keeps the constructor from throwing in Site.vue's created
+    // hook, which would blank the page before anything rendered.
+    const config = store.state.site_config.global_config[this.site]
+    if (!config) {
+      console.warn(`Datastreamer: no config for site '${this.site}'`)
+    }
+    this.wema = config ? config.wema_name : this.site
     this.open_connections()
   }
 
@@ -62,7 +69,8 @@ class Datastreamer {
 
   update_site (site) {
     this.site = site
-    this.wema = store.state.site_config.global_config[site].wema_name
+    const updated_config = store.state.site_config.global_config[site]
+    this.wema = updated_config ? updated_config.wema_name : site
     const siteIsWema = this.wema == this.site
 
     // Handle primary connection first

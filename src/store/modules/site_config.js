@@ -454,7 +454,14 @@ const actions = {
   },
 
   set_default_active_devices ({ state, commit, getters, rootGetters, dispatch }, site) {
-    const defaults = state.global_config[site].defaults
+    // Unknown site, or a wema config with no device defaults: there is nothing
+    // to select, and throwing here takes the page down with it.
+    const site_config = state.global_config[site]
+    if (!site_config) {
+      console.warn(`set_default_active_devices: no config for site '${site}'`)
+      return
+    }
+    const defaults = site_config.defaults || {}
 
     commit('selected_site', site)
     commit('selected_weather', defaults.observing_conditions || 'observing_conditions1')
