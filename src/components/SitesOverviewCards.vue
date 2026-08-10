@@ -71,7 +71,9 @@ export default {
       if (site in this.siteImages) {
         return this.siteImages[site]
       } else {
-        return 'https://placehold.jp/30/222222/999999/600x300.png?text=no%20available%20images'
+        // Inline: an external placeholder can fail to load, and then the
+        // card shows a broken image instead of saying there is nothing.
+        return "data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect width='100%25' height='100%25' fill='%23222'/%3E%3Ctext x='50%25' y='50%25' fill='%23999' font-family='sans-serif' font-size='20' text-anchor='middle'%3Eno available images%3C/text%3E%3C/svg%3E"
       }
     },
     getSiteOpenStatus () {

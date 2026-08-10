@@ -500,6 +500,12 @@ const actions = {
         return state.cached_headers[baseFilename]
       }
 
+      // A placeholder is not a file and has no header; asking produced a 404
+      // on every site page that has no images yet.
+      if (baseFilename === 'placeholder image') {
+        return {}
+      }
+
       const url = rootState.api_endpoints.active_api + `/fitsheader/${baseFilename}/`
       try {
         const response = await axios.get(url)
@@ -527,7 +533,11 @@ const actions = {
 
   // Load and display a single placeholder image for a site.
   display_placeholder_image ({ commit, dispatch }) {
-    const placeholder_url = 'https://via.placeholder.com/768x768?text=nothing here yet'
+    // Inline rather than via.placeholder.com: a placeholder that needs the
+    // network can itself fail to load, which is what was happening -- the
+    // "no images" panel was a broken image, and the thumbnails then ran
+    // their own external onerror fallback and failed again.
+    const placeholder_url = "data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='768' height='768'%3E%3Crect width='100%25' height='100%25' fill='%23222'/%3E%3Ctext x='50%25' y='50%25' fill='%23888' font-family='sans-serif' font-size='28' text-anchor='middle'%3Enothing here yet%3C/text%3E%3C/svg%3E"
     const placeholder_image = {
       jpg_url: placeholder_url,
       base_filename: 'placeholder image',
