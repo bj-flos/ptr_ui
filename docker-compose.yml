@@ -1,0 +1,51 @@
+# The ptr_ui development server, supervised like everything else.
+#
+#     docker compose up -d
+#
+# It was the last piece of the stack started by hand, and twice it went down
+# because a shell that backgrounded it exited -- taking the whole interface
+# with it while every container carried on. restart: unless-stopped fixes that,
+# and it comes back after a reboot.
+#
+# Still the development server, not a production build: the source is mounted,
+# so edits recompile exactly as before.
+name: ptr-ui
+
+services:
+  ui:
+    image: node:20-slim
+    container_name: ptr-ui
+    restart: unless-stopped
+    working_dir: /app
+
+    # node_modules is mounted with the source rather than installed here. The
+    # host runs node 20 and the only compiled-looking dependency is sass, which
+    # is dart-sass and pure JavaScript, so nothing is built per platform.
+    volumes:
+      - .:/app
+
+    environment:
+      # Bind every interface: the default is localhost, which inside a
+      # container means the container's own loopback and nothing published
+      # would reach it.
+      DEV_HOST: 0.0.0.0
+      # Read by vue.config.js for the HMR websocket origin and the allowed Host
+      # header. Without it the browser loads the app through Tailscale but the
+      # hot-reload socket tries localhost and fails -- which is the sockjs
+      # error in the console.
+      DEV_PUBLIC_HOST: ${DEV_PUBLIC_HOST:-bj-xps-17-9720.tail08de23.ts.net:8443}
+
+    # PORT comes from .env.local in the mounted source, so the published port
+    # and the internal one stay in step.
+    ports:
+      - "127.0.0.1:8082:8082"
+
+    command: ["./node_modules/.bin/vue-cli-service", "serve"]
+
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:8082/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      # A cold compile takes the best part of a minute.
+      start_period: 120s
