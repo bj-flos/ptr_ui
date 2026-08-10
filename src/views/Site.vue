@@ -134,7 +134,9 @@ export default {
   created () {
     this.datastreamer = new Datastreamer(this.sitecode)
 
-    this.site_changed_routine(this.$route.params.sitecode)
+    // The prop, not the raw parameter: router.js has already mapped it to the
+    // spelling the config API stores, and store lookups are case-sensitive.
+    this.site_changed_routine(this.sitecode)
 
     const ten_minutes = 10 * 60 * 1000 // ms
     this.refreshForecastInterval = setInterval(this.refreshForecast, ten_minutes)
@@ -142,7 +144,13 @@ export default {
 
   // If the site changes while the component is still loaded, make sure to update the current site in vuex.
   beforeRouteUpdate (to, from, next) {
-    const new_site = to.params.sitecode.toLowerCase()
+    // Resolve to the stored spelling rather than lowercasing. Site codes are
+    // kept in the config API exactly as written, so lowercasing here asked for
+    // 'eco' when the config holds 'ECO' and the lookup silently found nothing.
+    const known = this.$store.getters['site_config/available_sites'] || []
+    const match = known.find(
+      s => String(s).toLowerCase() === String(to.params.sitecode).toLowerCase())
+    const new_site = match || to.params.sitecode
     // console.log('in BEFORE ROUTE UPDATE, site: ', new_site)
 
     if (new_site != this.sitecode) { // only if site changes
