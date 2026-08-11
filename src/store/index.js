@@ -46,7 +46,7 @@ const store = new Vuex.Store({
     sitestatus,
     starprofile,
     userstatus,
-    user_interface,
+    user_interface
     // uiSync
   }
 })
