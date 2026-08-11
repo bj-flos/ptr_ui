@@ -368,8 +368,10 @@ export default {
       we can actually see. The shut colours match what roofState writes the
       word "Shut" in.
 
-      The shut colours match what roofState writes the word "Shut" in.
-      (This comment previously described a wx_ok rule the getter never had.)
+      Note markers are drawn per wema (see mapSites), so this colours the
+      wema's roof. The sites pulldown colours each observatory from its own
+      record, which can disagree -- a simulated obs may report an open roof
+      while its wema reports the real one shut.
     */
     getSiteMapColor (site) {
       const colors = {
