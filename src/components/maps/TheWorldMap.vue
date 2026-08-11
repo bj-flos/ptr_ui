@@ -227,45 +227,59 @@ export default {
       this.sunMapMarker.position = sun_pos
     },
 
+    /** How the roof reads in the popup: open, or shut with the reason why.
+     *
+     * shutter_status and enclosure_is_open can disagree -- MRC-17 reports a
+     * 'Closed' shutter while enclosure_is_open is true -- so the shutter wins,
+     * matching what the site status footer shows. A roof shut for daytime or
+     * manual mode is expected rather than a fault, so only a weather closure
+     * is drawn in red.
+     */
+    roofState (enclosure) {
+      if (!enclosure) return { text: '-', color: '#999999' }
+
+      const shutter = (enclosure.shutter || '').toLowerCase()
+      const open = shutter ? shutter === 'open' : !!enclosure.is_open
+      if (open) return { text: 'Open', color: 'greenyellow' }
+
+      const reasons = { bad_weather: 'bad weather', daytime: 'daytime', manual: 'manual' }
+      const reason = reasons[enclosure.shut_reason]
+      return {
+        text: reason ? `Shut &mdash; ${reason}` : 'Shut',
+        color: enclosure.shut_reason === 'bad_weather' ? 'red' : '#dd9c00'
+      }
+    },
+
     renderSiteContent (name, sitecode, openStatus) {
       const weather_status_not_stale = openStatus?.weather?.status_age_s < 300
 
-      let weather_status = `
-        <div class="status-entry">
-            <div class="col">
-              <div class="key">Status</div>
-            </div>
-            <div class="col">
-              <div class="val">
-                <span style="color:${weather_status_not_stale ? 'greenyellow' : 'red'}">
-                ${weather_status_not_stale ? 'Online' : 'Offline'}
-                </span>
-              </div>
-            </div>
-        </div>
-        `
+      // Weather and roof readings only mean anything while the site is
+      // reporting, so an offline site shows the one row and nothing stale.
+      const rows = [
+        ['Status', weather_status_not_stale
+          ? { text: 'Online', color: 'greenyellow' }
+          : { text: 'Offline', color: 'red' }]
+      ]
 
       if (weather_status_not_stale) {
-        weather_status = `
-          <div class="status-entry">
-              <div class="col">
-                <div class="key">Status</div>
-                <div class="key">Weather:</div>
-              </div>
-              <div class="col">
-                <div class="val">
-                  <span style="color:${weather_status_not_stale ? 'greenyellow' : 'red'}">
-                  ${weather_status_not_stale ? 'Online' : 'Offline'}
-                  </span>
-                </div>
-                <div class="val">
-                  <span style="color:${openStatus.wx_ok ? 'greenyellow' : 'red'}">
-                  ${openStatus.wx_ok ? 'ok' : 'poor'}
-                  </span>
-                </div>
-            </div>
-        `
+        rows.push(['Weather', openStatus.wx_ok
+          ? { text: 'ok', color: 'greenyellow' }
+          : { text: 'poor', color: 'red' }])
+        rows.push(['Safety', this.roofState(openStatus.enclosure_status)])
       }
+
+      // One row per key/value pair, built from a single list so the two columns
+      // cannot drift out of step as rows are added.
+      const weather_status = `
+        <div class="status-entry">
+          <div class="col">
+            ${rows.map(([label]) => `<div class="key">${label}</div>`).join('')}
+          </div>
+          <div class="col">
+            ${rows.map(([, value]) => `<div class="val"><span style="color:${value.color}">${value.text}</span></div>`).join('')}
+          </div>
+        </div>
+        `
 
       const style = `
         <style>
