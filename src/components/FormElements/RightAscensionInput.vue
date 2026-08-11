@@ -36,17 +36,28 @@ export default {
   data () {
     return {
       localRa: this.value,
-      units: 'hours',
+      // Degrees, to match every other coordinate on screen: the declination
+      // field beside this one, and the RA the status footer reports. The value
+      // this component emits is decimal hours either way -- units only choose
+      // how it is shown and typed.
+      units: 'deg',
       hasError: false,
       errorMessage: ''
     }
   },
   watch: {
-    value (newVal) {
-      if (newVal == null || newVal === '') {
-        this.localRa = newVal
-      } else {
-        this.localRa = this.convertToSelectedUnits(newVal)
+    // Immediate, so the first value shown is converted like every later one.
+    // localRa is seeded straight from the prop, which is decimal hours; that
+    // went unnoticed while the units happened to default to hours, but any
+    // other default would render an unconverted number under the wrong label.
+    value: {
+      immediate: true,
+      handler (newVal) {
+        if (newVal == null || newVal === '') {
+          this.localRa = newVal
+        } else {
+          this.localRa = this.convertToSelectedUnits(newVal)
+        }
       }
     },
     localRa (newVal) {
