@@ -160,25 +160,39 @@ export const commands_mixin = {
       }
     },
 
+    /** Why the user cannot command right now, or '' when they can.
+     *
+     * A reservation reserves the observatory against *other* people; it is not
+     * a ticket you must hold to touch anything. That is the rule the backend
+     * applies in photonranch-jobs (calendar_blocks_user_commands): with an
+     * empty calendar anyone may command, and a reservation only locks out
+     * everyone but its creator.
+     *
+     * This used to require a reservation outright, so the UI refused commands
+     * the server would have accepted, and told users to book time they did not
+     * need. Returning the reason rather than a bool lets the buttons explain
+     * themselves instead of failing on click.
+     */
+    commandBlockReason () {
+      if (this.$store.state.user_data.userIsAdmin) return ''
+
+      const activeReservations = this.$store.getters['calendar/userIDsWithActiveReservation']
+      if (activeReservations.length === 0) return ''
+      if (activeReservations.includes(this.user_id)) return ''
+
+      return 'Someone else has a reservation right now. Please see the calendar for details.'
+    },
+
     userCanSendCommand () {
-      // Check if user is admin
-      if (this.$store.state.user_data.userIsAdmin) {
-        return true
-      }
-
-      console.log(this.user_id)
-      console.log(this.$store.getters['calendar/userIDsWithActiveReservation'])
-
-      // Check if user has active reservation
-      const userID = this.user_id
-      return this.$store.getters['calendar/userIDsWithActiveReservation'].includes(userID)
+      return this.commandBlockReason() === ''
     },
 
     // Permission denied message helper
     showPermissionDeniedMessage (customMessage) {
       this.$buefy.toast.open({
         duration: 5000,
-        message: customMessage || 'You need an active real-time reservation to send real-time commands',
+        message: customMessage || this.commandBlockReason() ||
+          'You are not allowed to send commands right now',
         position: 'is-bottom',
         type: 'is-danger'
       })

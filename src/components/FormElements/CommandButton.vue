@@ -3,7 +3,8 @@
     v-if="isVisible"
     class="button"
     :class="{ 'is-loading': isLoading, 'is-admin': admin, 'is-preview-mode': previewMode, 'has-warning': warning }"
-    :disabled="isDisabled"
+    :disabled="isDisabled || commandIsBlocked"
+    :title="blockReason || null"
     @mouseover="isHovering = true"
     @mouseleave="isHovering = false"
     @click="handleClick"
@@ -167,6 +168,20 @@ export default {
         return this.$store.state.user_data.userIsAdmin
       }
       return true
+    },
+
+    // Why this command cannot be sent, or '' when it can. Reading it as a
+    // computed keeps the button in step with the calendar: it re-enables by
+    // itself when the reservation blocking it ends.
+    blockReason () {
+      return this.commandBlockReason()
+    },
+
+    // Shown as disabled rather than hidden, so it stays clear that the control
+    // exists and is coming back. handleClick still checks, since a disabled
+    // attribute is a hint to the user and not a guarantee.
+    commandIsBlocked () {
+      return this.blockReason !== ''
     }
   }
 }
