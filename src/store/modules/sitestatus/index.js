@@ -194,6 +194,10 @@ const getters = {
       const site_is_wema = rootState.site_config.global_config[site]?.instance_type == 'wema'
       let color = ''
 
+      // A site reporting nothing is grey, not red: we do not know its state
+      // rather than knowing it is bad. Red is kept for a real fault -- a roof
+      // shut by weather. Partially stale stays yellow, since some of it is
+      // still talking to us.
       if (site_is_wema) {
         if (enclosure_not_stale && weather_not_stale) {
           color = 'status-green'

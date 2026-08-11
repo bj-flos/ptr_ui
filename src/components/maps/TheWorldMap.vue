@@ -13,6 +13,12 @@ import { mapState, mapGetters, mapActions } from 'vuex'
 import { makeIcon } from './mapHelpers'
 import helpers from '@/utils/helpers'
 
+// The marker palette, so a word in a popup matches the colour of that site's
+// dot where the two describe the same thing. Kept in step with the `colors`
+// map in getSiteMapColor.
+const MARKER_RED = '#cd0000'
+const MARKER_AMBER = '#dd9c00'
+
 export default {
   name: 'TheWorldMap',
   props: ['name'],
@@ -245,9 +251,7 @@ export default {
       const reason = reasons[enclosure.shut_reason]
       return {
         text: reason ? `Shut &mdash; ${reason}` : 'Shut',
-        // Exactly the marker palette below, so the word and the site's dot are
-        // the same colour. all_sites_status_color picks the matching token.
-        color: enclosure.shut_reason === 'bad_weather' ? '#cd0000' : '#dd9c00'
+        color: enclosure.shut_reason === 'bad_weather' ? MARKER_RED : MARKER_AMBER
       }
     },
 
@@ -256,6 +260,10 @@ export default {
 
       // Weather and roof readings only mean anything while the site is
       // reporting, so an offline site shows the one row and nothing stale.
+      // The marker for an offline site is grey -- we do not know its state
+      // rather than knowing it is bad -- but the word itself stays red, since
+      // by the time you have opened the popup you want it to stand out. It is
+      // never shown beside another red: an offline site renders this row alone.
       const rows = [
         ['Status', weather_status_not_stale
           ? { text: 'Online', color: 'greenyellow' }
@@ -265,7 +273,7 @@ export default {
       if (weather_status_not_stale) {
         rows.push(['Weather', openStatus.wx_ok
           ? { text: 'ok', color: 'greenyellow' }
-          : { text: 'poor', color: 'red' }])
+          : { text: 'poor', color: MARKER_RED }])
         rows.push(['Safety', this.roofState(openStatus.enclosure_status)])
       }
 
@@ -349,11 +357,16 @@ export default {
       dropdown and the quick site switcher so a site's dot means one thing
       everywhere. Its rule:
 
-        nothing reporting                     -> grey
+        nothing reporting (offline)           -> grey
         some subsystems stale                 -> yellow
         all fresh, roof open                  -> green
         all fresh, roof shut for bad weather  -> red
         all fresh, roof shut otherwise        -> yellow
+
+      Grey is "we do not know", not "bad": a site that has stopped reporting
+      tells us nothing about its roof or weather. Red is reserved for a fault
+      we can actually see. The shut colours match what roofState writes the
+      word "Shut" in.
 
       The shut colours match what roofState writes the word "Shut" in.
       (This comment previously described a wx_ok rule the getter never had.)
