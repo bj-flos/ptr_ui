@@ -1,45 +1,69 @@
 /**
- * Auth0 Action: add roles to the token from app_metadata.
+ * Auth0 post-login Action: the roles claim.
  *
- * Trigger: Login / Post Login.
+ * A record of what the tenant runs. Auth0 is the source of truth; editing this
+ * file changes nothing by itself.
  *
- * Paste into Actions -> Library -> Build Custom (Login / Post Login), then add
- * it to the Login flow. This file is a record of what the tenant runs; Auth0 is
- * the source of truth and editing this file changes nothing by itself.
+ * As of 2026-08-11 the dev tenant (dev-1p08tcynxqqoyvzj) has exactly one
+ * post-login Action, "Add photonranch user_metadata claim"
+ * (5a17b2a9-8575-460c-8447-92a4fa426d22), and no Rules -- /api/v2/rules
+ * returns []. Hooks are deprecated to read-only. So this Action is the entire
+ * source of the roles claim.
  *
- * Roles moved from user_metadata to app_metadata. user_metadata is the bucket
- * Auth0 treats as user-editable, so anything holding a token with
- * update:current_user_metadata could have granted itself admin. app_metadata is
- * write-protected: only the Management API can change it.
+ * THE BUG IT CONTAINED
  *
- * Both claims are emitted during the migration. The backend authorizer and the
- * UI read app_metadata first and fall back to user_metadata, so emitting both
- * means no reader breaks regardless of deploy order, and sessions already open
- * keep working. Remove the legacy block once every reader is deployed and
- * outstanding tokens have expired.
+ *   const fromAppMetadata = event.user.app_metadata && event.user.app_metadata.roles
+ *   const roles = Array.isArray(fromAppMetadata) ? fromAppMetadata : ['admin']
+ *
+ * The fallback grants admin. Every user on the tenant had empty app_metadata,
+ * so every login was issued admin, and the tenant could not represent a
+ * non-admin user at all. This surfaced as "a user without admin privileges
+ * still sees the Admins Only link" -- the UI was correct; there were simply no
+ * non-admin users to test with.
+ *
+ * A default that grants the highest privilege when configuration is missing
+ * fails open. Absent configuration should grant nothing.
+ *
+ * THE FIX: change that one line to
+ *
+ *   const roles = Array.isArray(fromAppMetadata) ? fromAppMetadata : []
+ *
+ * then Deploy, and give the accounts that should have admin an explicit
+ * app_metadata of {"roles": ["admin"]} via the Management API. Roles are baked
+ * into the token at login, so each account must sign out and back in.
+ *
+ * NOTE ON THE CLAIM NAME
+ *
+ * The Action writes a claim literally named
+ * https://photonranch.org/user_metadata, built by merging the user's
+ * user_metadata with the resolved roles. The name is historical: the roles in
+ * it do not come from user_metadata, which is empty for every user. Readers
+ * (src/auth/claims.js here, getUserRoles in photonranch-jobs) prefer an
+ * app_metadata claim and fall back to this one, so the name can be corrected
+ * later without breaking anyone.
+ *
+ * Because roles are NOT read from user_metadata on this tenant, the
+ * user-editable-metadata escalation risk does not apply here. Moving the claim
+ * to app_metadata is naming hygiene, not a security fix.
+ *
+ * The shape below is what the Action should look like once corrected. Apply it
+ * as a one-line edit to the deployed Action rather than pasting wholesale --
+ * the API response truncated mid-way through its setCustomClaim calls, so the
+ * tail of the real Action has not been read.
  */
 
 exports.onExecutePostLogin = async (event, api) => {
-  const namespace = 'https://photonranch.org/'
+  const namespace = 'https://photonranch.org/user_metadata'
 
-  const appMetadata = event.user.app_metadata || {}
-  const userMetadata = event.user.user_metadata || {}
+  const fromAppMetadata = event.user.app_metadata && event.user.app_metadata.roles
 
-  // During the move a user may still have roles only in user_metadata, so fall
-  // back rather than silently issuing a token with no roles at all.
-  const roles = Array.isArray(appMetadata.roles)
-    ? appMetadata.roles
-    : (Array.isArray(userMetadata.roles) ? userMetadata.roles : [])
+  // No configuration means no privileges. This was ['admin'].
+  const roles = Array.isArray(fromAppMetadata) ? fromAppMetadata : []
 
-  // Set on both the ID token and the access token: the UI reads the ID token,
-  // and the jobs authorizer calls /userinfo, which is driven by the ID token
-  // claims. Omitting the access token would break anything validating it
-  // directly.
-  api.idToken.setCustomClaim(`${namespace}app_metadata`, { roles })
-  api.accessToken.setCustomClaim(`${namespace}app_metadata`, { roles })
+  const claim = Object.assign({}, event.user.user_metadata, { roles })
 
-  // LEGACY -- delete once every reader prefers app_metadata and old tokens have
-  // expired. Kept so a rollback of the readers does not lock anyone out.
-  api.idToken.setCustomClaim(`${namespace}user_metadata`, { roles })
-  api.accessToken.setCustomClaim(`${namespace}user_metadata`, { roles })
+  // Both tokens: the UI reads the ID token, and the jobs authorizer calls
+  // /userinfo, which is driven by ID token claims.
+  api.idToken.setCustomClaim(namespace, claim)
+  api.accessToken.setCustomClaim(namespace, claim)
 }

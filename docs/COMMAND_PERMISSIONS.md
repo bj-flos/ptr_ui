@@ -80,11 +80,33 @@ copies of the same try/catch.
 Note this is a **build-time** value: `VUE_APP_*` is baked in by vue-cli, so changing it needs
 a rebuild or a dev-server restart, not just a page reload.
 
-### Roles are moving to app_metadata
+### Where roles actually come from
 
-`user_metadata` is the bucket Auth0 treats as **user-editable**: anything holding a token with
-`update:current_user_metadata` could grant itself `admin`. `app_metadata` is write-protected —
-only the Management API can change it — and is where authorization data belongs.
+Established 2026-08-11 on the dev tenant `dev-1p08tcynxqqoyvzj`, by reading the tenant config
+rather than inferring from the claim's name:
+
+- **One** post-login Action, "Add photonranch user_metadata claim"
+  (`5a17b2a9-8575-460c-8447-92a4fa426d22`)
+- **No** Rules — `/api/v2/rules` returns `[]`
+- Hooks deprecated to read-only
+
+That Action is the whole pipeline. It resolves roles from `app_metadata.roles` and writes them
+into a claim *named* `https://photonranch.org/user_metadata`. **The name is historical: roles
+are not read from `user_metadata`, which is empty for every user.**
+
+Two consequences worth being clear about:
+
+- The **user-editable-metadata escalation risk does not apply on this tenant.** Nothing reads
+  `user_metadata.roles`, so there is no writable path to `admin` through it. Moving the claim
+  to `app_metadata` is naming hygiene, not a security fix. (An earlier version of this document
+  claimed otherwise, reasoning from the claim's name rather than from the Action.)
+- The Action's fallback was `['admin']` — see `auth0-action-roles.js`. With every user's
+  `app_metadata` empty, **every login was issued admin**, and the tenant could not represent a
+  non-admin user at all. That is what made "a non-admin still sees the Admins Only link" look
+  like a UI bug when the UI was correct.
+
+`app_metadata` is still the right home: it is write-protected, only the Management API can
+change it, and a claim called `user_metadata` that is not user metadata misleads every reader.
 
 Readers take `app_metadata` first and fall back to `user_metadata`, so the order of deployment
 does not matter and sessions already open keep working.
@@ -116,8 +138,11 @@ Rollout order:
 4. Once outstanding tokens have expired, drop the legacy claim from the Action, delete
    `LEGACY_METADATA_KEY` from `claims.js`, and clear `roles` from `user_metadata`.
 
-Step 4 is the one that actually closes the privilege-escalation hole; until `user_metadata.roles`
-is gone and unread, it is still a writable path to `admin`.
+Step 4 completes the rename. It is not urgent on this tenant, since nothing reads
+`user_metadata.roles` in the first place — see "Where roles actually come from" above.
+
+The urgent change is the Action's `['admin']` fallback, which is independent of the rename and
+should go in first.
 
 Admin affects three separate things, which is worth keeping straight:
 
