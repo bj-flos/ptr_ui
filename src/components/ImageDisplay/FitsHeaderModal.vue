@@ -54,7 +54,20 @@
             :columns="columns"
             style="width: auto; flex: 0"
             :loading="headerIsLoading"
-          />
+          >
+            <!-- An image whose header never made it to the database returns an
+            empty one, and a table with no rows and nothing else to say reads as
+            a broken window rather than an answer. Only once the request has
+            finished: mid-load the rows are legitimately empty. -->
+            <template #empty>
+              <div
+                v-if="!headerIsLoading"
+                class="content has-text-grey has-text-centered"
+              >
+                No header available for this image.
+              </div>
+            </template>
+          </b-table>
         </div>
       </div>
     </b-modal>
