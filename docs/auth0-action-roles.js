@@ -4,66 +4,71 @@
  * A record of what the tenant runs. Auth0 is the source of truth; editing this
  * file changes nothing by itself.
  *
- * As of 2026-08-11 the dev tenant (dev-1p08tcynxqqoyvzj) has exactly one
- * post-login Action, "Add photonranch user_metadata claim"
- * (5a17b2a9-8575-460c-8447-92a4fa426d22), and no Rules -- /api/v2/rules
- * returns []. Hooks are deprecated to read-only. So this Action is the entire
- * source of the roles claim.
+ * Tenant dev-1p08tcynxqqoyvzj has exactly one post-login Action, "Add
+ * photonranch user_metadata claim" (5a17b2a9-8575-460c-8447-92a4fa426d22), and
+ * no Rules -- /api/v2/rules returns []. Hooks are deprecated to read-only. So
+ * this Action is the entire source of the roles claim.
  *
- * THE BUG IT CONTAINED
+ * HISTORY
  *
- *   const fromAppMetadata = event.user.app_metadata && event.user.app_metadata.roles
+ * Version 1 resolved roles as:
+ *
  *   const roles = Array.isArray(fromAppMetadata) ? fromAppMetadata : ['admin']
  *
- * The fallback grants admin. Every user on the tenant had empty app_metadata,
- * so every login was issued admin, and the tenant could not represent a
- * non-admin user at all. This surfaced as "a user without admin privileges
- * still sees the Admins Only link" -- the UI was correct; there were simply no
- * non-admin users to test with.
+ * The fallback granted admin. Every user had empty app_metadata, so every login
+ * was issued admin and the tenant could not represent a non-admin user at all.
+ * That surfaced as "a user without admin privileges still sees the Admins Only
+ * link" -- the UI was correct; there were no non-admin users to test with. A
+ * default that grants the highest privilege when configuration is missing fails
+ * open; absent configuration should grant nothing.
  *
- * A default that grants the highest privilege when configuration is missing
- * fails open. Absent configuration should grant nothing.
+ * Version 2 (deployed 2026-08-11) changed it to `: []`. Roles now come only
+ * from app_metadata, which is write-protected -- only the Management API can
+ * set it.
  *
- * THE FIX: change that one line to
+ * THE CLAIM NAME
  *
- *   const roles = Array.isArray(fromAppMetadata) ? fromAppMetadata : []
+ * The claim was named .../user_metadata for historical reasons even though the
+ * roles in it never came from user_metadata, which is empty for every user.
+ * The version below emits .../app_metadata under its real name.
  *
- * then Deploy, and give the accounts that should have admin an explicit
- * app_metadata of {"roles": ["admin"]} via the Management API. Roles are baked
- * into the token at login, so each account must sign out and back in.
+ * Both claims are emitted, and the legacy one MUST stay until the fail-soft
+ * getUserRoles is deployed to the jobs service. The deployed authorizer does:
  *
- * NOTE ON THE CLAIM NAME
+ *   userInfo['https://photonranch.org/user_metadata']['roles']
  *
- * The Action writes a claim literally named
- * https://photonranch.org/user_metadata, built by merging the user's
- * user_metadata with the resolved roles. The name is historical: the roles in
- * it do not come from user_metadata, which is empty for every user. Readers
- * (src/auth/claims.js here, getUserRoles in photonranch-jobs) prefer an
- * app_metadata claim and fall back to this one, so the name can be corrected
- * later without breaking anyone.
+ * an unguarded double index, inside a try that converts any exception into
+ * `raise Exception('Unauthorized')`. Drop the legacy claim before that is
+ * deployed and every command is denied for every user, admins included.
  *
- * Because roles are NOT read from user_metadata on this tenant, the
- * user-editable-metadata escalation risk does not apply here. Moving the claim
- * to app_metadata is naming hygiene, not a security fix.
+ * Note this applies to the dev stack too: the jobs API on port 8093 runs from
+ * /srv/photonranch-jobs, which is a different copy from ~/PTR/photonranch-jobs.
  *
- * The shape below is what the Action should look like once corrected. Apply it
- * as a one-line edit to the deployed Action rather than pasting wholesale --
- * the API response truncated mid-way through its setCustomClaim calls, so the
- * tail of the real Action has not been read.
+ * ORDER OF OPERATIONS TO RETIRE THE LEGACY CLAIM
+ *
+ *   1. Deploy fail-soft getUserRoles to every jobs service, /srv included.
+ *   2. Confirm commanding still works.
+ *   3. Delete the two legacy setCustomClaim lines here and redeploy.
+ *   4. Delete LEGACY_METADATA_KEY and its fallback from src/auth/claims.js.
  */
 
 exports.onExecutePostLogin = async (event, api) => {
-  const namespace = 'https://photonranch.org/user_metadata'
+  const base = 'https://photonranch.org/'
 
   const fromAppMetadata = event.user.app_metadata && event.user.app_metadata.roles
 
-  // No configuration means no privileges. This was ['admin'].
+  // No configuration means no privileges. This was ['admin'] in version 1.
   const roles = Array.isArray(fromAppMetadata) ? fromAppMetadata : []
 
-  const claim = Object.assign({}, event.user.user_metadata, { roles })
+  const claim = Object.assign({}, event.user.app_metadata, { roles })
 
   // Both tokens: the UI reads the ID token, and the jobs authorizer calls
   // /userinfo, which is driven by ID token claims.
-  api.idToken.setCustomClaim(namespace, claim)
-  api.accessToken.setCustomClaim(namespace, claim)
+  api.idToken.setCustomClaim(base + 'app_metadata', claim)
+  api.accessToken.setCustomClaim(base + 'app_metadata', claim)
+
+  // LEGACY -- see the header. Remove only after the fail-soft getUserRoles is
+  // deployed everywhere, or commanding fails closed for everyone.
+  api.idToken.setCustomClaim(base + 'user_metadata', claim)
+  api.accessToken.setCustomClaim(base + 'user_metadata', claim)
 }
