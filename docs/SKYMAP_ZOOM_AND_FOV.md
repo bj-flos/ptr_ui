@@ -63,9 +63,51 @@ d3-celestial's own zoom handlers are deliberately unused:
 - **Their drag gesture rotates the map**, and `follow: 'zenith'` plus the 6-second
   `Celestial.date(new Date())` re-centre would undo any pan immediately.
 
-So zoom is scale-only and always about the zenith, applied through `Celestial.zoomBy()`, with
-the wheel forwarded from the overlay as an `i_wheel` event. Zoom scale survives the
-re-centre; only panning would have fought it, and there is no panning.
+So zoom is scale-only, applied through `Celestial.zoomBy()`, with the wheel forwarded from the
+overlay as an `i_wheel` event. Zoom scale survives the re-centre; only panning would have
+fought it, and there is no panning.
+
+The wheel only zooms with **Ctrl or Cmd held**. The chart fills most of the window, so
+swallowing a plain wheel means scrolling the page with the pointer over the sky silently
+zooms instead — and since zooming moves the view off the all-sky picture, a user who never
+meant to zoom just watches the telescope vanish. `SiteTargets` guards the Aladin view against
+the same thing with a click-through overlay.
+
+### What the map centres on
+
+Following the zenith is right for the all-sky view and wrong once zoomed. The telescope is
+usually tens of degrees from the zenith — 56 degrees on MRC-17 during testing — so past about
+1.6x the reticle, and the field of view box drawn on it, left the canvas completely. Zooming
+in to inspect the footprint pushed the footprint off screen.
+
+Above 1x the map therefore follows the mount (`follow: 'center'`), and returns to the zenith
+on zooming back out. Handing d3-celestial `follow: 'center'` also stops the six-second tick
+fighting it, since that re-centre only fires while `follow` is `'zenith'`. Sites with no mount
+status, WEMAs among them, keep following the zenith because there is no pointing to follow.
+
+One consequence worth knowing: while following the mount, the clip boundary is 90 degrees from
+the *telescope* rather than from the zenith, so the visible disc is no longer the horizon.
+At these zoom levels the boundary is off-canvas anyway, and the airmass circle still computes
+the true zenith independently. At 1x the horizon disc is correct again.
+
+### Zoom input is coalesced
+
+A full chart redraw costs **150-300 ms**. That is d3-celestial's own rendering, not the
+overlay — measured with our redraw callback detached — and it went unnoticed while the map
+only redrew every six seconds. Zoom makes redraws interactive, and each apply costs one to two
+of them, so applying every wheel notch and repeated click as it arrives queues seconds of
+blocking work and locks the tab.
+
+Zoom requests are therefore gathered for `ZOOM_COALESCE_MS` and applied once. The readout
+updates immediately so the control still feels responsive. Two details matter:
+
+- Use a **timer, not `requestAnimationFrame`**. rAF does not fire while the tab is in the
+  background, which left the coalescing guard latched on and zooming dead until the component
+  remounted.
+- Clear the guard in a `finally`, so a throw cannot strand it in the same way.
+
+`follow_target()` also skips the re-centre when the centre has not actually moved, so repeated
+zoom steps do not each pay for a rotation to where the map already is.
 
 `zoomextend: 60` in `skymap_config.js` raises the ceiling. Note the spelling: d3-celestial
 reads `zoomextend` into its internal `zoomextent` variable, and writing `zoomextent` as the
@@ -150,31 +192,38 @@ Open a real observatory, not a WEMA: `/site/mrc-17/targets` has a camera and mou
 
 1. **Reticle holds position** across the 6-second re-centre rather than drifting. This is the
    single-callback fix and everything else depends on it.
-2. **Zoom** via buttons and wheel; the readout tracks, the chart stays zenith-centred, and the
-   ceiling stops at 60x. Crosshairs and box stay locked to their sky positions throughout.
-3. **Zoom survives a resize.** Zoom in, resize the window, confirm it does not snap to 1x.
+2. **Zoom** via the buttons and Ctrl+wheel; the readout tracks and the ceiling stops at 60x.
+   A plain wheel over the chart must scroll the page, not zoom. Above 1x the reticle should
+   sit at the centre of the canvas and stay there; at 1x it returns to its true sky position.
+3. **Rapid input does not stall.** Click `+` several times quickly: the readout jumps
+   immediately and the chart applies the final level once, rather than working through every
+   step. Do this with the tab backgrounded too — that is what caught the rAF problem.
+4. **Zoom survives a resize.** Zoom in, resize the window, confirm it does not snap to 1x.
    Both `Celestial.resize()` and a bare `window` resize event are worth trying.
-4. **Clamp threshold.** On MRC-17 the box is dashed at 1x and solid by 1.5x, growing linearly
+5. **Clamp threshold.** On MRC-17 the box is dashed at 1x and solid by 1.5x, growing linearly
    with zoom, with the drawn aspect holding at the sensor's 1.333 throughout.
-5. **Projection correctness.** Worth testing deliberately, because a naive implementation
+6. **Projection correctness.** Worth testing deliberately, because a naive implementation
    looks right only near the zenith. Move the pointing toward the horizon and around in
    azimuth with the date/location picker: the box must stay centred on the reticle and rotate
    with screen north. If it stays axis-aligned everywhere, the local frame is wrong.
-6. **Rotation** matches the Position Angle in the status footer where a rotator reports one.
-7. **Toggle** hides the box and leaves the reticle untouched.
-8. **Degradation.** A site with no camera config drops the box cleanly and still draws the
+7. **Rotation** matches the Position Angle in the status footer where a rotator reports one.
+8. **Toggle** hides the box and leaves the reticle untouched.
+9. **Degradation.** A site with no camera config drops the box cleanly and still draws the
    reticle — no placeholder box, no console errors.
-9. **No dash leak.** The red user crosshair still draws solid after a dashed box renders.
-10. `npm run lint:check` clean.
+10. **No dash leak.** The red user crosshair still draws solid after a dashed box renders.
+11. `npm run lint:check` clean.
 
-Points 4, 5 and 9 are easiest to check by reading the canvas rather than by eye, since at 1x
+Points 5, 6 and 10 are easiest to check by reading the canvas rather than by eye, since at 1x
 the box and the reticle circle nearly coincide. Isolate the box by capturing the overlay with
 `telescope_fov` nulled and again with it set, and diffing — a solid box traces 100% of its
 perimeter, a dashed one about 40% across several gaps.
 
 ## Known limits
 
-- **No panning.** Zoom is zenith-centred only. Free panning would need the 6-second re-centre
-  reworked, since it would fight any pan the user made.
-- **Zoom is about the canvas centre**, not the mouse pointer, which follows from the same
-  zenith-centred model.
+- **No panning.** You can look at the whole sky at 1x or at the telescope when zoomed, and
+  nothing in between. Free panning would need the six-second re-centre reworked, since it
+  would fight any pan the user made.
+- **Zoom is about the canvas centre**, not the mouse pointer.
+- **Zooming is not cheap.** Each apply costs one or two 150-300 ms chart redraws, so it lands
+  as a visible pause rather than a smooth transition. Making it smooth means reducing what
+  d3-celestial redraws, which is a larger piece of work than this change.

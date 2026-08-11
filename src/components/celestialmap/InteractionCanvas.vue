@@ -90,7 +90,14 @@ export default {
     // Send wheel events to the parent, which zooms the sky chart. This layer
     // covers the celestial canvas, so d3-celestial would never see the wheel
     // itself; the chart drives zoom through Celestial.zoomBy() instead.
+    //
+    // Only with a modifier held. A plain wheel belongs to the page: the chart
+    // fills most of the window, so swallowing it means scrolling with the
+    // pointer anywhere over the sky silently zooms instead, and a user who
+    // never meant to zoom just watches the telescope disappear. The Aladin
+    // view in SiteTargets guards against the same thing with an overlay.
     this.canvas.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey && !e.metaKey) return
       e.preventDefault()
       that.$emit('i_wheel', Math.sign(e.deltaY))
     }, { passive: false })

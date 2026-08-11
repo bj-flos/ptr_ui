@@ -68,6 +68,11 @@ const Celestial = celestial.Celestial()
 // Zoom applied per button click or wheel notch.
 const ZOOM_STEP = 1.5
 
+// How long to gather zoom input before applying it. A wheel spin arrives as a
+// burst of notches and each apply costs a chart redraw, so they are collapsed
+// into one.
+const ZOOM_COALESCE_MS = 80
+
 // Smallest the camera field of view box may be drawn, in pixels. The all-sky
 // view is roughly 4px per degree, so a sub-degree camera would otherwise be a
 // speck smaller than the reticle it sits inside. A box below this is enlarged
@@ -216,6 +221,13 @@ export default {
       desired_zoom: 1,
       zoom_level: 1,
       restoring_zoom: false,
+
+      // What the map is centred on: 'zenith' for the all-sky view, 'telescope'
+      // once zoomed in, plus the [ra, dec] it was last centred on. See
+      // follow_target().
+      following: 'zenith',
+      followed_center: null,
+      zoom_apply_queued: false,
       star_catalogue: star_catalogues.shallow,
 
       // Whether or not the mouse is hovering over the sky part of the map.
@@ -320,6 +332,7 @@ export default {
   beforeDestroy () {
     this.resize_observer.disconnect()
     clearInterval(this.updateMapCenterInterval)
+    clearTimeout(this.zoom_apply_timer)
   },
 
   methods: {
@@ -402,11 +415,71 @@ export default {
      * events; and their drag gesture rotates the map, which the zenith
      * re-centre on the rotate interval would immediately undo.
      */
+    /** Ask for a zoom level, applying it at most once per frame.
+     *
+     * A full chart redraw costs 150-300ms -- that is d3-celestial's own
+     * rendering, not ours, and it went unnoticed while the map only redrew
+     * every six seconds. Zoom makes redraws interactive, so applying every
+     * wheel notch or repeated click as it arrives queues seconds of blocking
+     * work and locks the tab. Bursts are coalesced into a single apply; the
+     * readout still updates immediately so the control stays responsive.
+     *
+     * A timer rather than requestAnimationFrame: rAF does not fire while the
+     * tab is in the background, which left the guard below latched on and
+     * zooming dead until the component remounted. The guard is cleared in a
+     * finally so a throw cannot strand it either.
+     */
     set_zoom (target) {
       this.desired_zoom = Math.min(Math.max(target, 1), base_config.zoomextend)
-      this.restore_zoom()
-      this.sync_star_catalogue()
-      this.redraw_overlays()
+      this.zoom_level = this.desired_zoom
+      if (this.zoom_apply_queued) return
+      this.zoom_apply_queued = true
+      this.zoom_apply_timer = setTimeout(() => {
+        try {
+          this.restore_zoom()
+          this.follow_target()
+          this.sync_star_catalogue()
+          this.redraw_overlays()
+        } finally {
+          this.zoom_apply_queued = false
+        }
+      }, ZOOM_COALESCE_MS)
+    },
+
+    /** Keep what is being inspected in view while zoomed in.
+     *
+     * Following the zenith is right for an all-sky view but wrong once zoomed:
+     * the telescope is usually tens of degrees from the zenith, so past about
+     * 1.6x the reticle -- and the field of view box drawn on it -- left the
+     * canvas entirely, which defeats the point of zooming in to look at it.
+     * Above 1x the map follows the mount instead, and returns to the zenith on
+     * zooming back out.
+     *
+     * Handing d3-celestial follow: 'center' also stops the six-second tick
+     * fighting this: its re-centre only fires while follow is 'zenith'.
+     *
+     * Sites with no mount status, WEMAs among them, keep following the zenith,
+     * since there is no pointing to follow.
+     */
+    follow_target () {
+      const ra = helpers.hour2degree(parseFloat(this.mount_pointing_ra.val))
+      const dec = parseFloat(this.mount_pointing_dec.val)
+      const can_follow = Number.isFinite(ra) && Number.isFinite(dec)
+
+      if (this.desired_zoom > 1 && can_follow) {
+        // Re-centring redraws the whole chart, so skip it when the centre has
+        // not actually moved -- otherwise every zoom step pays for a rotation
+        // to where the map already is.
+        const centred = this.followed_center
+        if (this.following === 'telescope' && centred && centred[0] === ra && centred[1] === dec) return
+        this.following = 'telescope'
+        this.followed_center = [ra, dec]
+        Celestial.rotate({ follow: 'center', center: [ra, dec, 0] })
+      } else if (this.following !== 'zenith') {
+        this.following = 'zenith'
+        this.followed_center = null
+        Celestial.rotate({ follow: 'zenith', center: Celestial.zenith() })
+      }
     },
 
     zoom_in () {
@@ -614,9 +687,10 @@ export default {
       this.update_date_location()
     },
 
-    // Update the chart if the mount pointing has changed
-    mount_pointing_ra () { this.update_telescope_crosshairs(); this.compute_telescope_fov() },
-    mount_pointing_dec () { this.update_telescope_crosshairs(); this.compute_telescope_fov() },
+    // Update the chart if the mount pointing has changed. While zoomed in the
+    // map is centred on the mount, so it has to track a slew as well.
+    mount_pointing_ra () { this.follow_target(); this.update_telescope_crosshairs(); this.compute_telescope_fov() },
+    mount_pointing_dec () { this.follow_target(); this.update_telescope_crosshairs(); this.compute_telescope_fov() },
 
     // The camera footprint also moves when the instrument, its orientation, or
     // the user's preference changes, none of which redraw the chart itself.
