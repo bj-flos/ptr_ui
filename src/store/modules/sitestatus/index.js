@@ -224,9 +224,20 @@ const getters = {
       // staleness wins, since a site that is not reporting says nothing
       // trustworthy about its roof.
       if (color === 'status-green') {
-        const enclosure = state.site_open_status[site]?.enclosure_status
-        // Shared with the map popup so the dot and the word "Shut" cannot
-        // disagree about what open means.
+        // The wema hosts the roof, so an observatory inherits its wema's
+        // enclosure rather than reporting one of its own. A simulated obs
+        // otherwise claims a roof state its own site contradicts: ECO-17 read
+        // "Sim. Open" while ECO reported the real roof shut, so the pulldown
+        // and the map marker for one physical roof disagreed. Falls back to the
+        // site's own reading, so an observatory with no wema peer still counts.
+        const wema_name = rootState.site_config.global_config[site]?.wema_name
+        const inherited = (!site_is_wema && wema_name)
+          ? state.site_open_status[wema_name]?.enclosure_status
+          : null
+        const enclosure = inherited || state.site_open_status[site]?.enclosure_status
+
+        // enclosureIsOpen is shared with the map popup so the dot and the word
+        // "Shut" cannot disagree about what open means.
         if (helpers.enclosureIsOpen(enclosure) === false) {
           color = enclosure.shut_reason === 'bad_weather' ? 'status-red' : 'status-yellow'
         }
