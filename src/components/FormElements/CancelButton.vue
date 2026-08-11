@@ -15,6 +15,7 @@
 import axios from 'axios'
 import { mapGetters } from 'vuex'
 import { commands_mixin } from '@/mixins/commands_mixin'
+import { userRoles } from '@/auth/claims'
 
 export default {
   name: 'CancelButton',
@@ -66,13 +67,7 @@ export default {
       return this.$store.state.user_data.userId
     },
     user_roles () {
-      try {
-        const user = this.$auth.user
-        const roles = user['https://photonranch.org/user_metadata'].roles
-        return roles
-      } catch {
-        return []
-      }
+      return userRoles(this.$auth.user)
     },
 
     cancel_request_body () {

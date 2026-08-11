@@ -6,6 +6,7 @@
 
 import { mapState, mapGetters } from 'vuex'
 import axios from 'axios'
+import { userRoles } from '@/auth/claims'
 
 // Change empty strings to 'empty'.
 function emptyString (s) {
@@ -396,13 +397,7 @@ export const commands_mixin = {
       return this.$store.state.user_data.userId
     },
     user_roles () {
-      try {
-        const user = this.$auth.user
-        const roles = user['https://photonranch.org/user_metadata'].roles
-        return roles
-      } catch {
-        return []
-      }
+      return userRoles(this.$auth.user)
     },
 
     ...mapState('site_config', [

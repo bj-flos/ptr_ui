@@ -55,10 +55,30 @@ the rule now matches `authorizer.py`, and a blocked button is visibly disabled.
 
 ## Admin
 
-`userIsAdmin` is derived in `src/store/modules/user_data.js` from the Auth0 claim
-`https://photonranch.org/user_metadata`, `roles` containing `admin`. The claim is injected by
-an Auth0 Action on the photonranch tenant — **other tenants will not have it**, so on a
-different tenant every user is a non-admin with no roles.
+`userIsAdmin` is derived in `src/store/modules/user_data.js` from the `user_metadata` claim,
+`roles` containing `admin`. The claim is injected by an Auth0 Action on the tenant.
+
+### The claim namespace is per tenant
+
+Auth0 requires custom claims to be namespaced URLs, and the namespace belongs to whichever
+tenant issues them. `src/auth/claims.js` is the single place that knows it:
+
+| Source | Example |
+|---|---|
+| `VUE_APP_AUTH0_CLAIM_NAMESPACE` env var | `https://mytenant.example/` |
+| `claimNamespace` in `auth_config.json` | `https://photonranch.org/` |
+| built-in default | `https://photonranch.org/` |
+
+First one set wins; a trailing slash is optional. Read claims through `userRoles(user)`,
+`userHasRole(user, role)` or `userMetadata(user)` rather than indexing the claim directly.
+
+The namespace used to be hardcoded in six places. On a tenant with a different namespace the
+claim was simply not found, so **every user silently looked role-less** — no error, no admin
+anywhere, and nothing to indicate the cause. Four of those six sites were also byte-identical
+copies of the same try/catch.
+
+Note this is a **build-time** value: `VUE_APP_*` is baked in by vue-cli, so changing it needs
+a rebuild or a dev-server restart, not just a page reload.
 
 Admin affects three separate things, which is worth keeping straight:
 

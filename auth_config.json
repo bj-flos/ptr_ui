@@ -1,5 +1,6 @@
 {
     "domain": "photonranch.auth0.com",
     "clientId": "czNLK0BPUFeoR9p98U7uIP4OoAy4XnyM",
-    "audience": "master"
+    "audience": "master",
+    "claimNamespace": "https://photonranch.org/"
 }

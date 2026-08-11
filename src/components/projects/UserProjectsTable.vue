@@ -150,6 +150,7 @@
 import { mapState } from 'vuex'
 import axios from 'axios'
 import moment from 'moment'
+import { userHasRole } from '@/auth/claims'
 import RaDisplay from '@/components/display/RaDisplay'
 import DecDisplay from '@/components/display/DecDisplay'
 
@@ -291,13 +292,7 @@ export default {
         : this.user_projects_is_loading
     },
     userIsAdmin () {
-      try {
-        const user = this.$auth.user
-        const roles = user['https://photonranch.org/user_metadata'].roles
-        return roles.includes('admin')
-      } catch {
-        return false
-      }
+      return userHasRole(this.$auth.user, 'admin')
     }
   }
 

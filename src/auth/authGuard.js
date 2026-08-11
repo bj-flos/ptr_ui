@@ -1,4 +1,5 @@
 import { getInstance } from './index'
+import { userRoles } from './claims'
 import { ToastProgrammatic as Toast } from 'buefy'
 
 export const authGuard = (to, from, next) => {
@@ -12,11 +13,9 @@ export const authGuard = (to, from, next) => {
       if (to.meta.requiresRole) {
         console.log('requires admin role')
         const requiredRole = to.meta.requiresRole
-        // Treat a missing claim as no roles rather than throwing: this runs
+        // A missing claim reads as no roles rather than throwing: this runs
         // inside the router guard, so an exception blocks navigation.
-        const metadata = (authService.user || {})['https://photonranch.org/user_metadata'] || {}
-        const userRoles = metadata.roles || []
-        if (userRoles.includes(requiredRole)) {
+        if (userRoles(authService.user).includes(requiredRole)) {
           return next()
         }
         else {

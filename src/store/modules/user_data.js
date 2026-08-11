@@ -3,6 +3,7 @@ import axios from 'axios'
 import moment from 'moment'
 import { ToastProgrammatic as Toast } from 'buefy'
 import { getInstance } from '../../auth/index' // get user object: getInstance().user
+import { userRoles } from '../../auth/claims'
 
 async function getAuthRequestHeader () {
   let token
@@ -106,12 +107,11 @@ const actions = {
   },
 
   newUserLogin ({ state, commit, dispatch }, user) {
-    // The user_metadata claim is injected by an Auth0 Action on the
-    // photonranch tenant. Other tenants won't have it, and throwing here
-    // happens before the app mounts, so a missing claim blanks the page.
-    const metadata = (user || {})['https://photonranch.org/user_metadata'] || {}
-    const roles = metadata.roles || []
-    const userIsAdmin = roles.includes('admin')
+    // The user_metadata claim is injected by an Auth0 Action, under a namespace
+    // belonging to the tenant that issues it. A missing claim reads as no roles
+    // rather than throwing: this runs before the app mounts, so an exception
+    // here blanks the page.
+    const userIsAdmin = userRoles(user).includes('admin')
     const isGoogle = user.sub && user.sub.startsWith('google-oauth2')
 
     commit('userIsAuthenticated', true)
