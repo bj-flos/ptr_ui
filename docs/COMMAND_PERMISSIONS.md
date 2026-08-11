@@ -108,18 +108,22 @@ Two consequences worth being clear about:
 `app_metadata` is still the right home: it is write-protected, only the Management API can
 change it, and a claim called `user_metadata` that is not user metadata misleads every reader.
 
-Readers take `app_metadata` first and fall back to `user_metadata`, so the order of deployment
-does not matter and sessions already open keep working.
+**Migration complete as of 2026-08-11.** The claim is emitted as `app_metadata` only:
 
-**There are three readers, and they must all tolerate both claims before the Action changes:**
-
-| Reader | Status |
+| Piece | State |
 |---|---|
-| `src/auth/claims.js` (this repo) | done — prefers `app_metadata`, falls back |
-| `photonranch-jobs/src/authorizer.py` `getUserRoles()` | **not done** — see below |
-| The Auth0 Action itself | emit both during the move (`docs/auth0-action-roles.js`) |
+| Auth0 Action | emits `<namespace>app_metadata`; legacy claim removed |
+| `src/auth/claims.js` | reads `app_metadata` only; fallback removed |
+| `photonranch-jobs` `getUserRoles()` | reads both — fail-soft, deployed to `ptr-jobs` |
 
-The backend reader is the dangerous one:
+`getUserRoles` deliberately still accepts either claim. It costs nothing and leaves that service
+able to run against a tenant that has not migrated.
+
+**`claims.js` no longer does.** Point this build at a tenant whose Action emits only the legacy
+claim — production photonranch, unless its Action is updated too — and every user resolves as
+role-less. Restore the fallback rather than repointing.
+
+The backend reader was the dangerous one, and why the ordering mattered:
 
 ```python
 def getUserRoles(userInfo):
@@ -130,19 +134,20 @@ An unguarded double index, and `auth()` turns any exception into `raise Exceptio
 Move the claim without patching this and **every command is denied for everyone, admins
 included** — it fails closed, loudly, for the whole system.
 
-Rollout order:
+The order this was done in, and the order to repeat it in on any other tenant:
 
-1. Patch all readers to accept either claim. Deploy.
-2. Copy `roles` from `user_metadata` to `app_metadata` on each user (Management API).
-3. Switch the Action to emit `app_metadata`, keeping the legacy claim for now.
-4. Once outstanding tokens have expired, drop the legacy claim from the Action, delete
-   `LEGACY_METADATA_KEY` from `claims.js`, and clear `roles` from `user_metadata`.
+1. Patch every reader to accept either claim, and **deploy** them.
+2. Set `roles` in `app_metadata` for the accounts that should have them (Management API).
+3. Switch the Action to emit `app_metadata`, keeping the legacy claim.
+4. Verify against a real non-admin account.
+5. Drop the legacy claim from the Action and the fallback from `claims.js`.
 
-Step 4 completes the rename. It is not urgent on this tenant, since nothing reads
-`user_metadata.roles` in the first place — see "Where roles actually come from" above.
+Step 1 is the one that must not be skipped: until the fail-soft `getUserRoles` is deployed,
+step 5 denies every command for every user.
 
-The urgent change is the Action's `['admin']` fallback, which is independent of the rename and
-should go in first.
+Step 2 is easy to get wrong in a way that hides until step 3 — a `PATCH` that 400s, or one aimed
+at the wrong `user_id`, leaves the account with no roles, and the old `['admin']` fallback masks
+it. Check the response body rather than assuming.
 
 Admin affects three separate things, which is worth keeping straight:
 
