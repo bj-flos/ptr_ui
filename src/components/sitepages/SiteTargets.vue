@@ -50,6 +50,7 @@
 
           :show-airmass-circle="showAirmassCircle"
           :deg-above-horizon="degAboveHorizon"
+          :show-camera-fov="showCameraFov"
 
           :use_custom_date_location="use_custom_date_location"
           :show_live_chart="isLiveSkyDisplay"
@@ -393,6 +394,31 @@
 
               <div class="horizontal-separator" />
 
+              <div class="object-filter-label">
+                Camera Field of View
+                <b-tooltip
+                  type="is-dark"
+                  size="is-small"
+                  label="Outline the camera's footprint around the telescope reticle. Drawn to scale when large enough, otherwise dashed and enlarged to stay visible - zoom in to see the true size."
+                >
+                  <b-icon
+                    size="is-small"
+                    icon="help-circle-outline"
+                  />
+                </b-tooltip>
+              </div>
+              <div class="object-filter-group">
+                <b-switch
+                  v-model="showCameraFov"
+                  style="margin-bottom: 0.75rem;"
+                  :rounded="false"
+                />
+                <b-field />
+                <b-field />
+              </div>
+
+              <div class="horizontal-separator" />
+
               <div style="display: flex; justify-content: space-between;">
                 <b-field label="moon">
                   <b-switch
@@ -678,6 +704,7 @@ export default {
 
       showAirmassCircle: true,
       degAboveHorizon: 30,
+      showCameraFov: true,
 
       use_custom_date_location: false,
       skychart_date: new Date(),
@@ -797,6 +824,11 @@ export default {
     },
 
     on_skychart_wrapper_resize (width, height) {
+      // Note: Celestial.resize() below rebuilds the projection at the zoom
+      // level in the config rather than the current one. TheSkyChart reapplies
+      // the user's zoom from its redraw callback, which covers this and the
+      // window resize d3-celestial handles internally.
+
       // const is_landscape = window.innerWidth > window.innerHeight // UNUSED aspect ratio to inform layout
       const skychart_wrapper_is_landscape = width > height // This is the visible area between the site menu and status bar
 

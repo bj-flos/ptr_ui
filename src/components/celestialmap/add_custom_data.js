@@ -42,6 +42,27 @@ const starSize = (d, starbase, starexp) => {
 // Set min distance between labels to prevent overlap; used in drawing functions
 const PROXIMITY_LIMIT = 30
 
+/**
+ * Record of where labels have been placed, so names do not overlap.
+ *
+ * Wraps d3's quadtree to drop points that fall outside the canvas. d3 v3
+ * subdivides until a point fits within the tree's extent, so adding one from
+ * far outside recurses until the stack gives out. Zooming does exactly that:
+ * an object stays inside the 90 degree clip, and so keeps being drawn, long
+ * after it has left the visible canvas. Off-canvas labels are invisible
+ * anyway, so there is nothing to track.
+ */
+const label_positions = (width, height) => {
+  const tree = d3.geom.quadtree().extent([[-1, -1], [width + 1, height + 1]])([])
+  return {
+    find: pt => tree.find(pt),
+    add: pt => {
+      if (!(pt[0] >= 0 && pt[0] <= width && pt[1] >= 0 && pt[1] <= height)) return
+      tree.add(pt)
+    }
+  }
+}
+
 // Simple point distance function
 const distance = (p1, p2) => {
   const d1 = p2[0] - p1[0]
@@ -278,9 +299,9 @@ const add_custom_data = (Celestial, base_config, data_list) => {
           .attr('class', 'custom_obj')
       },
       redraw: () => {
-        // The quadtree is used to avoid rendering object names that overlap
+        // Used to avoid rendering object names that overlap
         const m = Celestial.metrics()
-        const quadtree = d3.geom.quadtree().extent([[-1, -1], [m.width + 1, m.height + 1]])([])
+        const quadtree = label_positions(m.width, m.height)
 
         drawAirmassCircle(Celestial, quadtree)
         Celestial.container.selectAll('.custom_obj').each((d) => {

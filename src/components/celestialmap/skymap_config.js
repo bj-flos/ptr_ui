@@ -13,7 +13,18 @@ const base_config = {
 
   background: { fill: '#080f17', stroke: ' #17202a', opacity: 0.5 }, // Background style
   adaptable: false, // Sizes are increased with higher zoom-levels
+  // Left false so d3-celestial's own symbols do not grow with zoom while the
+  // custom objects in add_custom_data.js, which size themselves and ignore
+  // d3-celestial's adapt factor, stay fixed. Two symbol scales look broken.
+
+  // Zoom is driven from TheSkyChart.vue via Celestial.zoomBy() rather than by
+  // d3-celestial's own handlers, which attach to the celestial canvas and so
+  // never see events through our InteractionCanvas overlay. Dragging in
+  // d3.geo.zoom also rotates the map, which fights the zenith re-centre below.
   interactive: false, // Enable zooming and rotation with mousewheel and dragging
+  zoomextend: 60, // Max zoom, as a multiple of the all-sky scale. NB the key is
+  // 'zoomextend' -- d3-celestial reads that spelling into its internal
+  // 'zoomextent'; spelling it 'zoomextent' here is silently ignored.
   form: false, // Display settings form
   disableAnimations: true,
   // Set visiblity for each group of fields of the form
@@ -52,8 +63,7 @@ const base_config = {
 
     size: 7, // Maximum size (radius) of star circle in pixels
     exponent: -0.4, // Scale exponent for star size, larger = more linear
-    data: 'stars.6.json' // Data source for stellar data
-    // data: 'stars.8.json' // Alternative deeper data source for stellar data
+    data: 'stars.6.json' // Data source for stellar data; see star_catalogues below
   },
   dsos: {
     show: false, // Show Deep Space Objects
@@ -314,8 +324,26 @@ const red_chart_styles = {
   }
 }
 
+/**
+ * Star catalogues, swapped by zoom level.
+ *
+ * The all-sky view only has room for naked-eye stars, and stars.8.json is
+ * 6.3MB against 759KB for stars.6.json, so the deep catalogue is not worth
+ * fetching until the user has zoomed far enough for the sky to look empty
+ * without it. The two thresholds form a hysteresis band: swapping in at 4x
+ * and back out at 3x stops a user hovering on the boundary from reloading
+ * the map on every click.
+ */
+const star_catalogues = {
+  shallow: 'stars.6.json', // to magnitude 6
+  deep: 'stars.8.json', // to magnitude 8
+  zoom_in_above: 4,
+  zoom_out_below: 3
+}
+
 export {
   base_config,
+  star_catalogues,
   default_custom_object_styles,
   red_obj_styles,
   red_chart_styles

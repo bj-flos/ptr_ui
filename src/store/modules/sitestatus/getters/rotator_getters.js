@@ -16,6 +16,21 @@ const rotator_position = (state, getters) => {
   return { name, val, is_stale }
 }
 
+/**
+ * Rotator position angle as a raw number, or null when unavailable.
+ *
+ * rotator_position above formats for display ('12.3400 °') inside a
+ * {name, val, is_stale} envelope, which cannot be used for geometry. This is
+ * the same reading for callers that need to compute with it — the sky chart
+ * rotates the camera footprint by it. get_val returns '-' for absent keys and
+ * rotator_state returns {} when no rotator is selected, so sites without one
+ * yield null and callers can fall back to an unrotated frame.
+ */
+const rotator_position_angle = (state, getters) => {
+  const n = parseFloat(get_val(getters, 'position_angle'))
+  return Number.isFinite(n) ? n : null
+}
+
 const rotator_moving = (state, getters) => {
   const name = 'Rotator Moving'
   let val = get_val(getters, 'rotator_moving')
@@ -29,5 +44,6 @@ const rotator_moving = (state, getters) => {
 export default {
   rotator_state,
   rotator_position,
+  rotator_position_angle,
   rotator_moving
 }

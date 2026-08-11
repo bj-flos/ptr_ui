@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="skychart-frame">
     <div id="celestial-map">
       <interaction-canvas
         v-if="skychartCreated"
@@ -8,12 +8,49 @@
         :height="celestial_canvas_height"
         :user_crosshairs="user_crosshairs"
         :telescope_crosshairs="telescope_crosshairs"
+        :telescope_fov="telescope_fov"
         :mouse_in_sky="mouse_in_sky"
         @i_mousedown="handle_mousedown"
         @i_mouseup="handle_mouseup"
         @i_mousemove="handle_mousemove"
         @i_mouseover="handle_mouseover"
+        @i_wheel="handle_wheel"
       />
+    </div>
+
+    <!-- Kept outside #celestial-map so a Celestial reload, which empties that
+         element, cannot take the controls with it. -->
+    <div
+      v-if="skychartCreated"
+      class="zoom-controls"
+    >
+      <button
+        type="button"
+        class="zoom-button"
+        title="Zoom in"
+        :disabled="!can_zoom_in"
+        @click="zoom_in"
+      >
+        +
+      </button>
+      <button
+        type="button"
+        class="zoom-button"
+        title="Zoom out"
+        :disabled="!can_zoom_out"
+        @click="zoom_out"
+      >
+        &minus;
+      </button>
+      <button
+        type="button"
+        class="zoom-readout"
+        title="Reset zoom"
+        :disabled="!can_zoom_out"
+        @click="zoom_reset"
+      >
+        {{ zoom_label }}
+      </button>
     </div>
   </div>
 </template>
@@ -22,11 +59,25 @@
 import InteractionCanvas from '@/components/celestialmap/InteractionCanvas'
 import celestial from 'd3-celestial'
 import add_custom_data from '@/components/celestialmap/add_custom_data'
-import { base_config } from '@/components/celestialmap/skymap_config'
+import { base_config, star_catalogues } from '@/components/celestialmap/skymap_config'
 import helpers from '@/utils/helpers'
 import { mapGetters } from 'vuex'
 
 const Celestial = celestial.Celestial()
+
+// Zoom applied per button click or wheel notch.
+const ZOOM_STEP = 1.5
+
+// Smallest the camera field of view box may be drawn, in pixels. The all-sky
+// view is roughly 4px per degree, so a sub-degree camera would otherwise be a
+// speck smaller than the reticle it sits inside. A box below this is enlarged
+// to it and drawn dashed, so an enlarged box is never mistaken for a measurement.
+const MIN_FOV_BOX_PX = 14
+
+// How far to place the probe points used to measure the local north and east
+// directions on screen. Small enough that the map barely curves over it, large
+// enough that the projected offset is well clear of pixel rounding.
+const PROBE_DEGREES = 0.5
 
 export default {
   name: 'TheSkyChart',
@@ -114,6 +165,10 @@ export default {
       type: Boolean,
       default: true
     },
+    showCameraFov: {
+      type: Boolean,
+      default: true
+    },
     degAboveHorizon: {
       type: Number,
       default: 30
@@ -148,6 +203,20 @@ export default {
       // These are the pixel coordinate values for drawing to the interaction canvas
       user_crosshairs: [-1, -1],
       telescope_crosshairs: [-1, -1],
+
+      // Camera field of view outline around the telescope reticle, or null when
+      // it is switched off or the camera size is unknown.
+      telescope_fov: null,
+
+      // The zoom the user asked for, as a multiple of the all-sky scale, and
+      // the authority on what the chart should be showing. Several things
+      // rebuild the projection at the configured zoom rather than the current
+      // one -- a window resize is the common one -- so the level is reapplied
+      // on every redraw rather than assumed to have stuck.
+      desired_zoom: 1,
+      zoom_level: 1,
+      restoring_zoom: false,
+      star_catalogue: star_catalogues.shallow,
 
       // Whether or not the mouse is hovering over the sky part of the map.
       mouse_in_sky: false,
@@ -234,13 +303,15 @@ export default {
     })
     this.resize_observer.observe(celestial_canvas)
 
-    // Update the crosshairs in the interaction layer whenever the underlying map is redrawn
-    Celestial.addCallback(this.update_telescope_crosshairs)
-    Celestial.addCallback(this.update_user_crosshairs)
+    // Update everything the interaction layer draws whenever the underlying map
+    // is redrawn. This must be a single registration: addCallback keeps one
+    // function rather than a list, so registering the two crosshair updates
+    // separately meant the second quietly replaced the first and the telescope
+    // reticle was never refreshed on redraw. Redraws include zoom, which is
+    // what keeps the overlay pinned to the chart while zooming.
+    Celestial.addCallback(this.redraw_overlays)
 
-    // Set the interaction layer to show the various crosshairs
-    this.update_telescope_crosshairs()
-    this.update_user_crosshairs()
+    this.redraw_overlays()
 
     // Update the center of the map every minute
     this.updateMapCenterInterval = setInterval(this.rotate, 6000)
@@ -282,9 +353,199 @@ export default {
       this.airmassCircleIsHovered = (tolerance >= Math.abs(radiusToCenter - circleRadius))
     },
 
+    handle_wheel (direction) {
+      if (direction < 0) { this.zoom_in() } else { this.zoom_out() }
+    },
+
     rotate () {
       if (this.use_custom_date_location) return
       Celestial.date(new Date())
+    },
+
+    /** Everything the interaction layer draws, refreshed together.
+     *
+     * The field of view is recomputed first so the crosshair updates that
+     * follow redraw the layer with a box that is already current.
+     */
+    redraw_overlays () {
+      this.restore_zoom()
+      this.compute_telescope_fov()
+      this.update_telescope_crosshairs()
+      this.update_user_crosshairs()
+    },
+
+    /** Put the projection back to the zoom the user asked for.
+     *
+     * Celestial.resize() rebuilds the projection at the zoom level in the
+     * config rather than the current one, and d3-celestial listens for window
+     * resizes itself, so the chart can drop back to all-sky without the
+     * component being told. Every path that does this ends in a redraw, and
+     * this runs from the redraw callback, so reconciling here covers all of
+     * them rather than chasing each one. Without it the readout keeps claiming
+     * a zoom the chart is no longer at.
+     */
+    restore_zoom () {
+      if (this.restoring_zoom) return
+      const actual = Celestial.zoomBy()
+      if (Number.isFinite(actual) && Math.abs(actual - this.desired_zoom) > 0.001) {
+        this.restoring_zoom = true
+        Celestial.zoomBy(this.desired_zoom / actual)
+        this.restoring_zoom = false
+      }
+      this.zoom_level = Celestial.zoomBy()
+    },
+
+    /** Zoom about the center of the map, which is the zenith.
+     *
+     * d3-celestial's own zoom handlers are unused: they bind to the celestial
+     * canvas, which the interaction layer covers, so they would never see the
+     * events; and their drag gesture rotates the map, which the zenith
+     * re-centre on the rotate interval would immediately undo.
+     */
+    set_zoom (target) {
+      this.desired_zoom = Math.min(Math.max(target, 1), base_config.zoomextend)
+      this.restore_zoom()
+      this.sync_star_catalogue()
+      this.redraw_overlays()
+    },
+
+    zoom_in () {
+      this.set_zoom(this.desired_zoom * ZOOM_STEP)
+    },
+
+    zoom_out () {
+      this.set_zoom(this.desired_zoom / ZOOM_STEP)
+    },
+
+    zoom_reset () {
+      this.set_zoom(1)
+    },
+
+    /** Swap the star catalogue to match the zoom level.
+     *
+     * The naked-eye catalogue leaves a zoomed-in view looking empty, but the
+     * deeper one is 6.3MB against 759KB, so it is not fetched until the zoom
+     * justifies it. The two thresholds are deliberately apart: a single one
+     * would reload the map every time the user crossed it.
+     */
+    sync_star_catalogue () {
+      let wanted = this.star_catalogue
+      if (this.desired_zoom >= star_catalogues.zoom_in_above) {
+        wanted = star_catalogues.deep
+      } else if (this.desired_zoom < star_catalogues.zoom_out_below) {
+        wanted = star_catalogues.shallow
+      }
+      if (wanted === this.star_catalogue) return
+
+      this.star_catalogue = wanted
+      // Only the data file is passed. Celestial merges config key by key, so
+      // the magnitude limit the user set in the sidebar survives the reload.
+      Celestial.reload({ stars: { data: wanted } })
+    },
+
+    /** A point PROBE_DEGREES away along a bearing, measured east of north.
+     *
+     * The standard destination-point formula. Worth the trigonometry over the
+     * usual shortcut of offsetting RA by distance/cos(dec): that shortcut
+     * misstates the angular distance it actually covers as dec grows, by a
+     * factor of five at dec 89.8, which squashes the box, and it divides by
+     * zero at the pole. This is exact everywhere, and going over the pole comes
+     * back with the right answer rather than needing a special case.
+     */
+    sky_offset (ra, dec, bearing) {
+      const ra_rad = helpers.deg2rad(ra)
+      const dec_rad = helpers.deg2rad(dec)
+      const bearing_rad = helpers.deg2rad(bearing)
+      const distance_rad = helpers.deg2rad(PROBE_DEGREES)
+
+      const sin_new_dec = Math.sin(dec_rad) * Math.cos(distance_rad) +
+        Math.cos(dec_rad) * Math.sin(distance_rad) * Math.cos(bearing_rad)
+      const new_ra = ra_rad + Math.atan2(
+        Math.sin(bearing_rad) * Math.sin(distance_rad) * Math.cos(dec_rad),
+        Math.cos(distance_rad) - Math.sin(dec_rad) * sin_new_dec
+      )
+      return [helpers.rad2deg(new_ra), helpers.rad2deg(Math.asin(sin_new_dec))]
+    },
+
+    /** Screen direction and scale of one degree, measured off the projection.
+     *
+     * Returns the unit vector from a point toward its probe, in pixels, plus
+     * how many pixels a degree spans along it.
+     */
+    projected_axis (center, probe) {
+      if (!center || !probe) return null
+      const dx = probe[0] - center[0]
+      const dy = probe[1] - center[1]
+      const length = Math.sqrt(dx * dx + dy * dy)
+      if (!Number.isFinite(length) || length === 0) return null
+      return {
+        axis: [dx / length, dy / length],
+        px_per_degree: length / PROBE_DEGREES
+      }
+    },
+
+    /** Corners of the camera's field of view, for the interaction layer.
+     *
+     * The map is centered on the zenith, so screen-up is north along only one
+     * meridian and the pixels per degree varies across the chart. Rather than
+     * assume either, both are measured by projecting a probe a known angle from
+     * the telescope and reading back the pixel offset -- the same trick
+     * drawAirmassCircle uses in add_custom_data.js. Taking both axes from the
+     * projection also gets the parity right, so the box cannot come out
+     * mirrored, and reading the live projection means it picks up the current
+     * zoom without being told about it.
+     */
+    compute_telescope_fov () {
+      this.telescope_fov = null
+      if (!this.showCameraFov) return
+
+      const width_degrees = this.camera_width_degrees
+      const height_degrees = this.camera_height_degrees
+      if (!width_degrees || !height_degrees) return
+
+      const ra = helpers.hour2degree(parseFloat(this.mount_pointing_ra.val))
+      const dec = parseFloat(this.mount_pointing_dec.val)
+      if (!Number.isFinite(ra) || !Number.isFinite(dec)) return
+      if (!Celestial.clip([ra, dec])) return
+
+      const center = Celestial.mapProjection([ra, dec])
+      const north = this.projected_axis(center, Celestial.mapProjection(this.sky_offset(ra, dec, 0)))
+      const east = this.projected_axis(center, Celestial.mapProjection(this.sky_offset(ra, dec, 90)))
+      if (north === null || east === null) return
+
+      let half_width = (width_degrees / 2) * east.px_per_degree
+      let half_height = (height_degrees / 2) * north.px_per_degree
+
+      // Enlarge a box too small to see, scaling both axes by the same factor so
+      // the shape still reports the sensor's real aspect ratio even though the
+      // size no longer reports its real extent.
+      const longest_side = Math.max(half_width, half_height) * 2
+      const to_scale = longest_side >= MIN_FOV_BOX_PX
+      if (!to_scale) {
+        const growth = MIN_FOV_BOX_PX / longest_side
+        half_width *= growth
+        half_height *= growth
+      }
+
+      // Turn the sky frame into the camera frame.
+      const position_angle = helpers.deg2rad(this.rotator_position_angle ?? 0)
+      const cos_pa = Math.cos(position_angle)
+      const sin_pa = Math.sin(position_angle)
+      const camera_x = [
+        east.axis[0] * cos_pa + north.axis[0] * sin_pa,
+        east.axis[1] * cos_pa + north.axis[1] * sin_pa
+      ]
+      const camera_y = [
+        north.axis[0] * cos_pa - east.axis[0] * sin_pa,
+        north.axis[1] * cos_pa - east.axis[1] * sin_pa
+      ]
+
+      const corners = [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([sx, sy]) => this.pix_to_relative([
+        center[0] + sx * half_width * camera_x[0] + sy * half_height * camera_y[0],
+        center[1] + sx * half_width * camera_x[1] + sy * half_height * camera_y[1]
+      ]))
+
+      this.telescope_fov = { corners, to_scale }
     },
 
     // Transform x,y array in raw pixels to relative coordinates (vals in [0,1])
@@ -354,8 +615,15 @@ export default {
     },
 
     // Update the chart if the mount pointing has changed
-    mount_pointing_ra () { this.update_telescope_crosshairs() },
-    mount_pointing_dec () { this.update_telescope_crosshairs() },
+    mount_pointing_ra () { this.update_telescope_crosshairs(); this.compute_telescope_fov() },
+    mount_pointing_dec () { this.update_telescope_crosshairs(); this.compute_telescope_fov() },
+
+    // The camera footprint also moves when the instrument, its orientation, or
+    // the user's preference changes, none of which redraw the chart itself.
+    showCameraFov () { this.compute_telescope_fov() },
+    camera_width_degrees () { this.compute_telescope_fov() },
+    camera_height_degrees () { this.compute_telescope_fov() },
+    rotator_position_angle () { this.compute_telescope_fov() },
 
     // Update the chart if the mount command coordinates are changed
     ra_user_input () { this.update_user_crosshairs() },
@@ -455,6 +723,20 @@ export default {
 
   computed: {
 
+    zoom_label () {
+      return `${this.zoom_level.toFixed(1)}×`
+    },
+
+    // Compared with a small tolerance: zoomBy clamps to the extent, so the
+    // reported level lands fractionally off the limit rather than on it.
+    can_zoom_in () {
+      return this.zoom_level < base_config.zoomextend - 0.01
+    },
+
+    can_zoom_out () {
+      return this.zoom_level > 1.01
+    },
+
     // list of planets to display
     planetsList () {
       let planets = []
@@ -472,13 +754,18 @@ export default {
     },
     ...mapGetters('site_config', [
       'site_latitude',
-      'site_longitude'
+      'site_longitude',
+      'camera_width_degrees',
+      'camera_height_degrees'
     ]),
 
     // Mount pointing status (from the status mixin), but with clearer names
     ...mapGetters('sitestatus', {
       mount_pointing_ra: 'ra',
-      mount_pointing_dec: 'dec'
+      mount_pointing_dec: 'dec',
+      // The raw number, not the formatted rotator_position used by the status
+      // footer, since the footprint is rotated by it.
+      rotator_position_angle: 'rotator_position_angle'
     }),
 
     // User-provided coordinates that would be sent in a telescope goto command.
@@ -490,3 +777,61 @@ export default {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+
+.skychart-frame {
+    position: relative;
+}
+
+.zoom-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2; // above the interaction layer, which is z-index 1
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.zoom-button,
+.zoom-readout {
+    background: rgba(8, 15, 23, 0.75);
+    border: 1px solid #4a5a6a;
+    border-radius: 3px;
+    color: #cfd8e0;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1;
+    padding: 0;
+
+    &:hover:not(:disabled) {
+        border-color: greenyellow;
+        color: greenyellow;
+    }
+
+    &:focus-visible {
+        outline: 1px solid greenyellow;
+        outline-offset: 1px;
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: 0.4;
+    }
+}
+
+.zoom-button {
+    font-size: 1.1rem;
+    height: 26px;
+    width: 26px;
+}
+
+.zoom-readout {
+    font-size: 0.65rem;
+    font-variant-numeric: tabular-nums;
+    padding: 4px 0;
+    width: 26px;
+}
+
+</style>

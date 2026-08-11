@@ -32,6 +32,22 @@ const state = {
   selected_selector: ''
 }
 
+/**
+ * Angular size of one sensor axis, in degrees.
+ *
+ * Returns null, not a placeholder, when the camera config is incomplete.
+ * camera_size_degrees below falls back to 1 so Aladin always has a usable
+ * field, but anything drawn to scale on the sky chart must show the real
+ * instrument or nothing at all.
+ */
+const angularSize = (pixelScale, sizePixels) => {
+  const DEG_PER_ARCSEC = 1 / 3600
+  const scale = parseFloat(pixelScale)
+  const pixels = parseFloat(sizePixels)
+  if (!Number.isFinite(scale) || !Number.isFinite(pixels)) return null
+  return scale * pixels * DEG_PER_ARCSEC
+}
+
 const getters = {
 
   get_site_attribute: state => site => attribute => {
@@ -86,6 +102,14 @@ const getters = {
 
     return pixelScale * max_pixels * DEG_PER_ARCSEC
   },
+
+  // Angular width and height of the sensor, kept as separate axes so the
+  // camera footprint drawn on the sky chart has the sensor's real aspect
+  // ratio. camera_size_degrees only exposes the larger of the two, as a
+  // square, which is all Aladin needs but not enough to draw a box.
+  camera_width_degrees: (state, getters) => angularSize(getters.pixel_scale, getters.camera_size_x),
+
+  camera_height_degrees: (state, getters) => angularSize(getters.pixel_scale, getters.camera_size_y),
 
   site_is_wema: state => {
     return state.global_config[state.selected_site]?.instance_type == 'wema'
