@@ -88,7 +88,11 @@
             >
               Profile
             </router-link>
+            <!-- The route is guarded by authGuard's requiresRole check, so a
+                 non-admin following this only got a "Requires admin role"
+                 toast. Offering it at all advertised a door they cannot open. -->
             <router-link
+              v-if="userIsAdmin"
               to="/adminonly"
               class="navbar-item"
             >
