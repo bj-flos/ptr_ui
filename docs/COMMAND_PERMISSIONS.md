@@ -80,6 +80,45 @@ copies of the same try/catch.
 Note this is a **build-time** value: `VUE_APP_*` is baked in by vue-cli, so changing it needs
 a rebuild or a dev-server restart, not just a page reload.
 
+### Roles are moving to app_metadata
+
+`user_metadata` is the bucket Auth0 treats as **user-editable**: anything holding a token with
+`update:current_user_metadata` could grant itself `admin`. `app_metadata` is write-protected —
+only the Management API can change it — and is where authorization data belongs.
+
+Readers take `app_metadata` first and fall back to `user_metadata`, so the order of deployment
+does not matter and sessions already open keep working.
+
+**There are three readers, and they must all tolerate both claims before the Action changes:**
+
+| Reader | Status |
+|---|---|
+| `src/auth/claims.js` (this repo) | done — prefers `app_metadata`, falls back |
+| `photonranch-jobs/src/authorizer.py` `getUserRoles()` | **not done** — see below |
+| The Auth0 Action itself | emit both during the move (`docs/auth0-action-roles.js`) |
+
+The backend reader is the dangerous one:
+
+```python
+def getUserRoles(userInfo):
+    userRoles = userInfo['https://photonranch.org/user_metadata']['roles']
+```
+
+An unguarded double index, and `auth()` turns any exception into `raise Exception('Unauthorized')`.
+Move the claim without patching this and **every command is denied for everyone, admins
+included** — it fails closed, loudly, for the whole system.
+
+Rollout order:
+
+1. Patch all readers to accept either claim. Deploy.
+2. Copy `roles` from `user_metadata` to `app_metadata` on each user (Management API).
+3. Switch the Action to emit `app_metadata`, keeping the legacy claim for now.
+4. Once outstanding tokens have expired, drop the legacy claim from the Action, delete
+   `LEGACY_METADATA_KEY` from `claims.js`, and clear `roles` from `user_metadata`.
+
+Step 4 is the one that actually closes the privilege-escalation hole; until `user_metadata.roles`
+is gone and unread, it is still a writable path to `admin`.
+
 Admin affects three separate things, which is worth keeping straight:
 
 - **Commanding** — bypasses the reservation check entirely, front and back.
