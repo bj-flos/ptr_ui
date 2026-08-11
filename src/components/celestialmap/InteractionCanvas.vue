@@ -61,6 +61,18 @@ export default {
           val.corners.every(c => Array.isArray(c) && c.length == 2 && c.every(i => typeof i === 'number'))
       }
     },
+    // Whether to draw each marker. The field of view box is deliberately not
+    // tied to the telescope reticle: hiding the reticle is how you get an
+    // unobstructed look at the box, which at low zoom is almost exactly the
+    // size of the reticle sitting on top of it.
+    show_telescope: {
+      type: Boolean,
+      default: true
+    },
+    show_target: {
+      type: Boolean,
+      default: true
+    },
     // This changes the cursor style if the mouse is in the sky 'circle'.
     mouse_in_sky: {
       type: Boolean,
@@ -131,6 +143,14 @@ export default {
       this.redraw_all()
     },
 
+    show_telescope () {
+      this.redraw_all()
+    },
+
+    show_target () {
+      this.redraw_all()
+    },
+
     // Since map is fixed proportionally, no need to check height change
     width () {
       // Wait until the canvas has resized (and reset) before drawing
@@ -187,6 +207,7 @@ export default {
     },
 
     draw_user_crosshairs () {
+      if (!this.show_target) { return }
       if (this.user_crosshairs.every(i => i == -1)) { return }
       const [x, y] = this.user_xy_pixels
       const r = 18
@@ -207,6 +228,7 @@ export default {
     },
 
     draw_telescope_crosshairs () {
+      if (!this.show_telescope) { return }
       if (this.telescope_crosshairs.every(i => i == -1)) { return }
       const [x, y] = this.telescope_xy_pixels
       const size = 220

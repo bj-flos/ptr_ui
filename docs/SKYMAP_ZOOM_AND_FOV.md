@@ -32,6 +32,31 @@ Both axes are scaled by the same factor when clamping, so the shape always repor
 sensor's real aspect ratio even when the size cannot be trusted. Zooming in past the
 threshold drops the clamp and the outline goes solid.
 
+## The chart controls
+
+Three marker toggles sit to the left of the zoom buttons, each carrying the colour of the
+thing it draws so no label is needed:
+
+| Button | Draws | Default |
+|---|---|---|
+| `▭` | camera field of view box | **off** |
+| `⌖` | telescope pointing reticle | on |
+| `+` | selected target crosshair | on |
+
+The field of view is deliberately independent of the reticle. At low zoom the box is almost
+exactly the size of the reticle sitting on top of it, so hiding the reticle is how you get an
+unobstructed look at the footprint — with both markers off, the overlay draws the box alone.
+
+The box starts hidden because it only becomes readable once zoomed in; on load it would
+otherwise be a permanent speck on the reticle for users who never asked for it. The `▭` button
+and the "Camera Field of View" switch in the chart-settings sidebar drive the same state, via
+a `toggle-camera-fov` event, so the two cannot disagree.
+
+Moving to another observatory resets all of it, zoom included. The zoom level, what the map is
+following and which markers are hidden are judgements about the site you were just looking at;
+carrying them across silently leaves the new site zoomed into an unrelated patch of sky with
+markers missing.
+
 ## How it fits together
 
 - `TheSkyChart.vue` owns everything needing the projection and hands the overlay plain

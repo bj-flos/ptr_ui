@@ -9,6 +9,8 @@
         :user_crosshairs="user_crosshairs"
         :telescope_crosshairs="telescope_crosshairs"
         :telescope_fov="telescope_fov"
+        :show_telescope="show_reticle"
+        :show_target="show_target_marker"
         :mouse_in_sky="mouse_in_sky"
         @i_mousedown="handle_mousedown"
         @i_mouseup="handle_mouseup"
@@ -22,35 +24,73 @@
          element, cannot take the controls with it. -->
     <div
       v-if="skychartCreated"
-      class="zoom-controls"
+      class="chart-controls"
     >
-      <button
-        type="button"
-        class="zoom-button"
-        title="Zoom in"
-        :disabled="!can_zoom_in"
-        @click="zoom_in"
-      >
-        +
-      </button>
-      <button
-        type="button"
-        class="zoom-button"
-        title="Zoom out"
-        :disabled="!can_zoom_out"
-        @click="zoom_out"
-      >
-        &minus;
-      </button>
-      <button
-        type="button"
-        class="zoom-readout"
-        title="Reset zoom"
-        :disabled="!can_zoom_out"
-        @click="zoom_reset"
-      >
-        {{ zoom_label }}
-      </button>
+      <!-- Each marker can be hidden independently, so the field of view can be
+           read on its own: at low zoom the box is almost exactly the size of
+           the reticle drawn on top of it. -->
+      <div class="control-group">
+        <button
+          type="button"
+          class="chart-button is-fov"
+          :class="{ 'is-off': !showCameraFov }"
+          :aria-pressed="String(showCameraFov)"
+          :title="showCameraFov ? 'Hide camera field of view' : 'Show camera field of view'"
+          @click="$emit('toggle-camera-fov', !showCameraFov)"
+        >
+          &#9645;
+        </button>
+        <button
+          type="button"
+          class="chart-button is-reticle"
+          :class="{ 'is-off': !show_reticle }"
+          :aria-pressed="String(show_reticle)"
+          :title="show_reticle ? 'Hide telescope pointing' : 'Show telescope pointing'"
+          @click="show_reticle = !show_reticle"
+        >
+          &#8982;
+        </button>
+        <button
+          type="button"
+          class="chart-button is-target"
+          :class="{ 'is-off': !show_target_marker }"
+          :aria-pressed="String(show_target_marker)"
+          :title="show_target_marker ? 'Hide selected target' : 'Show selected target'"
+          @click="show_target_marker = !show_target_marker"
+        >
+          +
+        </button>
+      </div>
+
+      <div class="control-group">
+        <button
+          type="button"
+          class="chart-button"
+          title="Zoom in"
+          :disabled="!can_zoom_in"
+          @click="zoom_in"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          class="chart-button"
+          title="Zoom out"
+          :disabled="!can_zoom_out"
+          @click="zoom_out"
+        >
+          &minus;
+        </button>
+        <button
+          type="button"
+          class="zoom-readout"
+          title="Reset zoom"
+          :disabled="!can_zoom_out"
+          @click="zoom_reset"
+        >
+          {{ zoom_label }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -170,9 +210,18 @@ export default {
       type: Boolean,
       default: true
     },
+    // Off by default: the box is only meaningful once zoomed in far enough to
+    // read it, so showing it on load would put a permanent speck on the
+    // reticle for users who never asked for it.
     showCameraFov: {
       type: Boolean,
-      default: true
+      default: false
+    },
+    // Used only to notice that the user moved to another observatory, which
+    // resets the chart controls.
+    sitecode: {
+      type: String,
+      default: ''
     },
     degAboveHorizon: {
       type: Number,
@@ -212,6 +261,11 @@ export default {
       // Camera field of view outline around the telescope reticle, or null when
       // it is switched off or the camera size is unknown.
       telescope_fov: null,
+
+      // Which markers the overlay draws. Toggled from the chart controls so the
+      // field of view can be looked at on its own.
+      show_reticle: true,
+      show_target_marker: true,
 
       // The zoom the user asked for, as a multiple of the all-sky scale, and
       // the authority on what the chart should be showing. Several things
@@ -494,6 +548,20 @@ export default {
       this.set_zoom(1)
     },
 
+    /** Put the chart controls back to their defaults.
+     *
+     * Called on moving to another observatory. The zoom, what the map is
+     * following and which markers are hidden are all judgements about the site
+     * you were just looking at, and carrying them silently to the next one
+     * leaves it zoomed into an unrelated patch of sky with markers missing.
+     */
+    reset_controls () {
+      this.show_reticle = true
+      this.show_target_marker = true
+      this.$emit('toggle-camera-fov', false)
+      this.zoom_reset()
+    },
+
     /** Swap the star catalogue to match the zoom level.
      *
      * The naked-eye catalogue leaves a zoomed-in view looking empty, but the
@@ -669,6 +737,8 @@ export default {
   },
 
   watch: {
+    sitecode () { this.reset_controls() },
+
     show_live_chart () {
       if (this.show_live_chart) {
         Celestial.location(this.site_latitude, this.site_longitude)
@@ -858,17 +928,23 @@ export default {
     position: relative;
 }
 
-.zoom-controls {
+.chart-controls {
     position: absolute;
     top: 8px;
     right: 8px;
     z-index: 2; // above the interaction layer, which is z-index 1
     display: flex;
+    gap: 4px;
+    align-items: flex-start;
+}
+
+.control-group {
+    display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.zoom-button,
+.chart-button,
 .zoom-readout {
     background: rgba(8, 15, 23, 0.75);
     border: 1px solid #4a5a6a;
@@ -879,9 +955,10 @@ export default {
     line-height: 1;
     padding: 0;
 
+    // Border only: the marker toggles carry their own colour, and recolouring
+    // them on hover would break the mapping to what they draw.
     &:hover:not(:disabled) {
         border-color: greenyellow;
-        color: greenyellow;
     }
 
     &:focus-visible {
@@ -895,10 +972,29 @@ export default {
     }
 }
 
-.zoom-button {
+.chart-button {
     font-size: 1.1rem;
     height: 26px;
     width: 26px;
+}
+
+// The marker toggles carry the colour of the thing they draw, so the mapping
+// to what is on the chart needs no label. Off is drawn as a dimmed outline.
+.is-fov,
+.is-reticle {
+    color: greenyellow;
+}
+
+.is-target {
+    color: #df2437;
+}
+
+.chart-button.is-off {
+    color: #6d7883;
+
+    &:hover {
+        color: #cfd8e0;
+    }
 }
 
 .zoom-readout {

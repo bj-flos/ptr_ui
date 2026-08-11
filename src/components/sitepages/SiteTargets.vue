@@ -51,6 +51,8 @@
           :show-airmass-circle="showAirmassCircle"
           :deg-above-horizon="degAboveHorizon"
           :show-camera-fov="showCameraFov"
+          :sitecode="sitecode"
+          @toggle-camera-fov="showCameraFov = $event"
 
           :use_custom_date_location="use_custom_date_location"
           :show_live_chart="isLiveSkyDisplay"
@@ -704,7 +706,9 @@ export default {
 
       showAirmassCircle: true,
       degAboveHorizon: 30,
-      showCameraFov: true,
+      // Off until asked for: the footprint only becomes readable once zoomed
+      // in, so on load it would just be a speck sitting on the reticle.
+      showCameraFov: false,
 
       use_custom_date_location: false,
       skychart_date: new Date(),
