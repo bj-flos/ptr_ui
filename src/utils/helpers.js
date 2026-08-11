@@ -142,6 +142,27 @@ const helpers = {
   // the number of miliseconds in a day.
   jd2unix (t) {
     return (t - 2440587.5) * 86400 * 1000
+  },
+
+  /**
+   * Whether an `enclosure_status` from /allopenstatus reads as open.
+   *
+   * Returns null when there is nothing to judge by, so callers can tell "shut"
+   * apart from "unknown".
+   *
+   * `shutter_status` and `enclosure_is_open` disagree in practice -- MRC-17
+   * reports a Closed shutter with enclosure_is_open true -- so the shutter wins
+   * where present, matching the site status footer.
+   *
+   * Matched as a substring, not equality: simulated enclosures report
+   * "Sim. Open" rather than "Open", and an exact check labelled every simulator
+   * roof as shut.
+   */
+  enclosureIsOpen: enclosure => {
+    if (!enclosure) return null
+    const shutter = (enclosure.shutter || '').toLowerCase()
+    if (shutter) return shutter.includes('open')
+    return !!enclosure.is_open
   }
 
 }

@@ -11,6 +11,7 @@
 import nite from './nite-overlay'
 import { mapState, mapGetters, mapActions } from 'vuex'
 import { makeIcon } from './mapHelpers'
+import helpers from '@/utils/helpers'
 
 export default {
   name: 'TheWorldMap',
@@ -236,17 +237,17 @@ export default {
      * is drawn in red.
      */
     roofState (enclosure) {
-      if (!enclosure) return { text: '-', color: '#999999' }
-
-      const shutter = (enclosure.shutter || '').toLowerCase()
-      const open = shutter ? shutter === 'open' : !!enclosure.is_open
+      const open = helpers.enclosureIsOpen(enclosure)
+      if (open === null) return { text: '-', color: '#999999' }
       if (open) return { text: 'Open', color: 'greenyellow' }
 
       const reasons = { bad_weather: 'bad weather', daytime: 'daytime', manual: 'manual' }
       const reason = reasons[enclosure.shut_reason]
       return {
         text: reason ? `Shut &mdash; ${reason}` : 'Shut',
-        color: enclosure.shut_reason === 'bad_weather' ? 'red' : '#dd9c00'
+        // Exactly the marker palette below, so the word and the site's dot are
+        // the same colour. all_sites_status_color picks the matching token.
+        color: enclosure.shut_reason === 'bad_weather' ? '#cd0000' : '#dd9c00'
       }
     },
 
@@ -344,10 +345,18 @@ export default {
     },
 
     /*
-      Strategy:
-        if weather status is recent and wx_ok is true: green dot
-        if weather status is recent and wx_ok is false: red dot
-        otherwise: grey dot
+      Colours come from all_sites_status_color, which is shared with the navbar
+      dropdown and the quick site switcher so a site's dot means one thing
+      everywhere. Its rule:
+
+        nothing reporting                     -> grey
+        some subsystems stale                 -> yellow
+        all fresh, roof open                  -> green
+        all fresh, roof shut for bad weather  -> red
+        all fresh, roof shut otherwise        -> yellow
+
+      The shut colours match what roofState writes the word "Shut" in.
+      (This comment previously described a wx_ok rule the getter never had.)
     */
     getSiteMapColor (site) {
       const colors = {

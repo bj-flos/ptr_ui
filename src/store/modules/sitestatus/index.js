@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 import { statusAgeDisplay, STALE_AGE_MS } from './getters/status_utils'
+import helpers from '../../../utils/helpers'
 
 import enclosure_getters from './getters/enclosure_getters'
 import weather_getters from './getters/weather_getters'
@@ -210,6 +211,20 @@ const getters = {
           color = 'status-grey'
         } else {
           color = 'status-yellow'
+        }
+      }
+
+      // A site that is reporting but shut should read as shut, in the same
+      // colour the world map popup writes the word "Shut" in, rather than a
+      // plain green "everything is fresh" dot. Only downgrades from green:
+      // staleness wins, since a site that is not reporting says nothing
+      // trustworthy about its roof.
+      if (color === 'status-green') {
+        const enclosure = state.site_open_status[site]?.enclosure_status
+        // Shared with the map popup so the dot and the word "Shut" cannot
+        // disagree about what open means.
+        if (helpers.enclosureIsOpen(enclosure) === false) {
+          color = enclosure.shut_reason === 'bad_weather' ? 'status-red' : 'status-yellow'
         }
       }
 
