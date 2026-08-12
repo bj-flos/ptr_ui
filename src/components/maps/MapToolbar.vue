@@ -75,12 +75,15 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* The filters sit directly beside the title rather than being pushed to the
+   far edge: on a wide map that put them most of a screen away from the thing
+   they filter, with nothing in between to connect them. */
 .map-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 1em;
+  justify-content: flex-start;
+  gap: 1.25em;
   padding: 0.75em 1em 0.5em;
 }
 
