@@ -84,20 +84,26 @@ export function isUsableNow (readiness) {
  *
  * Weather and roof readings only mean anything while the site is reporting, so
  * an offline or unknown site shows the one row and nothing stale.
+ *
+ * Rows are objects rather than [label, value] pairs on purpose. A pair has to
+ * be destructured to be read, and array destructuring in a v-for alias compiles
+ * to a Babel helper that vue-loader does not inject into the template's render
+ * function -- the render then throws _slicedToArray is not defined, Vue
+ * swallows it, and the card renders as an empty placeholder.
  */
 export function readinessRows (readiness) {
   if (!readiness || !readiness.known) {
-    return [['Status', { text: 'Unknown', color: STATUS_GREY }]]
+    return [{ label: 'Status', text: 'Unknown', color: STATUS_GREY }]
   }
   if (!readiness.online) {
-    return [['Status', { text: 'Offline', color: STATUS_RED }]]
+    return [{ label: 'Status', text: 'Offline', color: STATUS_RED }]
   }
   return [
-    ['Status', { text: 'Online', color: STATUS_GREEN }],
-    ['Weather', readiness.weatherOk
-      ? { text: 'ok', color: STATUS_GREEN }
-      : { text: 'poor', color: STATUS_RED }],
-    ['Safety', roofRow(readiness)]
+    { label: 'Status', text: 'Online', color: STATUS_GREEN },
+    readiness.weatherOk
+      ? { label: 'Weather', text: 'ok', color: STATUS_GREEN }
+      : { label: 'Weather', text: 'poor', color: STATUS_RED },
+    { label: 'Safety', ...roofRow(readiness) }
   ]
 }
 

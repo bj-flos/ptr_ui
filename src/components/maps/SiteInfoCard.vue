@@ -22,20 +22,20 @@
       <div class="status-entry">
         <div class="col">
           <div
-            v-for="[label] in rows"
-            :key="label"
+            v-for="row in rows"
+            :key="row.label"
             class="key"
           >
-            {{ label }}
+            {{ row.label }}
           </div>
         </div>
         <div class="col">
           <div
-            v-for="[label, value] in rows"
-            :key="label"
+            v-for="row in rows"
+            :key="row.label"
             class="val"
           >
-            <span :style="{ color: value.color }">{{ value.text }}</span>
+            <span :style="{ color: row.color }">{{ row.text }}</span>
           </div>
         </div>
       </div>
