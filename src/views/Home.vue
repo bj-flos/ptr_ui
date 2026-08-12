@@ -65,11 +65,13 @@ export default {
 
   methods: {
     /**
-     * What "Use this Telescope" does.
+     * What the card's main button does. Its label says which of these it is.
      *
-     * The order is deliberate: whether the telescope works at all comes before
-     * whether it is free. A student told "someone else has it until 9pm" about
-     * a telescope that is actually rained off has been told the wrong thing.
+     * The schedule is checked first. Conditions only gate the paths that would
+     * put a student in front of the telescope right now -- booking a slot for
+     * later has nothing to do with tonight's cloud, and checking conditions
+     * first meant a rained-off telescope whose button read "Schedule Time"
+     * answered a click with a weather toast and never opened the calendar.
      *
      * Navigation lives here rather than in the card because router.js imports
      * this view, which imports the map -- so the map importing the router back
@@ -82,21 +84,24 @@ export default {
         return
       }
 
+      const next = this.nextAvailable(site)
+
+      // "Schedule Time": booking a later slot, so current conditions are moot.
+      if (next.status === 'later') {
+        this.openScheduler(site, next.start)
+        return
+      }
+
+      // Everything below sends them to observe now, which is when being online,
+      // clear and open actually matters.
       const readiness = siteReadiness(site, this.site_open_status)
       if (!isUsableNow(readiness)) {
         this.$buefy.toast.open(unavailableReason(site, readiness))
         return
       }
 
-      // Conditions have already been cleared above, so this is purely "has
-      // anyone else claimed this time".
-      const next = this.nextAvailable(site)
       if (next.status === 'now') {
         this.goToSkyMap(site)
-        return
-      }
-      if (next.status === 'later') {
-        this.openScheduler(site, next.start)
         return
       }
 
