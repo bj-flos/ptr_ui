@@ -1,5 +1,31 @@
 <template>
   <div class="calendar-container">
+    <!-- Drag either onto the calendar to start booking at that time. Rendered
+         here rather than in the pages so both the site calendar and the home
+         page's booking modal get them. -->
+    <div
+      v-if="userIsAuthenticated"
+      ref="tokenPalette"
+      class="observation-tokens"
+    >
+      <div
+        class="observation-token"
+        data-reservation-type="realtime"
+        title="Drag onto the calendar to book time you drive yourself"
+      >
+        <EyeThroughTelescopeIcon :size="30" />
+        <span>You drive it</span>
+      </div>
+      <div
+        class="observation-token"
+        data-reservation-type="project"
+        title="Drag onto the calendar to have the computer take it for you"
+      >
+        <ComputerThroughTelescopeIcon :size="30" />
+        <span>Computer takes it</span>
+      </div>
+    </div>
+
     <FullCalendar
       ref="fullCalendar"
       class="fullCalendar-observatory-calendar"
@@ -43,6 +69,7 @@
       :snap-duration="fc_snapDuration"
       :drag-scroll="fc_dragScroll"
       :event-overlap="fc_eventOverlap"
+      :drop="externalTokenDropped"
       @eventDrop="fc_eventDrop"
       @eventResize="fc_eventResize"
       @loading="fc_isLoading"
@@ -132,7 +159,9 @@ import ObservationViewer from '@/components/calendar/ObservationViewer'
 import FullCalendar from '@fullcalendar/vue'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
+import interactionPlugin, { Draggable } from '@fullcalendar/interaction'
+import EyeThroughTelescopeIcon from '@/components/svg/EyeThroughTelescopeIcon'
+import ComputerThroughTelescopeIcon from '@/components/svg/ComputerThroughTelescopeIcon'
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline'
 import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid'
 import bootstrapPlugin from '@fullcalendar/bootstrap'
@@ -164,7 +193,9 @@ export default {
   components: {
     FullCalendar, // make the <FullCalendar> tag available
     CalendarEventEditor,
-    ObservationViewer
+    ObservationViewer,
+    EyeThroughTelescopeIcon,
+    ComputerThroughTelescopeIcon
   },
   props: {
     // The active site (resource) disaplyed in the calendar
@@ -242,6 +273,16 @@ export default {
     this.refreshCalendarView()
     this.nowIndicatorTimeInteval = setInterval(this.updateNowIndicator, 300000)
 
+    /* Make the two tokens draggable onto the grid. create:false stops
+       FullCalendar from dropping an event of its own -- the drop handler opens
+       the editor instead, so nothing is booked until the student saves. */
+    if (this.$refs.tokenPalette) {
+      this.tokenDraggable = new Draggable(this.$refs.tokenPalette, {
+        itemSelector: '.observation-token',
+        eventData: { create: false }
+      })
+    }
+
     // For small screen widths, initialize with a single day view
     // Get the breakpoint from CSS variables
     const phoneScreenWidthMax = parseInt(
@@ -259,6 +300,10 @@ export default {
   },
   destroyed () {
     clearInterval(this.nowIndicatorTimeInterval)
+    if (this.tokenDraggable) {
+      this.tokenDraggable.destroy()
+      this.tokenDraggable = null
+    }
   },
 
   watch: {
@@ -980,6 +1025,45 @@ export default {
     /**
      *  This is run when a user clicks on the calendar to create a new event.
      */
+    /**
+     * One of the two tokens was dropped on the grid.
+     *
+     * The drop time becomes the start, and which token it was decides the
+     * reservation type -- the eye is a session the student drives, the computer
+     * is one the queue runs for them. Nothing is booked here: this opens the
+     * same editor a drag-select opens, pre-filled, so the length and the details
+     * are still theirs to confirm.
+     */
+    externalTokenDropped (info) {
+      if (!this.userIsAuthenticated) return
+
+      const type = info.draggedEl?.dataset?.reservationType === 'project'
+        ? 'project'
+        : 'realtime'
+
+      // A starting length only; the editor lets them change it. Realtime
+      // defaults to the half hour the editor itself uses.
+      const minutes = type === 'realtime' ? 30 : 60
+      const start = moment(info.date)
+      const end = start.clone().add(minutes, 'minutes')
+
+      this.activeEvent.startStr = start.utc().format()
+      this.activeEvent.endStr = end.utc().format()
+      this.activeEvent.title = this.userName
+      this.activeEvent.reservation_type = type
+      this.activeEvent.creator = this.userName
+      this.activeEvent.id = makeUniqueID()
+      this.activeEvent.site = this.calendarSite
+      this.activeEvent.resourceId = this.calendarSite
+      this.activeEvent.creator_id = this.userId
+      this.activeEvent.project_id = 'none'
+      this.activeEvent.reservation_note = ''
+      this.activeEvent.origin = 'ptr'
+
+      this.isNewEvent = true
+      this.eventEditorIsActive = true
+    },
+
     newEventSelected (event) {
       this.activeEvent.startStr = moment(event.startStr).utc().format()
       this.activeEvent.endStr = moment(event.endStr).utc().format()
@@ -1473,6 +1557,37 @@ export default {
 
 <!-- TODO: reduce the bootstrap css (below) to the minimum required for button groups. -->
 <style lang='scss'>
+
+/* The two draggable observation tokens above the grid. Deliberately chunky:
+   the target audience is dragging them with a trackpad. */
+.observation-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75em;
+  padding: 0 0 0.6em;
+}
+
+.observation-token {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.35em 0.75em;
+  border: 1px solid rgba(128, 128, 128, 0.5);
+  border-radius: 6px;
+  cursor: grab;
+  user-select: none;
+  font-weight: 600;
+  background: rgba(128, 128, 128, 0.12);
+}
+
+.observation-token:active {
+  cursor: grabbing;
+}
+
+.observation-token:hover {
+  border-color: #4b95d6;
+}
+
 @import "@/style/buefy-styles.scss";
 @import "@/style/_variables.scss";
 
