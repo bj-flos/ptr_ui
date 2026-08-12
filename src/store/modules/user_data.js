@@ -32,6 +32,10 @@ const state = {
   userName: '',
   userId: '',
   userNickname: '',
+  // The OIDC given_name claim -- the user's actual first name, as opposed to
+  // the nickname, which is usually the local part of their email address.
+  // Absent on connections that never collected it, so treat it as optional.
+  userGivenName: '',
   userEmail: '',
   profileUrl: '',
 
@@ -74,6 +78,7 @@ const mutations = {
   userName (state, val) { state.userName = val },
   userId (state, val) { state.userId = val },
   userNickname (state, val) { state.userNickname = val },
+  userGivenName (state, val) { state.userGivenName = val },
   userEmail (state, val) { state.userEmail = val },
   profileUrl (state, val) { state.profileUrl = val },
 
@@ -124,6 +129,7 @@ const actions = {
     commit('userId', user.sub)
     commit('userName', user.nickname)
     commit('userNickname', user.nickname)
+    commit('userGivenName', user.given_name || '')
     commit('userEmail', user.email)
     commit('profileUrl', user.picture)
 
@@ -142,6 +148,7 @@ const actions = {
     commit('userId', '')
     commit('userName', '')
     commit('userNickname', '')
+    commit('userGivenName', '')
     commit('userEmail', '')
     commit('profileUrl', '')
     commit('user_projects', [])

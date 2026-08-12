@@ -8,6 +8,7 @@ export const user_mixin = {
       'userId',
       'userName',
       'userNickname',
+      'userGivenName',
       'userEmail',
       'profileUrl'
     ])
