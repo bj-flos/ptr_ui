@@ -172,7 +172,12 @@ export default {
 .map-display {
   margin: 0 auto;
   flex: 1 1 auto;
-  min-height: 400px;
+  // The flex remainder alone left the map ~450px tall once the toolbar and the
+  // site cards had taken their share, which is short enough to clip markers
+  // off the bottom of the world -- the map went from filling the screen to a
+  // letterbox strip. Claiming most of the viewport and letting the cards sit
+  // below the fold matches what the page did before the heading was added.
+  min-height: 70vh;
   max-height: 900px;
   width: 100%;
   // Matches one world at zoom 3 (256 * 2^3). A wider box would be filled with
