@@ -142,7 +142,9 @@ export default {
       const mid = moment((this.darkWindow.start.getTime() + this.darkWindow.end.getTime()) / 2)
         .tz(this.timezone)
       const midHours = mid.hours() + mid.minutes() / 60
-      return asDuration((midHours + 12) % 24)
+      // Floored to the hour: sunset moves a little every day, and a column
+      // labelled 15:05, 16:05, 17:05 reads as broken rather than as precise.
+      return asDuration(Math.floor((midHours + 12) % 24))
     },
 
     calendarMaxTime () {
@@ -156,7 +158,7 @@ export default {
       const start = moment(this.darkWindow.start).tz(this.timezone)
       let startHours = start.hours() + start.minutes() / 60
       if (startHours < this.minHours) startHours += 24
-      return asDuration(Math.max(this.minHours, startHours - 1))
+      return asDuration(Math.floor(Math.max(this.minHours, startHours - 1)))
     },
 
     minHours () {
