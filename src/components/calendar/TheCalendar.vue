@@ -387,13 +387,21 @@ export default {
         customNext: {
           text: '>',
           click: this.incrementDateForward
+        },
+        /* Replaces FullCalendar's built-in `today`, which disables itself
+           whenever today is already somewhere in the visible range -- which it
+           almost always is here, so it sat there permanently greyed out with a
+           not-allowed cursor and no way to re-centre a view that had drifted. */
+        customToday: {
+          text: 'today',
+          click: this.goToToday
         }
       },
       fc_defaultView: 'timeGridWeek',
       fc_dateIncrement: { days: 1 }, // how far the arrow buttons move forward and backwards in time
       fc_header: {
         // define the top row of buttons
-        left: 'customPrev,customNext today',
+        left: 'customPrev,customNext customToday',
         center: 'title',
         right: 'dayGridMonth,timeGridWeek,timeGridDay'
       },
@@ -495,6 +503,19 @@ export default {
     // Only show email address on objects where the user is an Admin or is the creator of the object
     showEmail (obj) {
       return this.userIsAdmin || obj.creator_id === this.userId
+    },
+
+    /* The `today` button. Puts today in the second column with yesterday beside
+       it, rather than hard against the left edge, so the run-up to tonight is
+       visible without paging back.
+       Only the week view is shifted: in month view a day's offset means a whole
+       month, and in day view there is only the one column. */
+    goToToday () {
+      if (!this.fullCalendarApi) return
+      this.fullCalendarApi.today()
+      if (this.fullCalendarApi.state.viewType === 'timeGridWeek') {
+        this.incrementDateBack()
+      }
     },
 
     // This is connected to the < button in the calendar header left
