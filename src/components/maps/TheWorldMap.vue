@@ -4,21 +4,32 @@
       :id="mapName"
       class="google-map"
     />
+
+    <!-- Rendered here, hidden, so it is a normal component with normal
+         reactivity; showCard hands this element to the InfoWindow, which moves
+         it into its own DOM. The host is what is hidden, not the card, so the
+         card is visible once Google has taken it. -->
+    <div
+      ref="cardHost"
+      class="card-host"
+    >
+      <SiteInfoCard
+        ref="card"
+        :site="activeSite"
+        @use-telescope="$emit('use-telescope', $event)"
+        @card-enter="onCardEnter"
+        @card-leave="scheduleCardClose"
+      />
+    </div>
   </div>
 </template>
 
 <script>
-import Vue from 'vue'
 import nite from './nite-overlay'
-import store from '@/store'
 import { mapState, mapGetters, mapActions } from 'vuex'
 import { makeIcon } from './mapHelpers'
 import { siteIsDark } from '@/utils/site_darkness'
 import SiteInfoCard from './SiteInfoCard'
-
-// The card is mounted by hand rather than rendered in the template: its element
-// is handed to a Google InfoWindow, which lives outside this component's DOM.
-const SiteCardCtor = Vue.extend(SiteInfoCard)
 
 // How long the card survives after the pointer leaves a marker. The InfoWindow
 // is not a child of the marker -- Google renders it in an overlay pane above --
@@ -37,6 +48,7 @@ const SCHEDULE_DEBOUNCE_MS = 300
 
 export default {
   name: 'TheWorldMap',
+  components: { SiteInfoCard },
   props: {
     name: { type: String, required: true },
     // Show only telescopes where the sun is far enough down to observe.
@@ -61,8 +73,8 @@ export default {
       iw: '', // infoWindow
       oms: '', // OverlappingMarkerSpiderfier
 
-      // The single SiteInfoCard instance shown in the InfoWindow.
-      card: null,
+      // The site the card is currently describing.
+      activeSite: null,
       // A clicked card stays put; a hovered one closes on its own.
       cardPinned: false,
       hoverCloseTimer: null,
@@ -94,15 +106,6 @@ export default {
       google.maps.event.clearInstanceListeners(this.iw)
     }
     this.siteMarkers.forEach(marker => google.maps.event.clearInstanceListeners(marker))
-
-    // The card is mounted outside this component's tree, so Vue will not tear
-    // it down with the map. Without this it keeps its store watchers alive on
-    // every navigation away from the home page.
-    if (this.card) {
-      this.card.$destroy()
-      if (this.card.$el && this.card.$el.remove) this.card.$el.remove()
-      this.card = null
-    }
   },
 
   watch: {
@@ -198,7 +201,6 @@ export default {
     async showCard (site, marker, pinned) {
       clearTimeout(this.hoverCloseTimer)
       if (pinned) this.cardPinned = true
-      if (!this.card) return
 
       // Kick off the schedule lookup but do not wait for it: the card should
       // appear the instant the pointer arrives and fill in the "next free" line
@@ -209,15 +211,21 @@ export default {
       // visibly flash every time the pointer jitters on one marker. The content
       // still updates, because it is the same element either way.
       const sameAnchor = this.iw.getAnchor() === marker
-      this.card.setSite(site)
+      this.activeSite = site
       if (sameAnchor) return
 
-      // Let Vue render before handing the node over. Rendering is async, so
-      // without this Google measures an empty div and sizes the popup to it.
-      await this.card.$nextTick()
+      // Let Vue render the new site before handing the node over. Rendering is
+      // async, so without this Google is given -- and measures -- a card that
+      // has not been filled in yet.
+      await this.$nextTick()
+      if (!this.$refs.card) return
 
-      this.iw.setContent(this.card.$el)
+      this.iw.setContent(this.$refs.card.$el)
       this.iw.open(this.map, marker)
+    },
+
+    onCardEnter () {
+      clearTimeout(this.hoverCloseTimer)
     },
 
     /**
@@ -354,18 +362,6 @@ export default {
 
       const iw = new google.maps.InfoWindow({ maxWidth: 300 })
       this.iw = iw
-
-      // One card for the whole map, mounted detached and never appended to the
-      // page: the InfoWindow takes the element. Reusing one instance means
-      // moving between markers only mutates a prop, so Vue patches in place and
-      // the card does not flash or lose an in-flight lookup.
-      this.card = new SiteCardCtor({ store })
-      this.card.$mount()
-      this.card.$on('use-telescope', site => this.$emit('use-telescope', site))
-      // The card is not inside the marker, so the pointer crossing the gap
-      // between them fires the marker's mouseout. These two keep it alive.
-      this.card.$on('card-enter', () => clearTimeout(this.hoverCloseTimer))
-      this.card.$on('card-leave', () => this.scheduleCardClose())
 
       const unpin = () => { this.cardPinned = false }
       function iwClose () { iw.close() }
@@ -505,6 +501,12 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* Only the host is hidden. The card itself carries no display rule, so it shows
+   normally once the InfoWindow has moved it out of here. */
+.card-host {
+  display: none;
+}
+
 .google-map {
     min-width: 50px;
     min-height: 50px;

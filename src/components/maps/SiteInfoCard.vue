@@ -63,9 +63,14 @@
  * async schedule lookup, none of which a string can carry without re-binding
  * listeners by hand on every open.
  *
- * TheWorldMap creates ONE instance of this for the whole map, mounted detached,
- * and calls setSite() as the pointer moves between markers -- so hovering from
- * one telescope to the next patches the existing DOM instead of remounting.
+ * TheWorldMap renders ONE of these, hidden, inside its own template, and hands
+ * this element to the InfoWindow. Rendering it in the tree rather than mounting
+ * a detached instance by hand is what makes `site` an ordinary prop with
+ * ordinary reactivity; the hand-built version updated its data without the
+ * template ever re-rendering, which showed as an empty popup.
+ *
+ * Because there is one instance for the whole map, moving between markers only
+ * changes the prop, so Vue patches the existing DOM rather than remounting.
  *
  * It deliberately does not import the router or dispatch navigation itself:
  * router.js -> Home.vue -> TheWorldMap.vue, so importing the router back here
@@ -78,21 +83,10 @@ import { nextAvailableText } from '@/utils/site_schedule'
 export default {
   name: 'SiteInfoCard',
 
-  /* `site` is component state rather than a prop, and is set through setSite().
-     This instance is constructed by hand with no parent, so there is nothing to
-     pass a prop down from -- and writing to a prop on a parentless root
-     instance updated the underlying value without the template ever
-     re-rendering it, which showed as an empty popup. Ordinary data has none of
-     that ambiguity. */
-  data () {
-    return {
-      site: null
-    }
-  },
-
-  methods: {
-    setSite (site) {
-      this.site = site
+  props: {
+    site: {
+      type: Object,
+      default: null
     }
   },
 
