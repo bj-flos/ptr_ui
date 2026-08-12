@@ -121,6 +121,7 @@
             :event-details="activeEvent"
             :is-new-event="isNewEvent"
             :event-is-loading="isLoading"
+            :timezone-override="fc_timeZone"
             @submit="submitButtonClicked"
             @cancel="cancelButtonClicked"
             @delete="deleteButtonClicked"

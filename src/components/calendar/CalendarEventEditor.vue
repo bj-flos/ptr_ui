@@ -336,7 +336,12 @@ export default {
   components: { TrashCheckIcon },
   props: [
     'eventDetails',
-    'isNewEvent'
+    'isNewEvent',
+    // The zone the calendar that opened this is displaying. Normally the same
+    // as the site_config getter below; on the home page's booking modal it is
+    // the only source, because that getter follows selected_site and nothing is
+    // selected there.
+    'timezoneOverride'
   ],
   data () {
     return {
@@ -373,8 +378,8 @@ export default {
     }
   },
   async mounted () {
-    this.startStr = moment(this.eventDetails.startStr).tz(this.timezone).format()
-    this.endStr = moment(this.eventDetails.endStr).tz(this.timezone).format()
+    this.startStr = moment(this.eventDetails.startStr).tz(this.effectiveTimezone).format()
+    this.endStr = moment(this.eventDetails.endStr).tz(this.effectiveTimezone).format()
     this.reservation_type_tabs = this.eventDetails.reservation_type
 
     // If an admin opens an event they didn't create, we want them to be able to see the associated project.
@@ -424,6 +429,18 @@ export default {
     ...mapGetters('site_config', [
       'timezone'
     ]),
+
+    /* Every time formatted in here goes through this.
+       The store getter reads global_config[selected_site], so on the home page
+       -- where nothing is selected -- it is undefined, and moment's .tz() with
+       an undefined zone is a *getter*: it returns undefined rather than a
+       moment, and the next .format() throws. That is what broke the editor when
+       it was opened from the booking modal. Guessing the reader's zone as a
+       last resort keeps it from ever being undefined again. */
+    effectiveTimezone () {
+      const guessed = moment.tz && moment.tz.guess ? moment.tz.guess() : 'UTC'
+      return this.timezoneOverride || this.timezone || guessed
+    },
     // Whether the user has permission to modify the calendar event
     userCanModify () {
       return (
@@ -534,7 +551,7 @@ export default {
     },
 
     nightOf () {
-      return moment(this.eventDetails.startStr).tz(this.timezone).format('dddd, MMMM D, YYYY')
+      return moment(this.eventDetails.startStr).tz(this.effectiveTimezone).format('dddd, MMMM D, YYYY')
     },
     startTimeOptions () {
       const startTimes = []
@@ -543,7 +560,7 @@ export default {
       const range = 2 // hours
 
       // The value in the middle of our array
-      const middleTime = moment(this.eventDetails.startStr).tz(this.timezone)
+      const middleTime = moment(this.eventDetails.startStr).tz(this.effectiveTimezone)
       // The first time in the array.
       const startOption = middleTime.subtract(range, 'h')
 
@@ -569,7 +586,7 @@ export default {
       const range = 2 // hours
 
       // The value in the middle of our array
-      const middleTime = moment(this.eventDetails.endStr).tz(this.timezone)
+      const middleTime = moment(this.eventDetails.endStr).tz(this.effectiveTimezone)
       // The first time in the array.
       const endOption = middleTime.subtract(range, 'h')
 
@@ -592,12 +609,12 @@ export default {
     realtime_end_string () {
       return moment(this.startStr)
         .add(this.real_time_session_duration, 'm')
-        .tz(this.timezone)
+        .tz(this.effectiveTimezone)
         .format()
     },
     eventDuration () {
-      const start = moment.tz(this.startStr, this.timezone)
-      const end = moment.tz(this.endStr, this.timezone)
+      const start = moment.tz(this.startStr, this.effectiveTimezone)
+      const end = moment.tz(this.endStr, this.effectiveTimezone)
       const duration = moment.duration(end.diff(start))
       return `(${duration.hours()}h, ${duration.minutes()}m)`
     },
