@@ -1,14 +1,20 @@
 /**
  * When is this telescope next free to observe?
  *
- * "Free" is the intersection of three things, and all three matter:
+ * "Free" here means two things, and only two:
  *   - it is dark there (utils/site_darkness)
  *   - nobody else holds a reservation (the calendar)
- *   - it is online, clear and open right now (utils/site_availability)
  *
- * The third is why `readiness` is an argument rather than something this module
- * looks up. Without it, "free right now" could send a student to a telescope
- * the card beside the button has just told them is shut.
+ * Deliberately NOT whether the weather is good or the roof is open. Those are
+ * live conditions, not claims on the telescope's time, and folding them in here
+ * produced a genuinely misleading answer: a site with an empty calendar that was
+ * clouded out tonight got reported as "free Thursday at 3:42 AM", because
+ * tonight had been skipped for being unusable. Nothing had booked it -- the
+ * message invented a constraint that did not exist.
+ *
+ * Conditions are still enforced, earlier and separately: Home.onUseTelescope
+ * checks siteReadiness before it ever looks at the schedule and toasts the real
+ * reason, and the card shows the same thing in red in its own rows.
  */
 /* moment-timezone, not moment. Everywhere else in this codebase calls .tz() off
    a plain `moment` import and gets away with it because @fullcalendar/moment-
@@ -17,7 +23,6 @@
    makes the site-local formatting below actually work. */
 import moment from 'moment-timezone'
 import { darkWindows } from '@/utils/site_darkness'
-import { isUsableNow } from '@/utils/site_availability'
 
 /** How far ahead to look. One night is the useful horizon for this audience. */
 export const UPCOMING_WINDOW_HOURS = 24
@@ -55,7 +60,7 @@ function subtractBusy (window, busy) {
  *   { status: 'later', start: Date }   free from `start`
  *   { status: 'unknown' }              not enough information to say
  */
-export function computeNextAvailable ({ site, events, readiness, userId, now = new Date() }) {
+export function computeNextAvailable ({ site, events, userId, now = new Date() }) {
   if (!site || !Array.isArray(events)) return { status: 'unknown' }
 
   const dark = darkWindows(site, now, UPCOMING_WINDOW_HOURS)
@@ -84,17 +89,15 @@ export function computeNextAvailable ({ site, events, readiness, userId, now = n
   const first = free[0]
   const now_ms = now.getTime()
 
-  // "Now" means both that the schedule is clear and that the telescope itself
-  // is actually in a fit state to use.
-  if (first.start <= now_ms && first.end > now_ms && isUsableNow(readiness)) {
+  // Dark now and unbooked: free now. Whether it is worth using is a separate
+  // question, asked separately.
+  if (first.start <= now_ms && first.end > now_ms) {
     return { status: 'now' }
   }
 
   const upcoming = free.find(f => f.start > now_ms)
   if (upcoming) return { status: 'later', start: new Date(upcoming.start) }
 
-  // The only free window is the one containing now, but the telescope is not
-  // usable this instant -- so we cannot promise a later time either.
   return { status: 'unknown' }
 }
 

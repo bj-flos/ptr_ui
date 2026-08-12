@@ -87,7 +87,9 @@ export default {
         return
       }
 
-      const next = this.nextAvailable(site, readiness)
+      // Conditions have already been cleared above, so this is purely "has
+      // anyone else claimed this time".
+      const next = this.nextAvailable(site)
       if (next.status === 'now') {
         this.goToSkyMap(site)
         return

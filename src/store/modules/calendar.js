@@ -63,21 +63,20 @@ const getters = {
    * { status: 'now' | 'later' | 'unknown', start? }.
    *
    * Takes the whole site record (not just a code) because darkness needs its
-   * coordinates. `readiness` comes from utils/site_availability so that "free
-   * now" cannot contradict the live status the card is showing.
+   * coordinates. It answers only "has anyone claimed this time" -- live
+   * conditions are a separate question, asked by siteReadiness.
    *
    * Returns 'unknown' rather than guessing whenever the schedule has not been
    * fetched yet or the fetch failed -- callers show that as "we couldn't check"
    * and let the student through rather than blocking on our own uncertainty.
    */
-  nextAvailable: (state, getters, rootState) => (site, readiness) => {
+  nextAvailable: (state, getters, rootState) => site => {
     const cached = site ? state.upcoming_events[site.site] : null
     if (!cached || cached.failed) return { status: 'unknown' }
 
     return computeNextAvailable({
       site,
       events: cached.events,
-      readiness,
       userId: rootState.user_data.userId,
       now: new Date()
     })

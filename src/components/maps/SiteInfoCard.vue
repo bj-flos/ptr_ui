@@ -111,7 +111,7 @@ export default {
        waiting on the answer. */
     next () {
       if (!this.site || !this.upcoming_events[this.site.site]) return null
-      return this.nextAvailable(this.site, this.readiness)
+      return this.nextAvailable(this.site)
     },
 
     nextFreeText () {
