@@ -8,20 +8,42 @@
 </template>
 
 <script>
+import Vue from 'vue'
 import nite from './nite-overlay'
+import store from '@/store'
 import { mapState, mapGetters, mapActions } from 'vuex'
 import { makeIcon } from './mapHelpers'
-import helpers from '@/utils/helpers'
+import { siteIsDark } from '@/utils/site_darkness'
+import SiteInfoCard from './SiteInfoCard'
 
-// The marker palette, so a word in a popup matches the colour of that site's
-// dot where the two describe the same thing. Kept in step with the `colors`
-// map in getSiteMapColor.
-const MARKER_RED = '#cd0000'
-const MARKER_AMBER = '#dd9c00'
+// The card is mounted by hand rather than rendered in the template: its element
+// is handed to a Google InfoWindow, which lives outside this component's DOM.
+const SiteCardCtor = Vue.extend(SiteInfoCard)
+
+// How long the card survives after the pointer leaves a marker. The InfoWindow
+// is not a child of the marker -- Google renders it in an overlay pane above --
+// so moving the pointer from marker to card fires the marker's mouseout on the
+// way. Closing immediately would make the button impossible to click.
+const HOVER_CLOSE_MS = 250
+
+// The dark set changes on the order of hours, so this only has to be often
+// enough that a student does not notice the lag. Each tick only redraws if the
+// marker set actually changed.
+const DARK_RECHECK_MS = 60000
+
+// Long enough that crossing a cluster of markers does not fire a request per
+// marker, short enough that a student who stopped on one barely notices.
+const SCHEDULE_DEBOUNCE_MS = 300
 
 export default {
   name: 'TheWorldMap',
-  props: ['name'],
+  props: {
+    name: { type: String, required: true },
+    // Show only telescopes where the sun is far enough down to observe.
+    darkOnly: { type: Boolean, default: false },
+    // Show only telescopes nobody currently holds a reservation on.
+    bookableOnly: { type: Boolean, default: false }
+  },
   data: function () {
     return {
 
@@ -39,6 +61,15 @@ export default {
       iw: '', // infoWindow
       oms: '', // OverlappingMarkerSpiderfier
 
+      // The single SiteInfoCard instance shown in the InfoWindow.
+      card: null,
+      // A clicked card stays put; a hovered one closes on its own.
+      cardPinned: false,
+      hoverCloseTimer: null,
+      // Which sites were drawn last, so the dark recheck can skip a redraw that
+      // would change nothing -- and in doing so close the open card.
+      lastMarkerKey: '',
+
       // The marker depicting the sun's position
       sunMapMarker: ''
     }
@@ -54,10 +85,47 @@ export default {
     // Remove the looping intervals that update the sun and daylight regions on the map.
     clearInterval(this.updateTwilightInterval)
     clearInterval(this.updateSunInterval)
+    clearInterval(this.darkRecheckInterval)
+    clearTimeout(this.hoverCloseTimer)
+    clearTimeout(this.scheduleFetchTimer)
+
+    if (this.iw) {
+      this.iw.close()
+      google.maps.event.clearInstanceListeners(this.iw)
+    }
+    this.siteMarkers.forEach(marker => google.maps.event.clearInstanceListeners(marker))
+
+    // The card is mounted outside this component's tree, so Vue will not tear
+    // it down with the map. Without this it keeps its store watchers alive on
+    // every navigation away from the home page.
+    if (this.card) {
+      this.card.$destroy()
+      if (this.card.$el && this.card.$el.remove) this.card.$el.remove()
+      this.card = null
+    }
   },
 
   watch: {
     all_sites_real () {
+      this.redrawMapSites()
+    },
+    darkOnly () {
+      this.redrawMapSites()
+    },
+    // Unlike the dark filter, this one cannot be answered locally: it needs
+    // every site's schedule, so the whole set is fetched before redrawing.
+    // Redrawing first would briefly show every telescope as bookable.
+    async bookableOnly (on) {
+      if (!on) {
+        this.redrawMapSites()
+        return
+      }
+      this.$emit('loading', true)
+      try {
+        await Promise.all(this.candidateSites().map(site => this.fetchUpcomingEvents(site.site)))
+      } finally {
+        this.$emit('loading', false)
+      }
       this.redrawMapSites()
     },
     site_open_status () {
@@ -66,6 +134,11 @@ export default {
   },
 
   methods: {
+    // These were spread into `computed`, where Vue treated each mapped action
+    // as a getter -- so `await this.getSiteOpenStatus` (no parens) happened to
+    // dispatch, once, and then cached forever. Actions belong here.
+    ...mapActions('sitestatus', ['getSiteOpenStatus']),
+    ...mapActions('calendar', ['fetchUpcomingEvents']),
 
     // NB still google.maps.Marker, deliberately. OverlappingMarkerSpiderfier
     // 1.0.3 calls marker.setMap() and listens for 'position_changed' and
@@ -77,12 +150,18 @@ export default {
         position: markerData,
         draggable: true
       })
+      const site = markerData.site
 
       google.maps.event.addListener(marker, 'spider_format', function (status) {
         const markerStatus = OverlappingMarkerSpiderfier.markerStatus
         const showName = status == markerStatus.UNSPIDERFIABLE || status == markerStatus.SPIDERFIED
         const showPlus = status == markerStatus.SPIDERFIABLE
         const sizeCoefficient = showName ? 1.5 : 1.5
+
+        // Remembered so hover can skip a '+' marker: it stands for several
+        // telescopes stacked on one point, and the card would have to pick one
+        // of them arbitrarily. Clicking still fans them out.
+        marker._spiderfiable = showPlus
 
         marker.setIcon({
           url: makeIcon(markerData.rgb, white,
@@ -94,11 +173,75 @@ export default {
         // Prevent users from repositioning markers
         marker.setDraggable(false)
       })
+
+      // The spiderfier binds click itself and only listens for
+      // 'position_changed' and 'visible_changed', so plain mouseover/mouseout
+      // are free to add here without it interfering.
+      marker.addListener('mouseover', () => {
+        if (marker._spiderfiable) return
+        this.showCard(site, marker, false)
+      })
+      marker.addListener('mouseout', () => this.scheduleCardClose())
+
       this.oms.addMarker(marker, e => {
-        this.iw.setContent(markerData.content)
-        this.iw.open(this.map, marker)
+        this.showCard(site, marker, true)
       })
       this.siteMarkers.push(marker)
+    },
+
+    /**
+     * Show the card for a site, anchored to its marker.
+     *
+     * `pinned` marks a deliberate click, which keeps the card open until the
+     * user dismisses it. Hover leaves it unpinned so it closes itself.
+     */
+    showCard (site, marker, pinned) {
+      clearTimeout(this.hoverCloseTimer)
+      if (pinned) this.cardPinned = true
+      if (!this.card) return
+
+      // Open first, look up the schedule after: the card should appear the
+      // instant the pointer arrives, and fill in the "next free" line when the
+      // answer comes back.
+      this.requestSchedule(site)
+
+      // Already anchored here: re-running setContent/open would make the card
+      // visibly flash every time the pointer jitters on one marker.
+      if (this.iw.getAnchor() === marker) return
+
+      // Writing straight to a prop, which is normally a Vue warning -- but the
+      // check is skipped for a root instance, and this one was created by hand
+      // with no parent. There is no parent render that could clobber it either,
+      // which is the actual reason the rule exists.
+      this.card.site = site
+      this.iw.setContent(this.card.$el)
+      this.iw.open(this.map, marker)
+    },
+
+    /**
+     * Ask for a site's schedule, once the pointer has settled.
+     *
+     * Sweeping across a spiderfied group fires mouseover on every marker on the
+     * way, so this waits to see whether the student actually stopped on one.
+     * The store adds a TTL cache and an in-flight guard behind it.
+     */
+    requestSchedule (site) {
+      if (!site) return
+      clearTimeout(this.scheduleFetchTimer)
+      this.scheduleFetchTimer = setTimeout(() => {
+        this.fetchUpcomingEvents(site.site)
+      }, SCHEDULE_DEBOUNCE_MS)
+    },
+
+    // Unknown counts as bookable -- see the isBookableNow getter.
+    siteIsBookableNow (site) {
+      return this.isBookableNow(site)
+    },
+
+    scheduleCardClose () {
+      if (this.cardPinned) return
+      clearTimeout(this.hoverCloseTimer)
+      this.hoverCloseTimer = setTimeout(() => this.iw.close(), HOVER_CLOSE_MS)
     },
 
     // Remove every site marker drawn so far. The spiderfier keeps its own
@@ -116,25 +259,48 @@ export default {
       this.infoWindows = []
     },
 
-    // The sites to draw: one marker per wema, not per observatory.
+    // The sites to draw: one marker per telescope.
     //
-    // A wema hosts the roof and weather for any number of observatories, and
-    // they inherit its coordinates -- so a marker per obs stacks them all on
-    // one point and labels it with an arbitrary member of the set. A site with
-    // no wema peer still gets a marker, so nothing is silently dropped.
+    // Previously one per wema, which reads oddly under a button that says "Use
+    // this Telescope" -- and a wema hosting several observatories gave that
+    // button no correct answer. Observatories inherit their wema's coordinates,
+    // so co-located telescopes stack on one point; that is what the spiderfier
+    // is for, and clicking the '+' fans them out.
     //
-    // Both draw paths use this. They used to filter separately and disagreed:
-    // initMap kept the observatories, redrawMapSites kept the wemas.
+    // A wema with no observatory of its own would vanish here, so it is kept:
+    // it is the only marker that site would ever get.
+    //
+    // Sites absent from /allopenstatus are no longer filtered out -- a
+    // telescope we have no status for is still a telescope, drawn grey and
+    // labelled Unknown. See getSiteMapColor for the fallback that makes that
+    // safe.
+    // Every telescope, before the toolbar filters are applied. Split out so the
+    // bookable fan-out can ask about all of them rather than only the ones that
+    // happen to survive the filter it is about to feed.
+    candidateSites () {
+      const all = this.all_sites_real
+      const wemas_with_obs = new Set(
+        all.filter(s => s.instance_type !== 'wema').map(s => s.wema_name))
+
+      return all.filter(s =>
+        s.instance_type !== 'wema' || !wemas_with_obs.has(s.site))
+    },
+
     mapSites () {
-      const known = Object.keys(this.site_open_status)
-      const sites = this.all_sites_real.filter(site => known.includes(site.site))
-      const wema_names = new Set(sites.map(s => s.wema_name))
-      return sites.filter(s =>
-        s.instance_type === 'wema' || !wema_names.has(s.wema_name) || s.site === s.wema_name)
+      let sites = this.candidateSites()
+
+      if (this.darkOnly) {
+        const now = new Date()
+        sites = sites.filter(s => siteIsDark(s, now))
+      }
+      if (this.bookableOnly) {
+        sites = sites.filter(s => this.siteIsBookableNow(s))
+      }
+      return sites
     },
 
     async initMap () {
-      await this.getSiteOpenStatus
+      await this.getSiteOpenStatus()
       const sun_pos = { lat: nite.calculatePositionOfSun().lat(), lng: nite.calculatePositionOfSun().lng() }
       const map_center_latitude = 15 // puts sites at a more visibly comfortable location
       // One world is 256 * 2^zoom px wide, so zoom 3 is exactly 2048px. The
@@ -184,11 +350,25 @@ export default {
       })
       this.oms = oms
 
-      const iw = new google.maps.InfoWindow()
+      const iw = new google.maps.InfoWindow({ maxWidth: 300 })
       this.iw = iw
 
+      // One card for the whole map, mounted detached and never appended to the
+      // page: the InfoWindow takes the element. Reusing one instance means
+      // moving between markers only mutates a prop, so Vue patches in place and
+      // the card does not flash or lose an in-flight lookup.
+      this.card = new SiteCardCtor({ store, propsData: { site: null } })
+      this.card.$mount()
+      this.card.$on('use-telescope', site => this.$emit('use-telescope', site))
+      // The card is not inside the marker, so the pointer crossing the gap
+      // between them fires the marker's mouseout. These two keep it alive.
+      this.card.$on('card-enter', () => clearTimeout(this.hoverCloseTimer))
+      this.card.$on('card-leave', () => this.scheduleCardClose())
+
+      const unpin = () => { this.cardPinned = false }
       function iwClose () { iw.close() }
-      google.maps.event.addListener(this.map, 'click', iwClose)
+      google.maps.event.addListener(this.map, 'click', () => { unpin(); iwClose() })
+      iw.addListener('closeclick', unpin)
 
       // One implementation, called from both places, so the two cannot draw
       // different markers for the same site.
@@ -199,6 +379,17 @@ export default {
       google.maps.event.addListenerOnce(this.map, 'idle', () => {
         this.redrawMapSites()
       })
+
+      // Sites cross the darkness threshold as the night moves. Deliberately not
+      // folded into the 10s sun/terminator intervals above: a redraw clears
+      // every marker, which closes the open card and collapses any spiderfied
+      // group. This one only redraws when the marker set actually changed, and
+      // never while the user is reading a pinned card.
+      this.darkRecheckInterval = setInterval(() => {
+        if (!this.darkOnly || this.cardPinned) return
+        const key = this.mapSites().map(s => s.site).sort().join(',')
+        if (key !== this.lastMarkerKey) this.redrawMapSites()
+      }, DARK_RECHECK_MS)
     },
 
     // Draw the sun for the first time
@@ -234,124 +425,6 @@ export default {
       this.sunMapMarker.position = sun_pos
     },
 
-    /** How the roof reads in the popup: open, or shut with the reason why.
-     *
-     * shutter_status and enclosure_is_open can disagree -- MRC-17 reports a
-     * 'Closed' shutter while enclosure_is_open is true -- so the shutter wins,
-     * matching what the site status footer shows. A roof shut for daytime or
-     * manual mode is expected rather than a fault, so only a weather closure
-     * is drawn in red.
-     */
-    roofState (enclosure) {
-      const open = helpers.enclosureIsOpen(enclosure)
-      if (open === null) return { text: '-', color: '#999999' }
-      if (open) return { text: 'Open', color: 'greenyellow' }
-
-      const reasons = { bad_weather: 'bad weather', daytime: 'daytime', manual: 'manual' }
-      const reason = reasons[enclosure.shut_reason]
-      return {
-        text: reason ? `Shut &mdash; ${reason}` : 'Shut',
-        color: enclosure.shut_reason === 'bad_weather' ? MARKER_RED : MARKER_AMBER
-      }
-    },
-
-    renderSiteContent (name, sitecode, openStatus) {
-      const weather_status_not_stale = openStatus?.weather?.status_age_s < 300
-
-      // Weather and roof readings only mean anything while the site is
-      // reporting, so an offline site shows the one row and nothing stale.
-      // The marker for an offline site is grey -- we do not know its state
-      // rather than knowing it is bad -- but the word itself stays red, since
-      // by the time you have opened the popup you want it to stand out. It is
-      // never shown beside another red: an offline site renders this row alone.
-      const rows = [
-        ['Status', weather_status_not_stale
-          ? { text: 'Online', color: 'greenyellow' }
-          : { text: 'Offline', color: 'red' }]
-      ]
-
-      if (weather_status_not_stale) {
-        rows.push(['Weather', openStatus.wx_ok
-          ? { text: 'ok', color: 'greenyellow' }
-          : { text: 'poor', color: MARKER_RED }])
-        rows.push(['Safety', this.roofState(openStatus.enclosure_status)])
-      }
-
-      // One row per key/value pair, built from a single list so the two columns
-      // cannot drift out of step as rows are added.
-      const weather_status = `
-        <div class="status-entry">
-          <div class="col">
-            ${rows.map(([label]) => `<div class="key">${label}</div>`).join('')}
-          </div>
-          <div class="col">
-            ${rows.map(([, value]) => `<div class="val"><span style="color:${value.color}">${value.text}</span></div>`).join('')}
-          </div>
-        </div>
-        `
-
-      const style = `
-        <style>
-          .status-entry {
-            font-weight: normal;
-            display:flex;
-            flex-direction:row;
-            flex-wrap:wrap;
-            width: 100%;
-            margin-top: 1em;
-            align-items: center;
-          }
-          .col {
-              flex-direction: column;
-              width:50%;
-          }
-          .status-entry .key {
-            color:black;
-            padding: 4px 8px;
-            white-space: nowrap;
-            margin-bottom: 3px;
-            text-align: right;
-            flex-grow:1;
-            height: 2em;
-          }
-          .status-entry .val{
-            color: greenyellow;
-            background-color: black;
-            padding: 4px 8px;
-            margin-bottom: 3px;
-            white-space: nowrap;
-            flex-grow:1;
-            height: 2em;
-          }
-          .site-title {
-            color: blue;
-          }
-        </style>
-        `
-
-      const contentString = `
-
-          ${style}
-
-          <div class="" style="max-width: 200px; background-color:white; border-color: white;">
-            <div class="">
-              <div class="">
-                <div style="padding-bottom: 4px; border-bottom: 1px solid black;">
-                  <p class="title is-5" style="color: black;">${name}</p>
-                  <p class="subtitle is-6" style="color: #333;">site code: ${sitecode}</p>
-                </div>
-              </div>
-
-              ${weather_status}
-
-              <div class="">
-                <a class="button is-success" href="site/${sitecode}/home" style="font-weight: bold; margin-top: 1em;">View this site!</a>
-              </div>
-            </div>
-          </div>`
-      return contentString
-    },
-
     /*
       Colours come from all_sites_status_color, which is shared with the navbar
       dropdown and the quick site switcher so a site's dot means one thing
@@ -365,13 +438,18 @@ export default {
 
       Grey is "we do not know", not "bad": a site that has stopped reporting
       tells us nothing about its roof or weather. Red is reserved for a fault
-      we can actually see. The shut colours match what roofState writes the
-      word "Shut" in.
+      we can actually see. The shut colours match what the card writes the word
+      "Shut" in (see utils/site_availability.js).
 
-      Note markers are drawn per wema (see mapSites), so this colours the
-      wema's roof. The sites pulldown colours each observatory from its own
-      record, which can disagree -- a simulated obs may report an open roof
-      while its wema reports the real one shut.
+      Markers are per observatory now, and an observatory inherits its wema's
+      roof, so a simulated obs reporting an open roof under a wema reporting the
+      real one shut will differ from the sites pulldown, which colours each
+      record on its own.
+
+      The grey fallback is load-bearing: all_sites_status_color only has keys
+      for sites present in /allopenstatus, and the map no longer filters the
+      others out. Without it an unknown site yields undefined, makeIcon throws
+      inside the draw loop, and NO markers render at all.
     */
     getSiteMapColor (site) {
       const colors = {
@@ -380,7 +458,7 @@ export default {
         'status-green': { r: 53, g: 154, b: 34 },
         'status-grey': { r: 100, g: 100, b: 100 }
       }
-      return colors[this.all_sites_status_color[site]]
+      return colors[this.all_sites_status_color[site]] || colors['status-grey']
     },
 
     async redrawMapSites () {
@@ -394,16 +472,22 @@ export default {
 
       this.clearSiteMarkers()
 
-      // For each site, draw a marker with a popup (on click) to visit the site.
-      this.mapSites().forEach(site => {
+      const sites = this.mapSites()
+
+      // For each site, draw a marker whose card opens on hover or click.
+      // The whole site record is passed through rather than a pre-rendered
+      // string: the card is a component now and reads what it needs itself.
+      sites.forEach(site => {
         this.addMarkerWithData({
           lat: site.latitude,
           lng: site.longitude,
           rgb: this.getSiteMapColor(site.site),
-          content: this.renderSiteContent(site.name, site.site, this.site_open_status[site.site]),
+          site,
           name: site.site.toUpperCase()
         })
       })
+
+      this.lastMarkerKey = sites.map(s => s.site).sort().join(',')
     }
 
   },
@@ -412,8 +496,8 @@ export default {
     ...mapState('site_config', ['test_sites']),
     ...mapGetters('site_config', ['all_sites_real']),
     ...mapState('sitestatus', ['site_open_status']),
-    ...mapActions('sitestatus', ['getSiteOpenStatus']),
-    ...mapGetters('sitestatus', ['all_sites_status_color'])
+    ...mapGetters('sitestatus', ['all_sites_status_color']),
+    ...mapGetters('calendar', ['isBookableNow'])
   }
 }
 </script>

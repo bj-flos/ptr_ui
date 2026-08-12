@@ -33,19 +33,6 @@
       >
         About
       </b-navbar-item>
-      <b-navbar-item
-        tag="a"
-        href="https://ptredu.org/"
-        target="_blank"
-      >
-        <b-tooltip
-          label="(opens a new tab)"
-          position="is-bottom"
-          type="is-black"
-        >
-          Courses
-        </b-tooltip>
-      </b-navbar-item>
       <!-- <b-navbar-item
         tag="router-link"
         :to="{ path: '/resources' }"
@@ -57,7 +44,6 @@
             <b-navbar-item tag="router-link" :to="{ path: '/affiliates' }">
               Affiliates
             </b-navbar-item-->
-      <NavbarSiteDropdown label="Sites" />
     </template>
 
     <template slot="end">
@@ -69,7 +55,14 @@
           v-if="userIsAuthenticated"
           class="navbar-item has-dropdown is-hoverable is-dark"
         >
+          <!-- Greeting before the avatar, and hidden on touch: the navbar is
+               locked to 75px and "Welcome back Alexandra" is several times
+               wider than the nickname it replaced. -->
           <div class="navbar-link">
+            <p class="greeting is-hidden-touch">
+              Welcome back{{ firstName ? ' ' + firstName : '' }}
+            </p>
+            <div style="width:8px" />
             <img
               :src="profileUrl"
               width="25"
@@ -77,8 +70,6 @@
               style="border-radius: 50%;"
               referrerpolicy="no-referrer"
             >
-            <div style="width:5px" />
-            <p> {{ userName }} </p>
           </div>
 
           <div class="navbar-dropdown">
@@ -155,7 +146,6 @@
 <script>
 import PhotonRanch from '@/components/logoText/PhotonRanch'
 import PTR from '@/components/logoText/PTR'
-import NavbarSiteDropdown from '@/components/NavbarSiteDropdown'
 import { mapState, mapMutations } from 'vuex'
 import { user_mixin } from '@/mixins/user_mixin'
 
@@ -163,8 +153,7 @@ export default {
   name: 'SiteNavbar',
   components: {
     PTR,
-    PhotonRanch,
-    NavbarSiteDropdown
+    PhotonRanch
   },
   mixins: [
     user_mixin
@@ -185,23 +174,14 @@ export default {
 
     showCautionButton () {
       return this.userIsAuthenticated && this.isGoogleFederatedAccount
-    },
-
-    real_sites () {
-      return this.all_sites_real.map(s => s.site)
-    },
-    simulated_sites () {
-      return this.all_sites_simulated.map(s => s.site)
-    },
-
-    menu_name () {
-      let siteName = ''
-      if (this.selected_site != '') {
-        siteName += ' - ' + this.selected_site.toUpperCase()
-      }
-      return siteName
     }
 
+  },
+  // The sites dropdown used to be the thing that refreshed open status on every
+  // page that shows the navbar; it is gone, and the markers on the home page now
+  // depend on that status, so the navbar has to ask for it itself.
+  mounted () {
+    this.updateSiteStatus()
   },
   methods: {
     ...mapMutations('user_data', {
@@ -244,6 +224,11 @@ nav {
 .not-authenticated {
   display: flex;
   gap: 1em;
+}
+
+/* The navbar is a fixed 75px, so the greeting must never wrap. */
+.greeting {
+  white-space: nowrap;
 }
 
 </style>

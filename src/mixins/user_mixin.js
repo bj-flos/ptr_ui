@@ -10,7 +10,18 @@ export const user_mixin = {
       'userNickname',
       'userEmail',
       'profileUrl'
-    ])
+    ]),
+
+    /* userName is the Auth0 nickname, which for most accounts is the local part
+       of an email address -- "bj.kowalski", not "BJ". Greeting a grade-school
+       student with that reads badly, so take the first token and capitalise it.
+       Returns '' when there is nothing usable; callers drop the name entirely
+       rather than greeting an empty string. */
+    firstName () {
+      const local = (this.userName || '').split('@')[0]
+      const first = local.split(/[._\-\s]+/).filter(Boolean)[0] || ''
+      return first ? first.charAt(0).toUpperCase() + first.slice(1) : ''
+    }
   },
 
   methods: {
