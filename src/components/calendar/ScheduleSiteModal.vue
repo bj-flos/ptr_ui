@@ -100,10 +100,13 @@ export default {
       if (!this.startTime) return 'Pick a time that suits you.'
       const start = moment(this.startTime).tz(this.timezone)
       const same_day = start.isSame(moment().tz(this.timezone), 'day')
+      // Same as the map card: name the zone, because the time is the
+      // telescope's and not the student's.
+      const at = start.format('h:mm A z')
       const when = same_day
-        ? `tonight at ${start.format('h:mm A')}`
-        : `${start.format('dddd')} at ${start.format('h:mm A')}`
-      return `Someone is using it right now. It's free from ${when}, its time.`
+        ? `tonight at ${at}`
+        : `${start.format('dddd')} at ${at}`
+      return `Someone is using it right now. It's free from ${when}.`
     },
 
     // Same shape SiteCalendar feeds the calendar; the resource timeline views

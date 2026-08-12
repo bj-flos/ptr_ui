@@ -217,10 +217,15 @@ export default {
   color: $grey-light;
   font: 20px "Share Tech Mono", monospace;
 }
-nav {
-  height: 75px;
-}
+/* Height goes on .navbar, not on `nav`. As an element selector the old rule
+   lost to Bulma's own .navbar, so the bar sat at Bulma's 60px while the brand
+   block inside it stayed 75px -- the logo hung 15px below the bar and, with the
+   z-index below, painted over whatever came next. That used to be the map,
+   where it went unnoticed; it now covers the top of the filter buttons.
+   75px is the height the rest of the navbar CSS already assumes. */
 .navbar {
+  height: 75px;
+  min-height: 75px;
   border-radius: 0;
   z-index:31; /* so the navbar doesn't cover fullscreen modals */
 }

@@ -115,7 +115,13 @@ export function nextAvailableText (next, site) {
     ? start.isSame(moment().tz(zone), 'day')
     : start.isSame(moment(), 'day')
 
+  /* The zone is named, not implied. These times are at the telescope, which for
+     this audience is routinely a hemisphere away, so "8:53 PM" on its own
+     invites reading it as the student's own clock. `z` gives the abbreviation
+     where the zone has one (PDT, AEST) and the UTC offset where it does not. */
+  const at = start.format('h:mm A z')
+
   return same_day
-    ? `Free tonight at ${start.format('h:mm A')}`
-    : `Free ${start.format('dddd')} at ${start.format('h:mm A')}`
+    ? `Free tonight at ${at}`
+    : `Free ${start.format('dddd')} at ${at}`
 }
