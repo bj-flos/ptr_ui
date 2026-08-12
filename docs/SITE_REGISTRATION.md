@@ -103,10 +103,11 @@ That is the wrong end to discover it. The observatory retries `update_config` fo
 PUT, so rejecting an incomplete config at the API would surface the problem at startup, in the
 site's own logs, instead of as an absence someone eventually notices.
 
-### A live example: WEMA and OBS-17
+### A live example: the Asterism sites
 
-As of 2026-08-11, `/all/config` contains two sites that no container, env file or compose project
-accounts for:
+As of 2026-08-11, `/all/config` contains two sites belonging to no PTR container, env file or
+compose project: `WEMA` and `OBS-17`. These are **Asterism sites reporting into PTR** — a real
+external integration, not leftovers — which is what makes them the best argument in this document.
 
 | | `WEMA` | `OBS-17` | (`MRC`, for comparison) |
 |---|---|---|---|
@@ -115,14 +116,24 @@ accounts for:
 | `wema_name` | `WEMA` | **null** | `MRC` |
 | in `/allopenstatus` | yes | no | yes |
 
-`WEMA` has coordinates but no timezone, so it throws and is dropped — even though it is actively
-publishing status, so something is still running it. `OBS-17` is dropped twice: it fails the
-coordinate and timezone checks, and its null `wema_name` cannot resolve to a registered site.
-Both carry `name: "BJ Sky Simulator"`, so a sky-simulator harness PUT them using the default
-identifiers.
+`WEMA` has coordinates but no timezone, so it throws and is dropped — despite actively publishing
+status. `OBS-17` is dropped twice over: it fails the coordinate and timezone checks, and its null
+`wema_name` cannot resolve to a registered site, so even supplying the missing fields would not be
+enough to link it to `WEMA`. Both carry `name: "BJ Sky Simulator"`.
 
-Nothing rejected either of them. They have been sitting in the config store, invisible, for as
-long as they have existed — which is exactly the failure mode this document argues against.
+So a partner system is successfully registering and, in `WEMA`'s case, successfully posting
+status — and none of it reaches the UI. The integration looks healthy from the Asterism end and is
+invisible from this one, with the only diagnostic a `console.error` in a browser nobody has open.
+
+This is the strongest case for validating at `put_config`. It is not about rejecting junk: it is
+that **an external integrator has no way to learn what PTR requires**. A PUT that returned 400
+naming the missing fields would have told them at first contact, and `update_config`-style retry
+loops would keep surfacing it until fixed. Instead the write succeeds, the site is stored, and
+nothing works.
+
+Do not "fix" these two by patching the stored documents. The configs come from Asterism, so a
+patch here is overwritten on its next PUT; the fields have to be corrected at the source, or PTR
+has to accept a site described the way Asterism describes it.
 
 ## Registration is not just unvalidated, it is unauthenticated
 
@@ -181,9 +192,10 @@ hardware fingerprint, which is worth considering for a WEMA since it is tied to 
 1. Require the authorizer on `putConfig` and `deleteConfig` — the single biggest gap, and worth
    doing on its own even before licensing exists.
 2. Reject a config missing the fields the UI requires — `latitude`, `longitude`,
-   `TZ_database_name`, and a `wema_name` resolving to a registered site — so an incomplete site
-   fails loudly at startup instead of vanishing from the UI. See the required-field contract
-   above; `WEMA` and `OBS-17` are what happens without it.
+   `TZ_database_name`, and a `wema_name` resolving to a registered site — with a 400 that names
+   what is missing, so an incomplete site fails loudly at first contact instead of vanishing from
+   the UI. See the required-field contract above; the Asterism sites are what happens without it.
+   This matters most for external integrators, who have no other way to discover the contract.
 3. Reject a config whose site code is not registered, rather than creating it implicitly.
 4. For a WEMA, require a valid, unexpired licence.
 5. For an observatory, require that its `wema_name` resolves to a licensed WEMA and that the
