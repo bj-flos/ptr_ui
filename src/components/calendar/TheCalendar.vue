@@ -188,6 +188,14 @@ export default {
 
     showWeatherForecast: {
       required: true
+    },
+
+    // Heading over the left time axis. Defaults to the observatory's own clock,
+    // which is what fc_timeZone is everywhere except the home page's booking
+    // modal, where the axis runs on the reader's local time instead.
+    localAxisLabel: {
+      type: String,
+      default: 'Obs. Local'
     }
 
   },
@@ -733,9 +741,11 @@ export default {
 
         const localHeader = e.querySelector('.fc-axis')
         if (localHeader) {
-          // Set local header text
+          // Set local header text. The axis renders whatever zone fc_timeZone
+          // names, so the label has to be told which one that is -- the home
+          // page's booking modal runs this calendar on the reader's own clock.
           if (localHeader.querySelector('span')) {
-            localHeader.querySelector('span').textContent = 'Obs. Local'
+            localHeader.querySelector('span').textContent = this.localAxisLabel
           }
 
           // Add UTC header

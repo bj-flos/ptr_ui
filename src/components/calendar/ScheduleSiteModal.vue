@@ -1,20 +1,19 @@
 <template>
   <div class="modal-card schedule-modal">
+    <!-- No close control in the header. Bulma lays the head out from the left,
+         so a .delete here sat immediately after the title text rather than at
+         the far edge, reading as part of the name. Closing is the footer
+         button, Escape, or a click outside. -->
     <header class="modal-card-head">
       <div>
         <p class="modal-card-title">
           Book time on {{ site.name }}
+          <span class="obs-code">({{ site.site }})</span>
         </p>
         <p class="modal-subtitle">
           {{ subtitle }}
         </p>
       </div>
-      <button
-        type="button"
-        class="delete"
-        aria-label="close"
-        @click="$emit('close')"
-      />
     </header>
 
     <section class="modal-card-body">
@@ -28,6 +27,7 @@
         class="the-calendar"
         :calendar-site="site.site"
         :fc_time-zone="timezone"
+        local-axis-label="Your Local"
         :fc_resources="listOfObservatories"
         :show-moon-events="true"
         :show-weather-forecast="true"
@@ -89,21 +89,24 @@ export default {
   computed: {
     ...mapGetters('site_config', ['all_sites']),
 
-    // The site's own zone, not the site_config `timezone` getter -- that one
-    // follows selected_site, which is whatever site page was last open and has
-    // nothing to do with the telescope that was clicked on the map.
+    /* The reader's own zone, so the left column of the calendar is the clock
+       they are actually looking at -- matching the "next free" line on the map
+       card, which is where they arrived from.
+       Only the axis changes: FullCalendar places events by absolute time, and
+       bookings are submitted in UTC (newEventSelected converts), so the site
+       still receives the same instants whichever zone is displayed.
+       Deliberately not the site_config `timezone` getter either way -- that one
+       follows selected_site, which is whatever site page was last open and has
+       nothing to do with the telescope clicked on the map. */
     timezone () {
-      return this.site.TZ_database_name || 'UTC'
+      return moment.tz.guess() || this.site.TZ_database_name || 'UTC'
     },
 
     subtitle () {
       if (!this.startTime) return 'Pick a time that suits you.'
-      // The student's clock, matching the map card. The calendar below shows
-      // the observatory's own time, which is what booking against a site needs;
-      // this line is the plain-language summary, so it stays in the reader's.
-      const local = moment.tz.guess()
-      const start = moment(this.startTime).tz(local)
-      const same_day = start.isSame(moment().tz(local), 'day')
+      // Same clock as the calendar axis below and as the map card.
+      const start = moment(this.startTime).tz(this.timezone)
+      const same_day = start.isSame(moment().tz(this.timezone), 'day')
       const at = start.format('h:mm A z')
       const when = same_day
         ? `tonight at ${at}`
@@ -166,6 +169,17 @@ export default {
   font-size: 0.9rem;
   opacity: 0.8;
   margin-top: 0.25em;
+}
+
+/* The observatory's own code beside its name. Several of these names read as
+   the site rather than the telescope -- "Apache Ridge Observatory" is the
+   place, ARO-17 is the instrument -- so the code says which one is being
+   booked. */
+.obs-code {
+  font-size: 0.8em;
+  font-weight: normal;
+  opacity: 0.75;
+  margin-left: 0.5em;
 }
 
 .how-to {
