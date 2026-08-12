@@ -103,27 +103,33 @@ That is the wrong end to discover it. The observatory retries `update_config` fo
 PUT, so rejecting an incomplete config at the API would surface the problem at startup, in the
 site's own logs, instead of as an absence someone eventually notices.
 
-### A live example: the Asterism sites
+### A worked example: the Asterism sites
 
-As of 2026-08-11, `/all/config` contains two sites belonging to no PTR container, env file or
-compose project: `WEMA` and `OBS-17`. These are **Asterism sites reporting into PTR** — a real
-external integration, not leftovers — which is what makes them the best argument in this document.
+`WEMA` and `OBS-17` belong to no PTR container, env file or compose project. They are **Asterism
+sites reporting into PTR** — a real external integration, not leftovers — which is what makes them
+the best argument in this document.
 
-| | `WEMA` | `OBS-17` | (`MRC`, for comparison) |
+**They now register correctly and display.** Both carry coordinates, `America/Chicago`, and
+`wema_name: "WEMA"`; `WEMA` draws on the map and both appear in the site list. What follows is the
+state they were in earlier on 2026-08-11, kept because the failure is the point.
+
+| | `WEMA` then | `OBS-17` then | both now |
 |---|---|---|---|
-| latitude / longitude | 45.07 / -93.11 | **null** | 34.459 / -119.681 |
-| `TZ_database_name` | **null** | **null** | `America/Los_Angeles` |
-| `wema_name` | `WEMA` | **null** | `MRC` |
-| in `/allopenstatus` | yes | no | yes |
+| latitude / longitude | 45.07 / -93.11 | **null** | 45.07 / -93.11 |
+| `TZ_database_name` | **null** | **null** | `America/Chicago` |
+| `wema_name` | `WEMA` | **null** | `WEMA` |
+| in `/allopenstatus` | yes | no | `WEMA` only |
+| shown in the UI | **no** | **no** | yes |
 
-`WEMA` has coordinates but no timezone, so it throws and is dropped — despite actively publishing
-status. `OBS-17` is dropped twice over: it fails the coordinate and timezone checks, and its null
-`wema_name` cannot resolve to a registered site, so even supplying the missing fields would not be
-enough to link it to `WEMA`. Both carry `name: "BJ Sky Simulator"`.
+`WEMA` had coordinates but no timezone, so it threw and was dropped — despite actively publishing
+status. `OBS-17` was dropped twice over: it failed the coordinate and timezone checks, and its
+`wema_name` was null, so it could not be linked to `WEMA` even if the rest were supplied.
 
-So a partner system is successfully registering and, in `WEMA`'s case, successfully posting
-status — and none of it reaches the UI. The integration looks healthy from the Asterism end and is
-invisible from this one, with the only diagnostic a `console.error` in a browser nobody has open.
+So a partner system was registering successfully and, in `WEMA`'s case, posting status
+successfully — and none of it reached the UI. The integration looked healthy from the Asterism end
+and did not exist from this one, with the only diagnostic a `console.error` in a browser nobody had
+open. It was corrected at the source, which is the right place; nothing in PTR reported it, which is
+the problem.
 
 This is the strongest case for validating at `put_config`. It is not about rejecting junk: it is
 that **an external integrator has no way to learn what PTR requires**. A PUT that returned 400
