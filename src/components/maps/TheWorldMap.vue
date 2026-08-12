@@ -378,18 +378,16 @@ export default {
         this.redrawMapSites()
       })
 
-      // A Google map created before its container has been laid out renders
-      // nothing, and a map that never renders never fires 'idle' -- so the
-      // markers above were never drawn and the page showed an empty world. One
-      // resize once Vue has flushed the layout is enough to make it render.
-      // 'tilesloaded' is listened for as well because whichever of the two
-      // arrives first should draw; redrawMapSites clears before it draws, so
-      // being called twice costs a redraw and changes nothing.
+      // Draw on whichever of these arrives first. On the dev stack the map
+      // sometimes never renders at all -- no tiles, no projection, and so no
+      // 'idle' -- which left the world empty because the draw hangs off 'idle'
+      // alone. That failure is older than this component's rewrite (it happens
+      // on the PTR branch too) and is not fixed here; listening for
+      // 'tilesloaded' as well just removes one way of missing the draw.
+      // redrawMapSites clears before it draws, so being called twice is a
+      // wasted redraw and nothing worse.
       google.maps.event.addListenerOnce(this.map, 'tilesloaded', () => {
         this.redrawMapSites()
-      })
-      this.$nextTick(() => {
-        google.maps.event.trigger(this.map, 'resize')
       })
 
       // Sites cross the darkness threshold as the night moves. Deliberately not
@@ -481,11 +479,6 @@ export default {
       // The spiderfier is set up by initMap and is what renders the site code
       // into the icon, so there is nothing to draw before it exists.
       if (!this.oms) { return }
-
-      // The spiderfier throws if a marker is added before the map has a
-      // viewport, since it cannot tell what overlaps until then. A projection
-      // is the cheapest proof that the map has actually rendered.
-      if (!this.map.getProjection()) { return }
 
       this.clearSiteMarkers()
 
