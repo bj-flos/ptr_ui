@@ -98,10 +98,12 @@ export default {
 
     subtitle () {
       if (!this.startTime) return 'Pick a time that suits you.'
-      const start = moment(this.startTime).tz(this.timezone)
-      const same_day = start.isSame(moment().tz(this.timezone), 'day')
-      // Same as the map card: name the zone, because the time is the
-      // telescope's and not the student's.
+      // The student's clock, matching the map card. The calendar below shows
+      // the observatory's own time, which is what booking against a site needs;
+      // this line is the plain-language summary, so it stays in the reader's.
+      const local = moment.tz.guess()
+      const start = moment(this.startTime).tz(local)
+      const same_day = start.isSame(moment().tz(local), 'day')
       const at = start.format('h:mm A z')
       const when = same_day
         ? `tonight at ${at}`

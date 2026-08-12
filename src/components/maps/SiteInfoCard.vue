@@ -117,7 +117,7 @@ export default {
     nextFreeText () {
       if (!this.site) return ''
       if (!this.next) return "We're still checking the schedule…"
-      return nextAvailableText(this.next, this.site)
+      return nextAvailableText(this.next)
     },
 
     /* The button says what the click will actually do. While the schedule is

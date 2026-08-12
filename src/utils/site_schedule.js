@@ -99,26 +99,27 @@ export function computeNextAvailable ({ site, events, readiness, userId, now = n
 }
 
 /**
- * The "next free" line on the card, in the site's own local time.
+ * The "next free" line on the card, in the reader's own local time.
  *
- * Times are shown where the telescope is, not where the student is: "free
- * tonight at 8:14 PM" means 8:14 PM at the observatory.
+ * Deliberately the student's clock rather than the observatory's. A student in
+ * California being told a telescope in Melbourne is free at "2:15 PM AEST" has
+ * to do arithmetic across a date line before knowing whether that is tonight or
+ * school time; the whole point of the line is to answer "can I use this, and
+ * when", so it is answered in the clock they are looking at.
+ *
+ * The zone is still named, because a time with no zone on a page about
+ * telescopes on the other side of the world is exactly what invites the wrong
+ * reading. `z` gives the abbreviation where the zone has one and the UTC offset
+ * where it does not.
  */
-export function nextAvailableText (next, site) {
+export function nextAvailableText (next) {
   if (!next) return ''
   if (next.status === 'now') return 'Free right now!'
   if (next.status === 'unknown') return "We couldn't check the schedule"
 
-  const zone = site?.TZ_database_name
-  const start = zone ? moment(next.start).tz(zone) : moment(next.start)
-  const same_day = zone
-    ? start.isSame(moment().tz(zone), 'day')
-    : start.isSame(moment(), 'day')
-
-  /* The zone is named, not implied. These times are at the telescope, which for
-     this audience is routinely a hemisphere away, so "8:53 PM" on its own
-     invites reading it as the student's own clock. `z` gives the abbreviation
-     where the zone has one (PDT, AEST) and the UTC offset where it does not. */
+  const zone = moment.tz.guess()
+  const start = moment(next.start).tz(zone)
+  const same_day = start.isSame(moment().tz(zone), 'day')
   const at = start.format('h:mm A z')
 
   return same_day
