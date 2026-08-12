@@ -16,6 +16,7 @@
         :bookable-only="bookableOnly"
         class="map-display"
         @use-telescope="onUseTelescope"
+        @schedule-later="onScheduleLater"
         @loading="schedulesLoading = $event"
       />
       <!--leaflet-map name="leafmap"></leaflet-map-->
@@ -109,6 +110,24 @@ export default {
         message: "We couldn't check the schedule, so we'll take you there anyway."
       })
       this.goToSkyMap(site)
+    },
+
+    /**
+     * "Schedule Later" on a telescope that is free right now.
+     *
+     * Deliberately not gated on conditions the way onUseTelescope is: booking a
+     * slot for tonight or tomorrow has nothing to do with whether it happens to
+     * be cloudy at this moment, and refusing to let a student book a rained-off
+     * telescope would be the wrong answer to the wrong question.
+     */
+    onScheduleLater (site) {
+      if (!site) return
+      if (!this.userIsAuthenticated) {
+        this.login()
+        return
+      }
+      // No start time: the point of this button is that the student picks one.
+      this.openScheduler(site, null)
     },
 
     // "Sky Map" is the `targets` subpage of a site.

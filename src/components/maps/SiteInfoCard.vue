@@ -50,6 +50,17 @@
       >
         {{ buttonLabel }}
       </button>
+
+      <!-- Only when the telescope is free this minute. Otherwise the primary
+           button already says "Schedule Time" and this would be the same
+           action twice. -->
+      <button
+        v-if="canScheduleLater"
+        class="button is-light schedule-later"
+        @click="$emit('schedule-later', site)"
+      >
+        Schedule Later
+      </button>
     </template>
   </div>
 </template>
@@ -127,6 +138,15 @@ export default {
       if (this.next && this.next.status === 'now') return 'Use Now'
       if (this.next && this.next.status === 'later') return 'Schedule Time'
       return 'Use this Telescope'
+    },
+
+    /* Free right now is the only case where booking is a genuinely different
+       choice from the main button: a student who could observe this minute may
+       still want a slot at a better hour, or on a night that is not clouded
+       out. When the telescope is not free now the main button already opens the
+       calendar. */
+    canScheduleLater () {
+      return !!(this.next && this.next.status === 'now')
     }
   }
 }
@@ -203,6 +223,11 @@ export default {
 .use-telescope {
   font-weight: bold;
   margin-top: 0.5em;
+  width: 100%;
+}
+
+.schedule-later {
+  margin-top: 0.4em;
   width: 100%;
 }
 </style>

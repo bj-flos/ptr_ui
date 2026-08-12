@@ -17,6 +17,7 @@
         ref="card"
         :site="activeSite"
         @use-telescope="$emit('use-telescope', $event)"
+        @schedule-later="$emit('schedule-later', $event)"
         @card-enter="onCardEnter"
         @card-leave="scheduleCardClose"
       />
