@@ -48,7 +48,7 @@
         class="button is-success use-telescope"
         @click="$emit('use-telescope', site)"
       >
-        Use this Telescope
+        {{ buttonLabel }}
       </button>
     </template>
   </div>
@@ -105,13 +105,28 @@ export default {
       return readinessRows(this.readiness)
     },
 
-    /* The card opens before the schedule has been asked for, so the absence of
-       a cache entry means "still looking", not "we failed". Those read very
-       differently to a student waiting on the answer. */
+    /* Null while the schedule has not come back yet. The card opens before it
+       has even been asked for, so the absence of a cache entry means "still
+       looking", not "we failed" -- and those read very differently to a student
+       waiting on the answer. */
+    next () {
+      if (!this.site || !this.upcoming_events[this.site.site]) return null
+      return this.nextAvailable(this.site, this.readiness)
+    },
+
     nextFreeText () {
       if (!this.site) return ''
-      if (!this.upcoming_events[this.site.site]) return "We're still checking the schedule…"
-      return nextAvailableText(this.nextAvailable(this.site, this.readiness), this.site)
+      if (!this.next) return "We're still checking the schedule…"
+      return nextAvailableText(this.next, this.site)
+    },
+
+    /* The button says what the click will actually do. While the schedule is
+       still unknown it stays neutral rather than promising either, because the
+       click could still go to either one. */
+    buttonLabel () {
+      if (this.next && this.next.status === 'now') return 'Use Now'
+      if (this.next && this.next.status === 'later') return 'Schedule Time'
+      return 'Use this Telescope'
     }
   }
 }
