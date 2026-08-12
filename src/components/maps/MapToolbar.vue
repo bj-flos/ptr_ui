@@ -1,7 +1,7 @@
 <template>
   <div class="map-toolbar">
     <h1 class="map-title">
-      Photon Ranch Resources
+      Available Sites
     </h1>
 
     <div class="map-filters">
