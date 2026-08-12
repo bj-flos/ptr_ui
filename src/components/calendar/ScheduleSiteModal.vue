@@ -28,6 +28,7 @@
         :calendar-site="site.site"
         :fc_time-zone="timezone"
         local-axis-label="Your Local"
+        :site-longitude-override="siteLongitude"
         :fc_resources="listOfObservatories"
         :show-moon-events="true"
         :show-weather-forecast="true"
@@ -100,6 +101,14 @@ export default {
        nothing to do with the telescope clicked on the map. */
     timezone () {
       return moment.tz.guess() || this.site.TZ_database_name || 'UTC'
+    },
+
+    /* The sidereal column is computed against this. Without it the calendar
+       falls back to the store's selected-site longitude, which is unset on the
+       home page -- the column rendered NaN.NaN. */
+    siteLongitude () {
+      const lng = Number(this.site.longitude)
+      return isFinite(lng) ? lng : null
     },
 
     subtitle () {

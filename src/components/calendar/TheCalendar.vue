@@ -196,6 +196,15 @@ export default {
     localAxisLabel: {
       type: String,
       default: 'Obs. Local'
+    },
+
+    // The observatory's longitude, for the sidereal column. Normally left unset
+    // and taken from the store, but that getter reads the *selected* site --
+    // which is empty on the home page, so the booking modal has to say which
+    // telescope it means or the column renders NaN.NaN.
+    siteLongitudeOverride: {
+      type: Number,
+      default: null
     }
 
   },
@@ -290,6 +299,15 @@ export default {
     fc_selectable () {
       // whether to let user click and drag to select a time range.
       return this.userIsAuthenticated
+    },
+
+    /* The longitude to compute sidereal time against. Prefers whatever the
+       caller named, because the store getter follows selected_site rather than
+       calendarSite and is NaN wherever no site page has been opened. */
+    effectiveLongitude () {
+      return this.siteLongitudeOverride != null && isFinite(this.siteLongitudeOverride)
+        ? this.siteLongitudeOverride
+        : this.site_longitude
     },
 
     ...mapState('site_config', [
@@ -668,7 +686,7 @@ export default {
     addExtraTimeColumns () {
       // Get all rows that need time columns
       const rows = document.querySelectorAll('.fc-slats > table.table-bordered tbody > tr')
-      const longitude = this.site_longitude
+      const longitude = this.effectiveLongitude
 
       rows.forEach(r => {
         const localTimeCol = r.querySelector('.fc-axis.fc-time')
@@ -839,7 +857,7 @@ export default {
           start,
           end,
           lat: this.site_latitude,
-          lng: this.site_longitude
+          lng: this.effectiveLongitude
         }
       }
 
