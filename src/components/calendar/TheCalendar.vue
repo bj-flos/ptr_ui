@@ -368,6 +368,15 @@ export default {
       Configs for fullCalendar (anything with fc_ namespace)
       /=================================================== */
       fc_views: {
+        /* A rolling seven days starting wherever the current date is, rather
+           than a Monday-to-Sunday week. Without this the view snaps back to the
+           week boundary after every move, so stepping a day at a time did
+           nothing visible and the today button could not put today in the
+           second column. It is also what the +7/-6 workaround in
+           incrementDateForward was working around. */
+        timeGridWeek: {
+          dateAlignment: 'day'
+        },
         // definitions for additional calendar views (eg. 10 day grid)
         resourceTimelineDay: {
           buttonText: ':15 slots',
