@@ -29,6 +29,9 @@
         :fc_time-zone="timezone"
         local-axis-label="Your Local"
         :site-longitude-override="siteLongitude"
+        :min-time-override="calendarMinTime"
+        :max-time-override="calendarMaxTime"
+        :scroll-time-override="calendarScrollTime"
         :fc_resources="listOfObservatories"
         :show-moon-events="true"
         :show-weather-forecast="true"
@@ -70,6 +73,15 @@
 import TheCalendar from '@/components/calendar/TheCalendar'
 import { mapGetters } from 'vuex'
 import moment from 'moment-timezone'
+import { darkWindows } from '@/utils/site_darkness'
+
+/* FullCalendar takes these as durations from midnight, and tolerates hours past
+   24 to mean "into the next day" -- 39:00:00 is 3pm tomorrow. */
+function asDuration (hours) {
+  const h = Math.floor(hours)
+  const m = Math.round((hours - h) * 60)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
+}
 
 export default {
   name: 'ScheduleSiteModal',
@@ -109,6 +121,48 @@ export default {
     siteLongitude () {
       const lng = Number(this.site.longitude)
       return isFinite(lng) ? lng : null
+    },
+
+    /* The site's next full night. Longest rather than first, because if it is
+       already dark there the first window is only the remainder of tonight and
+       centring on its midpoint would be off by hours. */
+    darkWindow () {
+      const windows = darkWindows(this.site, new Date(), 36)
+      if (!windows.length) return null
+      return windows.reduce((a, b) => (b.end - b.start > a.end - a.start ? b : a))
+    },
+
+    /* Put the site's dark hours down the middle of the column.
+       The axis is the reader's clock, so the observatory's night can fall
+       anywhere in their day -- a Melbourne night is a Chicago morning. Starting
+       the column 12 hours before the middle of that night centres it, which
+       leaves the reader's afternoon above it and their morning below. */
+    calendarMinTime () {
+      if (!this.darkWindow) return null
+      const mid = moment((this.darkWindow.start.getTime() + this.darkWindow.end.getTime()) / 2)
+        .tz(this.timezone)
+      const midHours = mid.hours() + mid.minutes() / 60
+      return asDuration((midHours + 12) % 24)
+    },
+
+    calendarMaxTime () {
+      if (!this.calendarMinTime) return null
+      return asDuration(this.minHours + 24)
+    },
+
+    // Opens with the night already in view rather than at the top of the column.
+    calendarScrollTime () {
+      if (!this.darkWindow) return null
+      const start = moment(this.darkWindow.start).tz(this.timezone)
+      let startHours = start.hours() + start.minutes() / 60
+      if (startHours < this.minHours) startHours += 24
+      return asDuration(Math.max(this.minHours, startHours - 1))
+    },
+
+    minHours () {
+      if (!this.calendarMinTime) return 12
+      const [h, m] = this.calendarMinTime.split(':').map(Number)
+      return h + m / 60
     },
 
     subtitle () {

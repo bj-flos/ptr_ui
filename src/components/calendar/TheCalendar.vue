@@ -15,9 +15,9 @@
       :event-time-format="fc_eventTimeFormat"
       :locale="fc_locale"
       :time-zone="fc_timeZone"
-      :min-time="fc_minTime"
-      :max-time="fc_maxTime"
-      :scroll-time="fc_scrollTime"
+      :min-time="effectiveMinTime"
+      :max-time="effectiveMaxTime"
+      :scroll-time="effectiveScrollTime"
       :nav-links="fc_navLinks"
       :selectable="fc_selectable"
       :select-mirror="fc_selectMirror"
@@ -205,6 +205,25 @@ export default {
     siteLongitudeOverride: {
       type: Number,
       default: null
+    },
+
+    /* The visible span of a day column, as durations from midnight in whatever
+       zone fc_timeZone names. maxTime may exceed 24:00 to run into the next day.
+       Left unset the calendar shows noon to noon, which puts night in the
+       middle -- but only while the axis is the observatory's own clock. The
+       booking modal runs the axis on the reader's clock and centres the window
+       on the site's dark hours itself. */
+    minTimeOverride: {
+      type: String,
+      default: null
+    },
+    maxTimeOverride: {
+      type: String,
+      default: null
+    },
+    scrollTimeOverride: {
+      type: String,
+      default: null
     }
 
   },
@@ -304,6 +323,16 @@ export default {
     /* The longitude to compute sidereal time against. Prefers whatever the
        caller named, because the store getter follows selected_site rather than
        calendarSite and is NaN wherever no site page has been opened. */
+    effectiveMinTime () {
+      return this.minTimeOverride || this.fc_minTime
+    },
+    effectiveMaxTime () {
+      return this.maxTimeOverride || this.fc_maxTime
+    },
+    effectiveScrollTime () {
+      return this.scrollTimeOverride || this.fc_scrollTime
+    },
+
     effectiveLongitude () {
       return this.siteLongitudeOverride != null && isFinite(this.siteLongitudeOverride)
         ? this.siteLongitudeOverride
