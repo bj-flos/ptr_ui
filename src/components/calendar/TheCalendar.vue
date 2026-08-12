@@ -442,13 +442,21 @@ export default {
         customNext: {
           text: '>',
           click: this.incrementDateForward
+        },
+        /* Replaces FullCalendar's built-in `today`, which disables itself
+           whenever today is already somewhere in the visible range -- which
+           here it nearly always is, so it sat permanently greyed out and a view
+           that had been paged away could not be brought back. */
+        customToday: {
+          text: 'today',
+          click: this.goToToday
         }
       },
       fc_defaultView: 'timeGridWeek',
       fc_dateIncrement: { days: 1 }, // how far the arrow buttons move forward and backwards in time
       fc_header: {
         // define the top row of buttons
-        left: 'customPrev,customNext today',
+        left: 'customPrev,customNext customToday',
         center: 'title',
         right: 'dayGridMonth,timeGridWeek,timeGridDay'
       },
@@ -550,6 +558,37 @@ export default {
     // Only show email address on objects where the user is an Admin or is the creator of the object
     showEmail (obj) {
       return this.userIsAdmin || obj.creator_id === this.userId
+    },
+
+    /**
+     * The `today` button: bring the view back so today is the second column,
+     * with yesterday beside it, so the run-up to tonight stays visible.
+     *
+     * Deliberately driven by incrementDate rather than today() or gotoDate().
+     * Both of those move the calendar's currentDate without the visible range
+     * following it here -- the range is only ever moved by incrementDate, which
+     * is what the arrow buttons use. So this measures how far the current range
+     * start is from where it should be and steps that many days, exactly as
+     * pressing the arrows repeatedly would.
+     */
+    goToToday () {
+      const api = this.fullCalendarApi
+      if (!api) return
+
+      // Only the week view has columns to centre; month and day are handled by
+      // the ordinary jump to now.
+      if (api.state.viewType !== 'timeGridWeek') {
+        api.today()
+        return
+      }
+
+      const midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      const now = new Date()
+      const wanted = midnight(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))
+      const current = midnight(api.view.activeStart)
+
+      const days = Math.round((wanted - current) / 86400000)
+      if (days !== 0) api.incrementDate({ days })
     },
 
     // This is connected to the < button in the calendar header left
