@@ -59,8 +59,11 @@
                locked to 75px and "Welcome back Alexandra" is several times
                wider than the nickname it replaced. -->
           <div class="navbar-link">
+            <!-- The stored name is used exactly as it is: it is the one the
+                 user chose, and reshaping it turns "BJ" into "Bj". The name is
+                 simply omitted when there is nothing stored. -->
             <p class="greeting is-hidden-touch">
-              Welcome back{{ firstName ? ' ' + firstName : '' }}
+              Welcome back{{ userName ? ' ' + userName : '' }}
             </p>
             <div style="width:8px" />
             <img
