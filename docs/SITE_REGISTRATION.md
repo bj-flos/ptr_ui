@@ -81,6 +81,49 @@ weeks later.
 Note `photonranch-api` is LCO's repository. Any change follows the same route as the others here —
 a local branch and a push to the `bj-flos` fork, never to `origin`.
 
+## There is a required-field contract, and only the UI enforces it
+
+`put_config` will store any JSON. The UI then quietly refuses to display a site that does not
+carry what it needs — `all_sites` in `src/store/modules/site_config.js`:
+
+```js
+if (isNaN(latitude))    throw new Error('Latitude is missing or invalid.', site)
+if (isNaN(longitude))   throw new Error('Longitude is missing or invalid.', site)
+if (!TZ_database_name)  throw new Error('TZ_database_name is missing.', site)
+...
+sites = sites.filter(site => allSiteNames.has(site.wema_name))
+```
+
+So a site is only usable if it has **latitude**, **longitude**, **`TZ_database_name`**, and a
+**`wema_name` that resolves to another registered site**. Every failure is swallowed by
+`catch { console.error(...) }`, so a site that fails any of them does not appear anywhere in the
+UI and says so only in the browser console.
+
+That is the wrong end to discover it. The observatory retries `update_config` forever on a failed
+PUT, so rejecting an incomplete config at the API would surface the problem at startup, in the
+site's own logs, instead of as an absence someone eventually notices.
+
+### A live example: WEMA and OBS-17
+
+As of 2026-08-11, `/all/config` contains two sites that no container, env file or compose project
+accounts for:
+
+| | `WEMA` | `OBS-17` | (`MRC`, for comparison) |
+|---|---|---|---|
+| latitude / longitude | 45.07 / -93.11 | **null** | 34.459 / -119.681 |
+| `TZ_database_name` | **null** | **null** | `America/Los_Angeles` |
+| `wema_name` | `WEMA` | **null** | `MRC` |
+| in `/allopenstatus` | yes | no | yes |
+
+`WEMA` has coordinates but no timezone, so it throws and is dropped — even though it is actively
+publishing status, so something is still running it. `OBS-17` is dropped twice: it fails the
+coordinate and timezone checks, and its null `wema_name` cannot resolve to a registered site.
+Both carry `name: "BJ Sky Simulator"`, so a sky-simulator harness PUT them using the default
+identifiers.
+
+Nothing rejected either of them. They have been sitting in the config store, invisible, for as
+long as they have existed — which is exactly the failure mode this document argues against.
+
 ## Registration is not just unvalidated, it is unauthenticated
 
 Worse than the missing format check: **`putConfig` and `deleteConfig` have no authorizer at all.**
@@ -137,12 +180,16 @@ hardware fingerprint, which is worth considering for a WEMA since it is tied to 
 
 1. Require the authorizer on `putConfig` and `deleteConfig` — the single biggest gap, and worth
    doing on its own even before licensing exists.
-2. Reject a config whose site code is not registered, rather than creating it implicitly.
-3. For a WEMA, require a valid, unexpired licence.
-4. For an observatory, require that its `wema_name` resolves to a licensed WEMA and that the
+2. Reject a config missing the fields the UI requires — `latitude`, `longitude`,
+   `TZ_database_name`, and a `wema_name` resolving to a registered site — so an incomplete site
+   fails loudly at startup instead of vanishing from the UI. See the required-field contract
+   above; `WEMA` and `OBS-17` are what happens without it.
+3. Reject a config whose site code is not registered, rather than creating it implicitly.
+4. For a WEMA, require a valid, unexpired licence.
+5. For an observatory, require that its `wema_name` resolves to a licensed WEMA and that the
    WEMA lists it in `obsp_ids` — so an observatory cannot attach itself to a site that has not
    claimed it.
-5. Keep the format checks above, since a registered code still has to be renderable and URL-safe.
+6. Keep the format checks above, since a registered code still has to be renderable and URL-safe.
 
 Because `update_config` retries forever on failure, a site failing any of these surfaces
 immediately at startup rather than silently appearing in the UI — which is the behaviour you want
