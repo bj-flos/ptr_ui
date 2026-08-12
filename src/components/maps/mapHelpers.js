@@ -16,7 +16,16 @@ const makeIcon = (function () {
 
   const plusTemplate = processTemplate('<path d="M17 11.012c0-.607-.51-1.117-1.115-1.117h-3.222v-3.23c0-.63-.533-1.165-1.163-1.165s-1.163.534-1.163 1.166v3.23H7.115C6.51 9.895 6 10.405 6 11.01c0 .607.51 1.117 1.115 1.117h3.222v3.204c0 .632.533 1.166 1.163 1.166s1.163-.534 1.163-1.166V12.13h3.222c.606 0 1.115-.51 1.115-1.118z" fill="`fill`"/>')
   // var plusTemplate = processTemplate('<text>tst</text>');
-  const nameTemplate = processTemplate('<text x="50%" y="35%" font-size="6" font-weight="bold" font-family="Verdana" fill="white" text-anchor="middle" dominant-baseline="middle" lenghtAdjust1="spacingAndGlyphs" textLength1="15">`name`</text>')
+  /* The site code, drawn inside the marker body.
+     It used to be plain white, which had two problems: the marker's own outline
+     is white, so the glyphs merged into it wherever the text ran near the edge,
+     and white on the amber marker was weak to begin with. No single flat colour
+     works, because the body underneath is green, red, amber or grey depending
+     on the site.
+     Black with a white outline drawn underneath (paint-order puts the stroke
+     behind the fill) keeps the text legible on all four, and the halo separates
+     it from the marker edge and from the greens and greys of the terrain. */
+  const nameTemplate = processTemplate('<text x="50%" y="35%" font-size="6" font-weight="bold" font-family="Verdana" fill="black" stroke="white" stroke-width="1.4" stroke-linejoin="round" paint-order="stroke" text-anchor="middle" dominant-baseline="middle" lenghtAdjust1="spacingAndGlyphs" textLength1="15">`name`</text>')
 
   const rgbTemplate = processTemplate('rgb(`r`,`g`,`b`)')
 

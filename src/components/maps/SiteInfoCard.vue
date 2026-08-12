@@ -64,7 +64,7 @@
  * listeners by hand on every open.
  *
  * TheWorldMap creates ONE instance of this for the whole map, mounted detached,
- * and mutates `site` as the pointer moves between markers -- so hovering from
+ * and calls setSite() as the pointer moves between markers -- so hovering from
  * one telescope to the next patches the existing DOM instead of remounting.
  *
  * It deliberately does not import the router or dispatch navigation itself:
@@ -77,12 +77,25 @@ import { nextAvailableText } from '@/utils/site_schedule'
 
 export default {
   name: 'SiteInfoCard',
-  props: {
-    site: {
-      type: Object,
-      default: null
+
+  /* `site` is component state rather than a prop, and is set through setSite().
+     This instance is constructed by hand with no parent, so there is nothing to
+     pass a prop down from -- and writing to a prop on a parentless root
+     instance updated the underlying value without the template ever
+     re-rendering it, which showed as an empty popup. Ordinary data has none of
+     that ambiguity. */
+  data () {
+    return {
+      site: null
     }
   },
+
+  methods: {
+    setSite (site) {
+      this.site = site
+    }
+  },
+
   computed: {
     // Read from the store rather than taking a prop, so a status update while
     // the card is open re-renders it in place.

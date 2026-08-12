@@ -195,25 +195,27 @@ export default {
      * `pinned` marks a deliberate click, which keeps the card open until the
      * user dismisses it. Hover leaves it unpinned so it closes itself.
      */
-    showCard (site, marker, pinned) {
+    async showCard (site, marker, pinned) {
       clearTimeout(this.hoverCloseTimer)
       if (pinned) this.cardPinned = true
       if (!this.card) return
 
-      // Open first, look up the schedule after: the card should appear the
-      // instant the pointer arrives, and fill in the "next free" line when the
-      // answer comes back.
+      // Kick off the schedule lookup but do not wait for it: the card should
+      // appear the instant the pointer arrives and fill in the "next free" line
+      // when the answer comes back.
       this.requestSchedule(site)
 
       // Already anchored here: re-running setContent/open would make the card
-      // visibly flash every time the pointer jitters on one marker.
-      if (this.iw.getAnchor() === marker) return
+      // visibly flash every time the pointer jitters on one marker. The content
+      // still updates, because it is the same element either way.
+      const sameAnchor = this.iw.getAnchor() === marker
+      this.card.setSite(site)
+      if (sameAnchor) return
 
-      // Writing straight to a prop, which is normally a Vue warning -- but the
-      // check is skipped for a root instance, and this one was created by hand
-      // with no parent. There is no parent render that could clobber it either,
-      // which is the actual reason the rule exists.
-      this.card.site = site
+      // Let Vue render before handing the node over. Rendering is async, so
+      // without this Google measures an empty div and sizes the popup to it.
+      await this.card.$nextTick()
+
       this.iw.setContent(this.card.$el)
       this.iw.open(this.map, marker)
     },
@@ -357,7 +359,7 @@ export default {
       // page: the InfoWindow takes the element. Reusing one instance means
       // moving between markers only mutates a prop, so Vue patches in place and
       // the card does not flash or lose an in-flight lookup.
-      this.card = new SiteCardCtor({ store, propsData: { site: null } })
+      this.card = new SiteCardCtor({ store })
       this.card.$mount()
       this.card.$on('use-telescope', site => this.$emit('use-telescope', site))
       // The card is not inside the marker, so the pointer crossing the gap
