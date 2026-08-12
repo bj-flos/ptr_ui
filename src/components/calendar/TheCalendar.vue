@@ -588,7 +588,22 @@ export default {
       const current = midnight(api.view.activeStart)
 
       const days = Math.round((wanted - current) / 86400000)
-      if (days !== 0) api.incrementDate({ days })
+      if (days === 0) return
+
+      if (days < 0) {
+        api.incrementDate({ days })
+        return
+      }
+
+      /* Forward is not symmetric with backward here: this view only honours
+         forward moves in whole weeks, so incrementDate({days: 5}) does nothing
+         at all while {days: -5} works. Overshoot to the next week boundary and
+         come back, which is the same trick incrementDateForward uses to move a
+         single day. */
+      const weeks = Math.ceil(days / 7)
+      api.incrementDate({ days: weeks * 7 })
+      const overshoot = weeks * 7 - days
+      if (overshoot > 0) api.incrementDate({ days: -overshoot })
     },
 
     // This is connected to the < button in the calendar header left
