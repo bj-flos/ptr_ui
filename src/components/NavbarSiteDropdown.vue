@@ -29,11 +29,21 @@
           :key="wema.id"
           :class="[site_online_class(wema.id), 'wema-and-obs']"
         >
-          <div class="site-row wema">
+          <!-- The wema heading is a link in its own right. It has its own site
+               page -- Site.vue branches on site_is_wema -- and an admin looking
+               at weather or an enclosure wants that page, not one of the
+               telescopes underneath it. -->
+          <router-link
+            tag="div"
+            :class="[{'selected': dropdown_active_site==wema.id}, 'site-row', 'wema']"
+            :to="{ path: '/site/' + wema.id + '/' + active_subpage }"
+            @click="dropdown_active_site = wema.id"
+            @click.native="close_dropdown"
+          >
             <div class="wema-name-expanded">
               {{ wema.id.toUpperCase() }} - {{ wema.name }}
             </div>
-          </div>
+          </router-link>
           <ul class="obs-all">
             <li
               v-for="(obs, obs_index) in wema.observatories"
@@ -297,6 +307,10 @@ export default {
     // align-items: flex-start;
     padding: 0 10px;
 }
+.site-row.wema {
+  cursor: pointer;
+}
+
 .site-row {
     display: flex;
     flex-direction: row;

@@ -51,6 +51,14 @@
             <b-navbar-item tag="router-link" :to="{ path: '/affiliates' }">
               Affiliates
             </b-navbar-item-->
+
+      <!-- Admins only. The dropdown lists every wema and observatory, including
+           ones a student has no business steering; the map is the way in for
+           everyone else. -->
+      <NavbarSiteDropdown
+        v-if="userIsAdmin"
+        label="Sites"
+      />
     </template>
 
     <template slot="end">
@@ -155,11 +163,15 @@
 </template>
 
 <script>
+import NavbarSiteDropdown from '@/components/NavbarSiteDropdown'
 import { mapState, mapMutations } from 'vuex'
 import { user_mixin } from '@/mixins/user_mixin'
 
 export default {
   name: 'SiteNavbar',
+  components: {
+    NavbarSiteDropdown
+  },
   mixins: [
     user_mixin
   ],
