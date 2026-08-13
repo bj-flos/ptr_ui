@@ -29,6 +29,8 @@
         :fc_time-zone="timezone"
         local-axis-label="Your Local"
         :site-longitude-override="siteLongitude"
+        :site-latitude-override="siteLatitude"
+        :forecast-override="forecast"
         :min-time-override="calendarMinTime"
         :max-time-override="calendarMaxTime"
         :scroll-time-override="calendarScrollTime"
@@ -72,6 +74,7 @@
  */
 import TheCalendar from '@/components/calendar/TheCalendar'
 import { mapGetters } from 'vuex'
+import axios from 'axios'
 import moment from 'moment-timezone'
 import { darkWindows, siteIsDark } from '@/utils/site_darkness'
 
@@ -95,7 +98,11 @@ export default {
 
   data () {
     return {
-      ready: false
+      ready: false,
+      // Fetched here rather than through the store: the store keeps one
+      // forecast, for whichever site was last opened, and this modal is for a
+      // site nobody has selected. Writing to it would clobber the site page's.
+      forecast: []
     }
   },
 
@@ -121,6 +128,12 @@ export default {
     siteLongitude () {
       const lng = Number(this.site.longitude)
       return isFinite(lng) ? lng : null
+    },
+
+    // The moon band is computed against these; without them the lookup gets NaN.
+    siteLatitude () {
+      const lat = Number(this.site.latitude)
+      return isFinite(lat) ? lat : null
     },
 
     /* The site's next full night. Longest rather than first, because if it is
@@ -221,7 +234,9 @@ export default {
     }
   },
 
-  mounted () {
+  async mounted () {
+    this.fetchForecast()
+
     // One frame after the modal's open transition, so FullCalendar measures a
     // container that has its final width.
     this.readyTimer = setTimeout(() => {
@@ -238,6 +253,21 @@ export default {
   },
 
   methods: {
+    /* The forecast belongs to the wema, not the individual telescope, which is
+       the same shape the store's own fetch uses. A failure here is silent on
+       purpose: no bars is exactly what the calendar shows anyway. */
+    async fetchForecast () {
+      const wema = this.site.wema_name || this.site.site
+      const endpoint = this.$store.state.api_endpoints.status_endpoint
+      if (!wema || !endpoint) return
+      try {
+        const response = await axios.get(`${endpoint}/${wema}/forecast`)
+        this.forecast = response.data?.status?.forecast || []
+      } catch (e) {
+        console.warn('booking modal could not load the forecast', e)
+      }
+    },
+
     openFullCalendar () {
       this.$emit('close')
       this.$router.push(`/site/${this.site.site}/calendar`)

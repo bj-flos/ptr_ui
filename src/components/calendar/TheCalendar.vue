@@ -1,5 +1,6 @@
 <template>
   <div class="calendar-container">
+    <CalendarLegend />
     <!-- Drag either onto the calendar to start booking at that time. Rendered
          here rather than in the pages so both the site calendar and the home
          page's booking modal get them. -->
@@ -175,6 +176,7 @@ import { mapState, mapGetters } from 'vuex'
 
 import CalendarEventEditor from '@/components/calendar/CalendarEventEditor'
 import ObservationViewer from '@/components/calendar/ObservationViewer'
+import CalendarLegend from '@/components/calendar/CalendarLegend'
 
 import FullCalendar from '@fullcalendar/vue'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -217,7 +219,8 @@ export default {
     CalendarEventEditor,
     ObservationViewer,
     EyeThroughTelescopeIcon,
-    ComputerThroughTelescopeIcon
+    ComputerThroughTelescopeIcon,
+    CalendarLegend
   },
   props: {
     // The active site (resource) disaplyed in the calendar
@@ -257,6 +260,23 @@ export default {
     // telescope it means or the column renders NaN.NaN.
     siteLongitudeOverride: {
       type: Number,
+      default: null
+    },
+
+    // Same reason as the longitude: the store getter follows the selected site,
+    // which is unset on the home page, so the moon lookup got NaN for its
+    // coordinates and the band never drew in the booking modal.
+    siteLatitudeOverride: {
+      type: Number,
+      default: null
+    },
+
+    /* The weather forecast to draw. The store keeps a single forecast for
+       whichever site was last opened, so the booking modal -- which is for a
+       site nobody has selected -- had none and drew no bars. Passing it in
+       avoids the modal overwriting the site page's copy. */
+    forecastOverride: {
+      type: Array,
       default: null
     },
 
@@ -412,6 +432,16 @@ export default {
     },
     effectiveScrollTime () {
       return this.scrollTimeOverride || this.fc_scrollTime
+    },
+
+    effectiveLatitude () {
+      return this.siteLatitudeOverride != null && isFinite(this.siteLatitudeOverride)
+        ? this.siteLatitudeOverride
+        : this.site_latitude
+    },
+
+    effectiveForecast () {
+      return this.forecastOverride || this.forecast
     },
 
     effectiveLongitude () {
@@ -1081,7 +1111,7 @@ export default {
         params: {
           start,
           end,
-          lat: this.site_latitude,
+          lat: this.effectiveLatitude,
           lng: this.effectiveLongitude
         }
       }
@@ -1636,7 +1666,7 @@ export default {
       if (!this.showWeatherForecast) {
         return []
       }
-      const forecast = this.$store.getters['sitestatus/forecast']
+      const forecast = this.effectiveForecast
       if (forecast.length == 0) {
         return []
       } else {
@@ -1898,6 +1928,8 @@ $sky-darkness-z-index: 15;
 
 /* Styles for the overall calendar component */
 .calendar-container {
+  // The legend dock is positioned against this corner.
+  position: relative;
   margin: 0 auto;
   height: 100%;
 }
