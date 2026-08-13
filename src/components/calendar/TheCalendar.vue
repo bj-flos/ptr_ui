@@ -165,6 +165,27 @@
         {{ event_hover_data.note }}
       </p>
     </div>
+
+    <!-- The weather band under the pointer. Reports the whole run of one
+         colour, so moving onto the next colour reports that band instead. -->
+    <div id="forecast-info">
+      <p class="event-info-title">
+        {{ forecast_hover_data.quality }}
+      </p>
+      <p v-if="forecast_hover_data.conditions">
+        {{ forecast_hover_data.conditions }}
+      </p>
+      <p>{{ forecast_hover_data.when }}</p>
+      <p class="event-info-note">
+        {{ forecast_hover_data.duration }} at this quality
+      </p>
+      <p
+        v-for="row in forecast_hover_data.rows"
+        :key="row.label"
+      >
+        {{ row.label }}: &ensp;{{ row.value }}
+      </p>
+    </div>
   </div>
 </template>
 
@@ -197,6 +218,27 @@ import '@fullcalendar/core/main.css'
 import '@fullcalendar/daygrid/main.css'
 import '@fullcalendar/timegrid/main.css'
 import '@fullcalendar/resource-timeline/main.css'
+
+// The words the legend puts against each forecast colour. Kept in step with
+// CalendarLegend: a hover that named the bands differently from the key beside
+// it would be worse than one that named them not at all.
+const FORECAST_QUALITY_LABELS = {
+  1: 'Excellent',
+  2: 'Good',
+  3: 'Ok',
+  4: 'Poor',
+  5: 'Terrible'
+}
+
+// What a forecast hour carries that is worth reading, in the order it reads
+// best. Anything absent from a given provider's payload is simply left out.
+const FORECAST_FIELDS = [
+  { key: 'cloud_cover', label: 'Cloud', unit: '%', decimals: 0 },
+  { key: 'temperature', label: 'Temp', unit: '°C', decimals: 1 },
+  { key: 'humidity', label: 'Humidity', unit: '%', decimals: 0 },
+  { key: 'wind_speed', label: 'Wind', unit: ' m/s', decimals: 1 },
+  { key: 'rain', label: 'Rain', unit: ' mm', decimals: 1 }
+]
 
 // This function is used to convert the calendar's left time column into the UTC
 // values on the right column
@@ -603,6 +645,14 @@ export default {
         creator: '',
         when: '',
         note: ''
+      },
+
+      forecast_hover_data: {
+        quality: '',
+        conditions: '',
+        when: '',
+        duration: '',
+        rows: []
       },
 
       // this informs what buttons appear in the modal event editor
@@ -1357,6 +1407,72 @@ export default {
       this.positionHoverBox(box, mouseInfo)
     },
 
+    /**
+     * The weather under the pointer, described across the whole colour band.
+     *
+     * The band, not the hour: the bars are drawn one per run of like-coloured
+     * hours, so what is being pointed at is a stretch of weather with a start
+     * and an end. Move onto the next colour and this reports that band's own
+     * range and figures.
+     */
+    showForecastHover (mouseInfo) {
+      const band = mouseInfo.event.extendedProps.forecastBand
+      const start = moment(band.start).tz(this.fc_timeZone)
+      const end = moment(band.end).tz(this.fc_timeZone)
+
+      // The date once when the band stays inside a day, twice when it crosses
+      // midnight -- an overnight run reading "22:00 – 05:00" invites the wrong
+      // day at a glance.
+      const when = start.isSame(end, 'day')
+        ? `${start.format('ddd D MMM, HH:mm')} – ${end.format('HH:mm')} ${start.format('z')}`
+        : `${start.format('ddd D MMM, HH:mm')} – ${end.format('ddd D MMM, HH:mm')} ${start.format('z')}`
+
+      // The provider's own words, deduplicated: a six hour band is usually one
+      // description repeated, but a quality band can hold more than one.
+      const described = band.hours.map(h => h.long_text).filter(Boolean)
+      const conditions = [...new Set(described)].join(', ')
+
+      this.forecast_hover_data = {
+        quality: FORECAST_QUALITY_LABELS[band.quality] || `Quality ${band.quality}`,
+        conditions,
+        when,
+        duration: `${band.hours.length} ${band.hours.length === 1 ? 'hour' : 'hours'}`,
+        rows: FORECAST_FIELDS
+          .map(field => this.forecastFieldSummary(band.hours, field))
+          .filter(Boolean)
+      }
+
+      const box = document.getElementById('forecast-info')
+      if (!box) return
+      box.style.visibility = 'visible'
+      this.positionHoverBox(box, mouseInfo)
+    },
+
+    /**
+     * One measurement across a band: a single figure while it holds steady,
+     * the span once it moves. An average would bury the hour that matters,
+     * which for wind or cloud is usually the whole question.
+     */
+    forecastFieldSummary (hours, { key, label, unit, decimals }) {
+      const values = hours
+        .map(h => h[key])
+        .filter(v => typeof v === 'number' && isFinite(v))
+      if (!values.length) return null
+
+      const low = Math.min(...values)
+      const high = Math.max(...values)
+      // Rain is zero nearly always; a row saying so on every band is noise.
+      if (key === 'rain' && high === 0) return null
+
+      const show = v => String(Number(v.toFixed(decimals)))
+      return {
+        label,
+        value: low === high
+          ? `${show(low)}${unit}`
+          : `${show(low)} – ${show(high)}${unit}`
+      }
+    },
+
     /* Who to credit for a booking. `creator` holds whatever the person was
        called when it was made -- a nickname on anything created before names
        were stored, which for most accounts is an email local part. For the
@@ -1395,7 +1511,12 @@ export default {
     },
 
     eventMouseEnter (mouseInfo) {
-      // Everything drawn as background is shading, not a booking.
+      // Weather bands are background too, but they do have something to say.
+      if (mouseInfo.event.extendedProps && mouseInfo.event.extendedProps.forecastBand) {
+        return this.showForecastHover(mouseInfo)
+      }
+
+      // Everything else drawn as background is shading, not a booking.
       if (mouseInfo.event.rendering !== 'background' &&
           mouseInfo.event.title !== 'Moon Event') {
         return this.showEventHover(mouseInfo)
@@ -1426,6 +1547,9 @@ export default {
 
       const box = document.getElementById('event-info')
       if (box) box.style.visibility = 'hidden'
+
+      const forecastBox = document.getElementById('forecast-info')
+      if (forecastBox) forecastBox.style.visibility = 'hidden'
     },
 
     /* ===================================================/
@@ -1677,17 +1801,61 @@ export default {
       if (forecast.length == 0) {
         return []
       } else {
-        return forecast.map(f => {
+        // One event per band of like-coloured hours, rather than one per hour.
+        // The colour is what a reader sees, so the colour is what a hover
+        // should describe: a run of Good hours reads as one stretch of
+        // weather, and answering with only the hour under the pointer answers
+        // a question nobody asked. It also leaves the calendar fewer
+        // background elements to draw.
+        return this.groupForecastIntoBands(forecast).map(band => {
           return {
-            start: moment(f.utc_long_form).utc().format(),
-            end: moment(f.utc_long_form).utc().add('1', 'hours').format(),
+            start: band.start,
+            end: band.end,
             rendering: 'background',
             title: 'weather forecast',
             id: 'fc-custom-weather-forecast',
-            classNames: ['fc-forecast-event', `quality-${f.weather_quality_number}`]
+            classNames: ['fc-forecast-event', `quality-${band.quality}`],
+            extendedProps: { forecastBand: band }
           }
         })
       }
+    },
+
+    /**
+     * Consecutive hours of one forecast quality, gathered into bands.
+     *
+     * Two hours join the same band only when they share a quality and actually
+     * adjoin. A hole in the series -- a provider that skipped an hour, or two
+     * fetches stitched together -- starts a new band instead of inventing
+     * weather to span the gap.
+     */
+    groupForecastIntoBands (forecast) {
+      const hours = forecast
+        .filter(f => f && f.utc_long_form)
+        .slice()
+        .sort((a, b) => moment(a.utc_long_form).valueOf() - moment(b.utc_long_form).valueOf())
+
+      const bands = []
+      hours.forEach(hour => {
+        const startsAt = moment(hour.utc_long_form).utc()
+        const endsAt = startsAt.clone().add(1, 'hours')
+        const open = bands[bands.length - 1]
+
+        if (open &&
+            open.quality === hour.weather_quality_number &&
+            moment(open.end).isSame(startsAt)) {
+          open.end = endsAt.format()
+          open.hours.push(hour)
+        } else {
+          bands.push({
+            quality: hour.weather_quality_number,
+            start: startsAt.format(),
+            end: endsAt.format(),
+            hours: [hour]
+          })
+        }
+      })
+      return bands
     },
 
     // This is the eventSource that gets the user reservations stored in the ptr calendar database
@@ -2060,7 +2228,8 @@ These times are obtained from the events in the site config */
 }
 
 /* Styles for the moon elements */
-#event-info {
+#event-info,
+#forecast-info {
   background-color: black;
   opacity: 0.94;
   border-radius: 8px;
