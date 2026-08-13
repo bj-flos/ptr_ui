@@ -284,9 +284,11 @@ export default {
   mounted () {
     this.fullCalendarApi = this.$refs.fullCalendar.getApi()
 
-    // Simple way to define the default starting position with the current date in the third column
-    this.incrementDateBack()
-    this.incrementDateBack()
+    // Open one day back, so today is the second column with yesterday beside
+    // it. This used to be two blind incrementDateBack() calls, which landed one
+    // or two days back depending on whether the view snapped to a week
+    // boundary; alignRangeToToday measures instead of stepping blind.
+    this.alignRangeToToday(-1)
 
     // Once we've mounted, we're able to access the fullCalendar $ref.
     // We need this to access the fullCalendar.getApi() method.
@@ -314,8 +316,8 @@ export default {
     )
     if (window.innerWidth < phoneScreenWidthMax) {
       this.fullCalendarApi.changeView('timeGridDay')
-      this.incrementDateForward()
-      this.incrementDateForward()
+      // One column, so it should be today's.
+      this.alignRangeToToday(0)
     }
 
     this.$store.dispatch('user_data/fetchAllProjects')

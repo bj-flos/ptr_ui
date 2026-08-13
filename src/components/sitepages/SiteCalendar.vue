@@ -59,7 +59,26 @@
         </p>
         <p>Drag events to <b>move</b></p>
         <p>SHIFT-Drag events to <b>copy</b></p>
-        <div style="border-bottom: 1px solid grey; width: 100%; height: 1em; margin-bottom: 1em;" />
+      </div>
+    </div>
+
+    <!-- Out of the sidebar and into a corner: the legend is reference material,
+         consulted once and then in the way. Opens on hover, and on focus so it
+         is reachable from the keyboard. -->
+    <div class="legend-dock">
+      <button
+        type="button"
+        class="button is-small legend-button"
+        aria-haspopup="true"
+      >
+        <b-icon
+          icon="information-outline"
+          size="is-small"
+        />
+        <span>Legend</span>
+      </button>
+
+      <div class="legend-panel">
         <p class="menu-label">
           Calendar Legend
         </p>
@@ -68,11 +87,21 @@
             <div class="reservation-visual" />
             <div>
               <b>Weather Forecast</b>
-              <p class="forecast forecast-1">Excellent</p>
-              <p class="forecast forecast-2">Good</p>
-              <p class="forecast forecast-3">Ok</p>
-              <p class="forecast forecast-4">Poor</p>
-              <p class="forecast forecast-5">Terrible</p>
+              <p class="forecast forecast-1">
+                Excellent
+              </p>
+              <p class="forecast forecast-2">
+                Good
+              </p>
+              <p class="forecast forecast-3">
+                Ok
+              </p>
+              <p class="forecast forecast-4">
+                Poor
+              </p>
+              <p class="forecast forecast-5">
+                Terrible
+              </p>
             </div>
           </div>
           <div class="legend-item">
@@ -110,6 +139,15 @@
             <div>
               <b>Your Reservations</b>
               <p>Calendar events created by you will be outlined in gold.</p>
+            </div>
+          </div>
+          <div class="legend-item">
+            <div class="reservation-visual moon" />
+            <div>
+              <b>Moon</b>
+              <p>The pale band runs from moonrise to moonset, and the brighter it is the more of the moon is lit.</p>
+              <p>The vertical line inside it marks transit, when the moon is highest.</p>
+              <p>Hover the band for the rise, transit and set times and the lit fraction.</p>
             </div>
           </div>
         </div>
@@ -217,6 +255,8 @@ $calendar-height: calc(#{$content-view-height} - #{$content-padding * 2});
 
 .cal-page-wrapper {
   width: 100%;
+  // The legend dock is positioned against this corner.
+  position: relative;
   padding: $content-padding;
   padding-left: calc($content-padding + 25px); // account for quick sites button column
 
@@ -314,6 +354,41 @@ $calendar-height: calc(#{$content-view-height} - #{$content-padding * 2});
   gap: 1em;
 }
 
+/* The legend as a corner button that opens on hover. It is reference material:
+   wanted once while learning the calendar, and only in the way after that. */
+.legend-dock {
+  position: absolute;
+  top: 0.5em;
+  right: 0.75em;
+  z-index: 20;
+}
+
+.legend-button {
+  gap: 0.35em;
+}
+
+.legend-panel {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.35em;
+  width: 24em;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 1em;
+  border-radius: 6px;
+  border: 1px solid rgba(128, 128, 128, 0.5);
+  background-color: $dark;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+/* focus-within so it opens from the keyboard too, not hover alone. */
+.legend-dock:hover .legend-panel,
+.legend-dock:focus-within .legend-panel {
+  display: block;
+}
+
 .legend-item {
   display: flex;
   gap: 1em;
@@ -351,6 +426,20 @@ $calendar-height: calc(#{$content-view-height} - #{$content-padding * 2});
   }
   &.project{
     background-color: $ptr-calendar-project-color;
+  }
+  /* The band as drawn on the grid, with the transit line down the middle. */
+  &.moon {
+    background-color: rgba(255, 255, 255, 0.4);
+    position: relative;
+  }
+  &.moon::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    background-color: rgba(255, 255, 255, 0.9);
   }
   &.low-priority {
     background-color: rgba(255, 255, 255, 0.25);
