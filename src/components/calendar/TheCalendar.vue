@@ -628,6 +628,16 @@ export default {
      * start is from where it should be and steps that many days, exactly as
      * pressing the arrows repeatedly would.
      */
+    /* Day column headings, as "Wed 08/12".
+       Formatted here because the locale is en-GB, chosen so midnight renders as
+       0:00 rather than 24:00, which would otherwise order these day-first.
+       FullCalendar hands these over as UTC-based date markers, so they are read
+       back the same way -- reading them in the browser's zone would shift the
+       label by a day either side of midnight. */
+    fc_columnHeaderText (date) {
+      return moment.utc(date).format('ddd MM/DD')
+    },
+
     /* Move the visible range so it starts `offsetDays` from today.
        Driven by incrementDate rather than today() or gotoDate(): those move the
        calendar's currentDate without the visible range following it here, while
