@@ -98,7 +98,14 @@ export const useAuth0 = ({
           domain: options.domain,
           client_id: options.clientId,
           ...(options.audience ? { audience: options.audience } : {}),
-          redirect_uri: redirectUri
+          redirect_uri: redirectUri,
+          // The startup silent /authorize runs in a hidden iframe, and a
+          // rejected request (a 403 for an unregistered redirect_uri, say)
+          // never posts a message back -- the SDK just waits out its timeout,
+          // 60 seconds by default, with the app unmounted behind it. Ten is
+          // long enough for a real round trip and short enough that a
+          // misconfigured tenant costs a pause rather than a dead page.
+          authorizeTimeoutInSeconds: 10
         })
 
         // If the user is returning to the app after authentication..
