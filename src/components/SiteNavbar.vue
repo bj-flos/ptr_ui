@@ -1,7 +1,9 @@
 <template>
+  <!-- Full width rather than Bulma's centred .container. The container inset
+       the whole bar by ~90px at a typical window, so the logo sat well right of
+       the map and its heading below it, which run to the window edge. -->
   <b-navbar
     type="is-dark"
-    wrapper-class="container"
   >
     <template slot="brand">
       <b-navbar-item
@@ -224,6 +226,9 @@ export default {
 .menu-title {
   display:flex;
   align-items:center;
+  /* Matches the 1em the map toolbar pads its title by, so the logo and
+     "Active Sites" share a left edge. */
+  padding-left: 1em;
   //font: 30px "Share Tech Mono", monospace;
   margin-right: 2em;
   height: 75px;
