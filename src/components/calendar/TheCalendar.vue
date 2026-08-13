@@ -146,6 +146,23 @@
       <p>Transit: &emsp;&emsp;&emsp;&ensp;{{ moon_hover_data.transit }}</p>
       <p>Set: &emsp;&emsp;&emsp;&emsp;&emsp;{{ moon_hover_data.set }}</p>
     </div>
+
+    <!-- Details of whatever reservation is under the pointer. Read only: what
+         may be changed, and by whom, is settled when it is clicked. -->
+    <div id="event-info">
+      <p class="event-info-title">
+        {{ event_hover_data.title }}
+      </p>
+      <p>{{ event_hover_data.type }}</p>
+      <p>Booked by: &ensp;{{ event_hover_data.creator }}</p>
+      <p>{{ event_hover_data.when }}</p>
+      <p
+        v-if="event_hover_data.note"
+        class="event-info-note"
+      >
+        {{ event_hover_data.note }}
+      </p>
+    </div>
   </div>
 </template>
 
@@ -531,6 +548,14 @@ export default {
         set: '',
         transit: '',
         illumination: ''
+      },
+
+      event_hover_data: {
+        title: '',
+        type: '',
+        creator: '',
+        when: '',
+        note: ''
       },
 
       // this informs what buttons appear in the modal event editor
@@ -1213,7 +1238,69 @@ export default {
     Calendar mouseover events
     /=================================================== */
 
+    /**
+     * Details of the reservation under the pointer.
+     *
+     * Read only, deliberately: whether this one may be changed, and by whom, is
+     * a question the editor answers when it is clicked. Hovering only says what
+     * is there.
+     *
+     * Background events -- twilight, the moon band, the forecast bars, the
+     * observing markers -- are shading rather than bookings, and are skipped.
+     */
+    showEventHover (mouseInfo) {
+      const event = mouseInfo.event
+      const props = event.extendedProps || {}
+
+      const types = {
+        realtime: 'Real Time Session',
+        project: 'Project Session'
+      }
+      const type = props.origin === 'scheduler'
+        ? 'Scheduled Observation'
+        : types[props.reservation_type] || 'Reservation'
+
+      const start = moment(event.start).tz(this.fc_timeZone)
+      const end = event.end ? moment(event.end).tz(this.fc_timeZone) : null
+      // The date once, the times either side of it, and the zone named -- these
+      // read differently on a site page and in the booking modal.
+      const when = end
+        ? `${start.format('ddd D MMM, HH:mm')} – ${end.format('HH:mm')} ${start.format('z')}`
+        : `${start.format('ddd D MMM, HH:mm')} ${start.format('z')}`
+
+      this.event_hover_data = {
+        title: event.title || '',
+        type,
+        creator: props.creator || (props.origin === 'scheduler' ? 'the scheduler' : 'unknown'),
+        when,
+        note: props.reservation_note || ''
+      }
+
+      const box = document.getElementById('event-info')
+      if (!box) return
+      box.style.visibility = 'visible'
+      this.positionHoverBox(box, mouseInfo)
+    },
+
+    // Shared by both hover boxes: place it at the pointer, in page coordinates.
+    positionHoverBox (box, mouseInfo) {
+      const page = document.getElementById('calendar-page-wrapper') ||
+        document.querySelector('.calendar-container')
+      if (!page || !mouseInfo.jsEvent) return
+
+      const bounds = page.getBoundingClientRect()
+      const scroll = document.body.getBoundingClientRect().top
+      box.style.top = (mouseInfo.jsEvent.pageY - bounds.top + scroll) + 'px'
+      box.style.left = (mouseInfo.jsEvent.pageX - bounds.left) + 'px'
+    },
+
     eventMouseEnter (mouseInfo) {
+      // Everything drawn as background is shading, not a booking.
+      if (mouseInfo.event.rendering !== 'background' &&
+          mouseInfo.event.title !== 'Moon Event') {
+        return this.showEventHover(mouseInfo)
+      }
+
       // Show moon info box when hovering a moon event.
       if (mouseInfo.event.title == 'Moon Event') {
         document.getElementById('moon-info').style.visibility = 'visible'
@@ -1246,6 +1333,9 @@ export default {
       if (mouseInfo.event.title == 'Moon Event') {
         document.getElementById('moon-info').style.visibility = 'hidden'
       }
+
+      const box = document.getElementById('event-info')
+      if (box) box.style.visibility = 'hidden'
     },
 
     /* ===================================================/
@@ -1878,6 +1968,32 @@ These times are obtained from the events in the site config */
 }
 
 /* Styles for the moon elements */
+#event-info {
+  background-color: black;
+  opacity: 0.94;
+  border-radius: 8px;
+  padding: 0.8em 1em;
+  position: absolute;
+  visibility: hidden;
+  z-index: $moon-info-z-index;
+  top: 0px;
+  left: 0px;
+  /* The pointer is on the event underneath; a box that swallowed it would
+     flicker as the mouse crossed its own tooltip. */
+  pointer-events: none;
+  max-width: 22em;
+}
+.event-info-title {
+  font-weight: bold;
+  margin-bottom: 0.35em;
+}
+.event-info-note {
+  margin-top: 0.5em;
+  opacity: 0.85;
+  font-style: italic;
+  white-space: normal;
+}
+
 #moon-info {
   background-color: black;
   opacity: 0.9;
