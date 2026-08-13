@@ -1368,16 +1368,30 @@ export default {
       return props.origin === 'scheduler' ? 'the scheduler' : 'unknown'
     },
 
-    // Shared by both hover boxes: place it at the pointer, in page coordinates.
+    /* Place a hover box at the pointer.
+       Measured against .calendar-container, which is what these boxes are
+       positioned within -- it carries position: relative for the legend dock.
+       The old maths was relative to .page-view, which stopped being the
+       containing block when that was added, and does not exist at all inside
+       the booking modal: the box landed a column to the right and a moon's
+       height too low.
+       Clamped so a box near the right or bottom edge folds back inside instead
+       of hanging off. */
     positionHoverBox (box, mouseInfo) {
-      const page = document.getElementById('calendar-page-wrapper') ||
-        document.querySelector('.calendar-container')
-      if (!page || !mouseInfo.jsEvent) return
+      const container = this.$el
+      if (!box || !container || !mouseInfo.jsEvent) return
 
-      const bounds = page.getBoundingClientRect()
-      const scroll = document.body.getBoundingClientRect().top
-      box.style.top = (mouseInfo.jsEvent.pageY - bounds.top + scroll) + 'px'
-      box.style.left = (mouseInfo.jsEvent.pageX - bounds.left) + 'px'
+      const bounds = container.getBoundingClientRect()
+      let x = mouseInfo.jsEvent.clientX - bounds.left + 12
+      let y = mouseInfo.jsEvent.clientY - bounds.top + 12
+
+      // Measure it where it is before deciding whether it fits.
+      const size = box.getBoundingClientRect()
+      if (x + size.width > bounds.width) x = Math.max(0, x - size.width - 24)
+      if (y + size.height > bounds.height) y = Math.max(0, y - size.height - 24)
+
+      box.style.left = x + 'px'
+      box.style.top = y + 'px'
     },
 
     eventMouseEnter (mouseInfo) {
@@ -1400,17 +1414,7 @@ export default {
         this.moon_hover_data.illumination = mouseInfo.event.extendedProps
           .illumination?.toFixed(3)
 
-        const page = document.getElementsByClassName('page-view')[0]
-        const page_boundary = page.getBoundingClientRect()
-        const left_position_offset = page_boundary.left
-        const top_position_offset = page_boundary.top
-        const top_scroll_offset = document.body.getBoundingClientRect().top
-
-        const x = mouseInfo.jsEvent.pageX - left_position_offset
-        const y = mouseInfo.jsEvent.pageY - top_position_offset + top_scroll_offset
-
-        document.getElementById('moon-info').style.top = y + 'px'
-        document.getElementById('moon-info').style.left = x + 'px'
+        this.positionHoverBox(document.getElementById('moon-info'), mouseInfo)
       }
     },
 
