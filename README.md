@@ -1,6 +1,6 @@
 # Photon Ranch on Asterism
 
-![Photon Ranch on Asterism](public/img/logos/PTR-logo-spectrum-byline-medium.png)
+![Photon Ranch on Asterism](public/img/logos/PTR-logo-asterism.png)
 
 This is the web interface used to access photon ranch observatories.
 

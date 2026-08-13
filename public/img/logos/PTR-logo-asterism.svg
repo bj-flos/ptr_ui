@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="1200" height="420" role="img" aria-label="Photon Ranch on Asterism">
+  <title>Photon Ranch on Asterism</title>
+  <!-- Editable source for PTR-logo-asterism.png.
+       Colours are the existing wordmark's own: #ef4123 and #00adef, the same
+       $logo-red and $logo-blue the stylesheets use. The bar repeats the
+       spectrum from the lambda in the original mark.
+       Text is left as text rather than converted to paths, so the wording can
+       be changed -- at the cost of depending on the viewer's fonts. The PNG
+       beside it is what the README embeds. -->
+  <defs>
+    <linearGradient id="spectrum" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0.00" stop-color="#f21c0d"/>
+      <stop offset="0.20" stop-color="#f2c40d"/>
+      <stop offset="0.40" stop-color="#3ef20d"/>
+      <stop offset="0.60" stop-color="#0df2c4"/>
+      <stop offset="0.80" stop-color="#0d3ef2"/>
+      <stop offset="1.00" stop-color="#8a0df2"/>
+    </linearGradient>
+  </defs>
+
+  <g font-family="Verdana, DejaVu Sans, Geneva, sans-serif" font-size="86" letter-spacing="10" text-anchor="middle">
+    <text x="600" y="128">
+      <tspan fill="#ef4123">PHOTON </tspan><tspan fill="#00adef">RANCH</tspan>
+    </text>
+  </g>
+
+  <rect x="200" y="186" width="800" height="16" fill="url(#spectrum)"/>
+
+  <text x="600" y="300" font-family="Verdana, DejaVu Sans, Geneva, sans-serif"
+        font-size="72" font-weight="bold" letter-spacing="6"
+        text-anchor="middle" fill="#4b95d6">ASTERISM</text>
+</svg>
