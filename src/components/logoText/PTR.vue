@@ -8,7 +8,7 @@
     <span
       v-if="withLambda"
       class="lambda"
-    ><img src="/img/logos/PTR-lambda.png"></span>
+    ><img :src="`${publicPath}img/logos/PTR-lambda.png`"></span>
   </div>
 </template>
 
@@ -26,6 +26,11 @@ export default {
     }
   },
   computed: {
+    // public/ assets are not rewritten by webpack; without the base they
+    // resolve at the host root rather than under /ptr/ and 404.
+    publicPath () {
+      return process.env.BASE_URL
+    },
     fontSizeStyle () {
       return `font-size: ${this.fontSize};`
     }

@@ -17,12 +17,12 @@
              step with the one the README shows. -->
         <img
           class="brand-lambda is-hidden-tablet ml-1 mr-2"
-          src="/img/logos/PTR-lambda.png"
+          :src="`${publicPath}img/logos/PTR-lambda.png`"
           alt="Photon Ranch on Asterism"
         >
         <img
           class="brand-lockup is-hidden-mobile"
-          src="/img/logos/PTR-logo-asterism.png"
+          :src="`${publicPath}img/logos/PTR-logo-asterism.png`"
           alt="Photon Ranch on Asterism"
         >
         <span
@@ -176,6 +176,12 @@ export default {
     user_mixin
   ],
   computed: {
+    // Files in public/ are copied verbatim, so webpack never rewrites these
+    // URLs. A leading slash would resolve at the host root, which is not this
+    // app once it is served under a base (/ptr/), and the image 404s.
+    publicPath () {
+      return process.env.BASE_URL
+    },
     ...mapState('sitestatus', ['site_open_status', 'stale_age_ms']),
     ...mapState('site_config', [
       'selected_site'

@@ -18,7 +18,7 @@
     </span>
     <span v-else>
       <img
-        src="/img/logos/PTR-logo-photonranch.png"
+        :src="`${publicPath}img/logos/PTR-logo-photonranch.png`"
         alt="photon ranch observatory"
       >
     </span>
@@ -27,7 +27,7 @@
       class="lambda"
     >
       <img
-        src="/img/logos/PTR-lambda.png"
+        :src="`${publicPath}img/logos/PTR-lambda.png`"
         alt="photon ranch observatory"
       >
     </span>
@@ -56,6 +56,11 @@ export default {
     }
   },
   computed: {
+    // public/ assets are not rewritten by webpack; without the base they
+    // resolve at the host root rather than under /ptr/ and 404.
+    publicPath () {
+      return process.env.BASE_URL
+    },
     fontSizeStyle () {
       return `font-size: ${this.fontSize};`
     }
