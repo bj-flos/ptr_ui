@@ -60,6 +60,7 @@
     >
       <!-- Project Session Tab -->
       <b-tab-item
+        v-if="showsTab('project')"
         label="Project Session"
         value="project"
       >
@@ -193,6 +194,7 @@
 
       <!-- Real Time Session Tab -->
       <b-tab-item
+        v-if="showsTab('realtime')"
         label="Real Time Session"
         value="realtime"
       >
@@ -341,7 +343,11 @@ export default {
     // as the site_config getter below; on the home page's booking modal it is
     // the only source, because that getter follows selected_site and nothing is
     // selected there.
-    'timezoneOverride'
+    'timezoneOverride',
+    // When a reservation is started from one of the calendar's drag tokens the
+    // kind is already chosen -- "You drive it" is a real time session and
+    // nothing else -- so the other tab is not an option to offer.
+    'lockedType'
   ],
   data () {
     return {
@@ -652,6 +658,14 @@ export default {
     }
   },
   methods: {
+    /* Which reservation tabs to offer. Both, unless the caller has already
+       settled the question -- dragging "You drive it" onto the grid says real
+       time session and nothing else, so offering a Project Session tab beside
+       it invites picking one the drag has already ruled out. */
+    showsTab (type) {
+      return !this.lockedType || this.lockedType === type
+    },
+
     resetProject () {
       this.selected_project = { project_name: 'none', created_at: '' }
       this.project_name_and_created = 'none'

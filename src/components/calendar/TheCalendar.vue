@@ -122,6 +122,7 @@
             :is-new-event="isNewEvent"
             :event-is-loading="isLoading"
             :timezone-override="fc_timeZone"
+            :locked-type="activeEventLockedType"
             @submit="submitButtonClicked"
             @cancel="cancelButtonClicked"
             @delete="deleteButtonClicked"
@@ -519,6 +520,11 @@ export default {
       isMounted: false,
 
       moon_cache: {},
+
+      /* Set when a reservation is started by dragging one of the tokens, which
+         settles the kind before the editor opens. Null for every other route
+         in, where the student still chooses. */
+      activeEventLockedType: null,
 
       moon_hover_data: {
         rise: '',
@@ -1132,6 +1138,7 @@ export default {
 
       this.activeEvent.startStr = start.utc().format()
       this.activeEvent.endStr = end.utc().format()
+      this.activeEventLockedType = type
       this.activeEvent.title = this.defaultEventTitle(type)
       this.activeEvent.reservation_type = type
       this.activeEvent.creator = this.userFullName
@@ -1150,6 +1157,7 @@ export default {
     newEventSelected (event) {
       this.activeEvent.startStr = moment(event.startStr).utc().format()
       this.activeEvent.endStr = moment(event.endStr).utc().format()
+      this.activeEventLockedType = null
       this.activeEvent.reservation_type = 'realtime' // or "project"
       this.activeEvent.title = this.defaultEventTitle('realtime')
       this.activeEvent.creator = this.userFullName
@@ -1169,6 +1177,10 @@ export default {
      */
     async existingEventSelected (arg) {
       const event = arg.event
+
+      // An existing reservation carries its own kind, and may legitimately be
+      // switched between them, so neither tab is withheld here.
+      this.activeEventLockedType = null
 
       // Check if this is a scheduler observation
       if (event.extendedProps.origin === 'scheduler' && event.extendedProps.observationData) {
