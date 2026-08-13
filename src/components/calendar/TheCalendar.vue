@@ -22,7 +22,7 @@
         title="Drag onto the calendar to have the computer take it for you"
       >
         <ComputerThroughTelescopeIcon :size="30" />
-        <span>Computer takes it</span>
+        <span>Computer has it</span>
       </div>
     </div>
 

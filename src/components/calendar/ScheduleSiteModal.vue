@@ -73,7 +73,7 @@
 import TheCalendar from '@/components/calendar/TheCalendar'
 import { mapGetters } from 'vuex'
 import moment from 'moment-timezone'
-import { darkWindows } from '@/utils/site_darkness'
+import { darkWindows, siteIsDark } from '@/utils/site_darkness'
 
 /* FullCalendar takes these as durations from midnight, and tolerates hours past
    24 to mean "into the next day" -- 39:00:00 is 3pm tomorrow. */
@@ -167,16 +167,42 @@ export default {
       return h + m / 60
     },
 
+    /* Why they are being shown a calendar rather than the sky map, in the
+       reader's own clock.
+       It used to say "Someone is using it right now" whichever reason applied,
+       which was simply untrue for the common one: most of the time nothing is
+       booked and it is merely still daylight there. Naming the wrong reason and
+       then quoting the start of darkness as though it were the end of somebody
+       else's session is worse than saying nothing. */
     subtitle () {
       if (!this.startTime) return 'Pick a time that suits you.'
-      // Same clock as the calendar axis below and as the map card.
+
       const start = moment(this.startTime).tz(this.timezone)
       const same_day = start.isSame(moment().tz(this.timezone), 'day')
       const at = start.format('h:mm A z')
-      const when = same_day
-        ? `tonight at ${at}`
-        : `${start.format('dddd')} at ${at}`
-      return `Someone is using it right now. It's free from ${when}.`
+      const when = same_day ? `tonight at ${at}` : `${start.format('dddd')} at ${at}`
+
+      if (this.someoneIsObservingNow) {
+        return `Someone is using it right now. It's free from ${when}.`
+      }
+      if (!this.isDarkThereNow) {
+        return `It isn't dark there yet. Observing starts ${when}.`
+      }
+      return `It's free from ${when}.`
+    },
+
+    // Is anyone -- including this reader -- booked over this moment?
+    someoneIsObservingNow () {
+      const cached = this.$store.state.calendar.upcoming_events[this.site.site]
+      if (!cached || cached.failed) return false
+
+      const now = moment()
+      return cached.events.some(event =>
+        now.isSameOrAfter(moment(event.start)) && now.isBefore(moment(event.end)))
+    },
+
+    isDarkThereNow () {
+      return siteIsDark(this.site, new Date())
     },
 
     // Same shape SiteCalendar feeds the calendar; the resource timeline views
