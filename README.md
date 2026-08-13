@@ -1,10 +1,10 @@
-# Photon Ranch UI
+# Photon Ranch on Asterism
 
-![Photon Ranch](public/img/logos/PTR-logo-spectrum-byline-medium.png)
+![Photon Ranch on Asterism](public/img/logos/PTR-logo-spectrum-byline-medium.png)
 
 This is the web interface used to access photon ranch observatories.
 
-You can interact with the site at www.photonranch.org, or start up your own local server.
+You can interact with the site at <https://scheduler.first-light-systems.com/ptr>, or start up your own local server.
 
 ## Description
 
@@ -38,7 +38,7 @@ npm run serve
 
 Photon Ranch currently has two stages running online:
 
-- the 'production' environment uses the main branch, and lives at <https://www.photonranch.org>
+- the 'production' environment uses the main branch, and lives at <https://scheduler.first-light-systems.com/ptr>
 - the 'dev' environment uses the dev branch, and lives at <https://dev.photonranch.org>
 
 *Pull requests should propose changes for the dev branch, not main.* This is because, for various reasons, the 'dev'
