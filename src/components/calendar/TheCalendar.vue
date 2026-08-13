@@ -366,7 +366,10 @@ export default {
     showWeatherForecast () {
       this.refreshCalendarView()
     },
-    forecast () {
+    // The resolved forecast rather than the store's, so the booking modal --
+    // which passes its own in and arrives after the first render -- redraws its
+    // bars once the fetch lands.
+    effectiveForecast () {
       this.refreshCalendarView()
     }
   },
