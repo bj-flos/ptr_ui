@@ -210,11 +210,15 @@ export default {
 .brand-lockup {
   height: 64px;
   width: auto;
+  /* Bulma clamps any img inside a navbar-item to 1.75rem, which squashed this
+     to 26px however tall it was asked to be. */
+  max-height: none;
 }
 
 .brand-lambda {
   height: 40px;
   width: auto;
+  max-height: none;
 }
 
 .menu-title {
