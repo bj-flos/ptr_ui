@@ -1,7 +1,7 @@
 <template>
   <div class="map-toolbar">
     <h1 class="map-title">
-      Available Sites
+      Active Sites
     </h1>
 
     <div class="map-filters">
