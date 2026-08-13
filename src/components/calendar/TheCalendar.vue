@@ -204,7 +204,9 @@ function transformLocalTimeToUTC (timezoneName, localTime) {
   const hours = time[0]
   const minutes = time[1]
   const utcHours = (hours - (offsetInt - 24)) % 24
-  return `${utcHours}:${minutes}`
+  // Padded to match the column beside it: an unpadded 0:05 against 23:05 reads
+  // as a different format rather than as an earlier hour.
+  return `${String(utcHours).padStart(2, '0')}:${minutes}`
 }
 
 export default {
@@ -494,8 +496,10 @@ export default {
       },
       fc_slotDuration: '00:15:00', // horizontal guides; affects event drag precision
       fc_slotLabelInterval: '01:00:00',
-      fc_eventTimeFormat: { hour: 'numeric', minute: '2-digit', hour12: false }, // 24hr times on events
-      fc_slotLabelFormat: { hour: 'numeric', minute: '2-digit', hour12: false }, // 24hr time on axis labels
+      // 24hr throughout, zero padded: 'numeric' gives 9:00 next to 21:00, so a
+      // column of times does not line up and reads as two different formats.
+      fc_eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+      fc_slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
       fc_locale: 'en-GB', // so we can use 0:00 instead of 24:00
       fc_minTime: '12:00:00', // start the day column at noon
       fc_maxTime: '36:00:00', // end the day column at noon for the following day
