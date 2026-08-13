@@ -22,7 +22,16 @@ const envDomain = process.env.VUE_APP_AUTH0_DOMAIN
 const domain = envDomain || authConfig.domain
 const clientId = envDomain ? process.env.VUE_APP_AUTH0_CLIENT_ID : authConfig.clientId
 const audience = envDomain ? process.env.VUE_APP_AUTH0_AUDIENCE : authConfig.audience
-const redirectUri = process.env.VUE_APP_AUTH0_REDIRECT_URI || window.location.origin
+// The app is served under BASE_URL (publicPath — '/ptr/' when reached through
+// the nina-scheduler nginx), so the callback has to carry that base too: a bare
+// origin sends Auth0 back to '/', which is the NINA GUI rather than this app.
+// Deriving it from the live origin keeps every entry point working (the direct
+// ts.net dev URL and the proxied one) without pinning a hostname here — but each
+// resulting URL must still be registered as an Allowed Callback URL in the
+// Auth0 tenant. VUE_APP_AUTH0_REDIRECT_URI overrides it outright.
+const redirectUri =
+  process.env.VUE_APP_AUTH0_REDIRECT_URI ||
+  window.location.origin + process.env.BASE_URL
 
 // Hide the 'you are running in development mode!' warning in the console.
 Vue.config.productionTip = false
@@ -38,10 +47,18 @@ Vue.use(Auth0Plugin, {
   // the authorize request with "Service not found".
   ...(audience ? { audience } : {}),
   onRedirectCallback: appState => {
+    // router paths are relative to BASE_URL, so the raw pathname has to have the
+    // base stripped before it is pushed — otherwise the base is applied twice
+    // and '/ptr/foo' becomes '/ptr/ptr/foo'.
+    const base = process.env.BASE_URL || '/'
+    const pathname = window.location.pathname
+    const relativePath = pathname.startsWith(base)
+      ? '/' + pathname.slice(base.length)
+      : pathname
     router.push(
       appState && appState.targetUrl
         ? appState.targetUrl
-        : window.location.pathname
+        : relativePath
     )
   }
 })

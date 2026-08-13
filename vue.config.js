@@ -1,6 +1,12 @@
 
 module.exports = {
   lintOnSave: false,
+  // Served behind the nina-scheduler nginx under /ptr/, which forwards the
+  // prefix intact (proxy_pass has no path component). Assets, the router base
+  // and the HMR socket all hang off this, so they resolve under /ptr/ instead
+  // of at the parent host's root — where they would hit the NINA GUI.
+  // Override with PUBLIC_PATH=/ to serve at the root again.
+  publicPath: process.env.PUBLIC_PATH || '/ptr/',
   css: {
     loaderOptions: {
       sass: {

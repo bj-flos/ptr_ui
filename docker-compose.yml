@@ -49,3 +49,15 @@ services:
       retries: 5
       # A cold compile takes the best part of a minute.
       start_period: 120s
+
+    # ptr-net is where the rest of the PTR stack lives, and it is how the
+    # nina-scheduler nginx reaches this server to publish it at /ptr. The
+    # published port stays bound to loopback, and going through the tailnet is
+    # not an option for a container on this same host: tailscale serve accepts
+    # tailnet peers only, and a docker bridge address is not one.
+    networks:
+      - ptr-net
+
+networks:
+  ptr-net:
+    external: true

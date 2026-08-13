@@ -50,7 +50,11 @@ export const user_mixin = {
       this.$store.dispatch('user_data/logoutUser')
 
       this.$auth.logout({
-        returnTo: `${window.location.origin}/logout`
+        // BASE_URL (publicPath) already ends in a slash. Without it the return
+        // lands on the parent host's /logout, which is not this app when it is
+        // served under /ptr/. Register the resulting URL as an Allowed Logout
+        // URL in the Auth0 tenant.
+        returnTo: `${window.location.origin}${process.env.BASE_URL}logout`
       })
     }
   }
