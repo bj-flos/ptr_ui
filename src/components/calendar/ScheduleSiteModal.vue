@@ -260,12 +260,36 @@ export default {
       const wema = this.site.wema_name || this.site.site
       const endpoint = this.$store.state.api_endpoints.status_endpoint
       if (!wema || !endpoint) return
+
       try {
         const response = await axios.get(`${endpoint}/${wema}/forecast`)
         this.forecast = response.data?.status?.forecast || []
       } catch (e) {
         console.warn('booking modal could not load the forecast', e)
+        this.warnAboutMissingForecast('unreachable')
+        return
       }
+
+      /* Published hours that are still ahead of us. A forecast can be present
+         and yet useless: nothing publishes for sites outside the weather
+         model's area, so what is left is whatever was last written, days ago.
+         Either way the calendar draws no bars, and saying so beats leaving a
+         student to wonder where the weather went. */
+      const now = moment()
+      const usable = this.forecast.filter(hour => moment(hour.utc_long_form).isAfter(now))
+      if (!usable.length) this.warnAboutMissingForecast('none published')
+    },
+
+    warnAboutMissingForecast (reason) {
+      console.warn(`no usable forecast for ${this.site.site}: ${reason}`)
+      this.$buefy.toast.open({
+        type: 'is-info',
+        duration: 7000,
+        position: 'is-bottom',
+        message: `No weather forecast for ${this.site.name}, so the calendar ` +
+          "won't show weather colours. The forecast only covers telescopes in " +
+          'North America.'
+      })
     },
 
     openFullCalendar () {
