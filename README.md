@@ -12,6 +12,9 @@ Photon Ranch is a global network of telescopes, created for middle and high scho
 This web application is the portal where users can control telescopes in real time, schedule long-running observation
 projects, organize the data they've acquired, and interpret the data using a variety of data analysis tools.
 
+This effort is based largely on the original Photon Ranch effort performed at
+[Las Cumbres Observatory](https://lco.global/) under the direction of Wayne Rosling.
+
 ## Local Development
 
 ### Required
