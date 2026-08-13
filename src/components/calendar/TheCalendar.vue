@@ -485,6 +485,10 @@ export default {
         customToday: {
           text: 'today',
           click: this.goToToday
+        },
+        customDay: {
+          text: 'day',
+          click: this.goToDayView
         }
       },
       fc_defaultView: 'timeGridWeek',
@@ -493,7 +497,7 @@ export default {
         // define the top row of buttons
         left: 'customPrev,customNext customToday',
         center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        right: 'dayGridMonth,timeGridWeek,customDay'
       },
       fc_slotDuration: '00:15:00', // horizontal guides; affects event drag precision
       fc_slotLabelInterval: '01:00:00',
@@ -624,48 +628,55 @@ export default {
      * start is from where it should be and steps that many days, exactly as
      * pressing the arrows repeatedly would.
      */
-    goToToday () {
+    /* Move the visible range so it starts `offsetDays` from today.
+       Driven by incrementDate rather than today() or gotoDate(): those move the
+       calendar's currentDate without the visible range following it here, while
+       incrementDate is what the arrow buttons use and does move it. */
+    alignRangeToToday (offsetDays) {
       const api = this.fullCalendarApi
-      if (!api) return
-
-      // Only the week view has columns to centre; month and day are handled by
-      // the ordinary jump to now.
-      if (api.state.viewType !== 'timeGridWeek') {
-        api.today()
-        return
-      }
+      if (!api || !api.view) return
 
       const midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate())
       const now = new Date()
-      const wanted = midnight(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))
+      const wanted = midnight(new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetDays))
       const current = midnight(api.view.activeStart)
 
       const days = Math.round((wanted - current) / 86400000)
       if (days === 0) return
 
-      if (days < 0) {
+      if (days < 0 || api.state.viewType !== 'timeGridWeek') {
         api.incrementDate({ days })
         return
       }
 
-      /* Forward is not symmetric with backward here: this view only honours
-         forward moves in whole weeks, so incrementDate({days: 5}) does nothing
-         at all while {days: -5} works. Overshoot to the next week boundary and
-         come back, which is the same trick incrementDateForward uses to move a
-         single day. */
+      /* Forward is not symmetric with backward in the week view: it only
+         honours forward moves in whole weeks, so incrementDate({days: 5}) does
+         nothing at all while {days: -5} works. Overshoot to the next week
+         boundary and come back, which is the same trick incrementDateForward
+         uses to move a single day. */
       const weeks = Math.ceil(days / 7)
       api.incrementDate({ days: weeks * 7 })
       const overshoot = weeks * 7 - days
       if (overshoot > 0) api.incrementDate({ days: -overshoot })
     },
 
-    /* Day column headings, as "Wed 08/12".
-       Formatted here because the locale above is en-GB, which would order these
-       day-first. FullCalendar hands these over as UTC-based date markers, so
-       they are read back the same way -- reading them in the browser's zone
-       would shift the label by a day either side of midnight. */
-    fc_columnHeaderText (date) {
-      return moment.utc(date).format('ddd MM/DD')
+    /* The `today` button. In the week view today lands in the second column
+       with yesterday beside it, so the run-up to tonight stays visible; the
+       other views have no columns to centre and simply show today. */
+    goToToday () {
+      const api = this.fullCalendarApi
+      if (!api) return
+      this.alignRangeToToday(api.state.viewType === 'timeGridWeek' ? -1 : 0)
+    },
+
+    /* The `day` button. Switching views keeps whatever currentDate the previous
+       view left, and the week view deliberately starts before today -- so
+       arriving in the day view showed yesterday. */
+    goToDayView () {
+      const api = this.fullCalendarApi
+      if (!api) return
+      api.changeView('timeGridDay')
+      this.$nextTick(() => this.alignRangeToToday(0))
     },
 
     // This is connected to the < button in the calendar header left
