@@ -84,15 +84,23 @@ export const useAuth0 = ({
     },
     /** Use this lifecycle method to instantiate the SDK client */
     async created () {
-      // Create a new instance of the SDK client using members of the given options object
-      this.auth0Client = await createAuth0Client({
-        domain: options.domain,
-        client_id: options.clientId,
-        ...(options.audience ? { audience: options.audience } : {}),
-        redirect_uri: redirectUri
-      })
-
+      // createAuth0Client is inside the try on purpose. It fires a silent
+      // prompt=none /authorize on startup, and Auth0 answers 403 whenever the
+      // redirect_uri is not a registered callback for the tenant. Left
+      // uncaught, that rejection escaped created() and `loading` stayed true
+      // for good -- main.js waits on it before mounting, so the whole app was
+      // a blank page with nothing in the console. An unreachable or
+      // misconfigured Auth0 must leave the app usable and signed out, not
+      // dead.
       try {
+        // Create a new instance of the SDK client using members of the given options object
+        this.auth0Client = await createAuth0Client({
+          domain: options.domain,
+          client_id: options.clientId,
+          ...(options.audience ? { audience: options.audience } : {}),
+          redirect_uri: redirectUri
+        })
+
         // If the user is returning to the app after authentication..
         if (
           window.location.search.includes('code=') &&
@@ -107,10 +115,20 @@ export const useAuth0 = ({
         }
       } catch (e) {
         this.error = e
+        // eslint-disable-next-line no-console
+        console.error('[auth] Auth0 initialisation failed; continuing signed out.', e)
       } finally {
-        // Initialize our internal authentication state
-        this.isAuthenticated = await this.auth0Client.isAuthenticated()
-        this.user = await this.auth0Client.getUser()
+        // Initialize our internal authentication state. Guarded because the
+        // client is null when the step above threw.
+        if (this.auth0Client) {
+          try {
+            this.isAuthenticated = await this.auth0Client.isAuthenticated()
+            this.user = await this.auth0Client.getUser()
+          } catch (e) {
+            this.error = e
+          }
+        }
+        // Always released, whatever happened, or nothing downstream mounts.
         this.loading = false
       }
     }
