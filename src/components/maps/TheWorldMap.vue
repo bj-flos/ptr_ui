@@ -330,6 +330,10 @@ export default {
         // kept as the thing to recreate there. DEMO_MAP_ID is the unstyled
         // development fallback.
         mapId: process.env.VUE_APP_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID',
+        // No Pegman. Street view of an observatory site is not something this
+        // map has any use for, and at zoom 3 dragging him onto the world is
+        // only a way to lose the view.
+        streetViewControl: false,
         // Keeps panning inside a single world; on its own this does not stop
         // the repeats, which is what the capped container width is for.
         restriction: {
