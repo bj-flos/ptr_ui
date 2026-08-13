@@ -1017,31 +1017,33 @@ export default {
           date.date())
 
         if (moon_phase) {
-          const headerCell = document.querySelector(`.fc-day[data-date="${date.format('YYYY-MM-DD')}"]`)
+          /* A date has more than one .fc-day cell: FullCalendar draws the day
+             columns in several skeletons, one behind the grid and one for the
+             all-day row. querySelector took whichever happened to be first, so
+             advancing the view could add the icon to one skeleton while the
+             other still held the icon from the previous render -- the phase
+             then showed twice, once in the all-day row and once in the first
+             hour row.
+             Clearing every cell for the date and filling exactly one makes this
+             idempotent however many times dayRender fires for that date. */
+          const dateKey = date.format('YYYY-MM-DD')
+          const cells = document.querySelectorAll(`.fc-day[data-date="${dateKey}"]`)
 
-          if (headerCell) {
-            // Create a unique data attribute for the moon icon based on the date
-            const moonIconDataAttr = `moon-icon-${date.format('YYYY-MM-DD')}`
+          if (cells.length) {
+            cells.forEach(cell => {
+              cell.querySelectorAll('.moon-icon').forEach(icon => icon.remove())
+            })
 
-            // Check if the moon icon has already been added to this specific header cell
-            if (!headerCell.querySelector(`[data-moon-icon="${moonIconDataAttr}"]`)) {
-              // Remove any existing moon icons in this cell
-              const existingMoonIcons = headerCell.querySelectorAll('.moon-icon')
-              existingMoonIcons.forEach(icon => icon.remove())
+            const moonIcon = document.createElement('i')
+            moonIcon.className = `moon-icon mdi mdi-moon-${moon_phase.name}`
+            moonIcon.setAttribute('aria-hidden', 'true')
+            moonIcon.setAttribute('data-moon-icon', `moon-icon-${dateKey}`)
 
-              // Add new moon icon
-              const moonIcon = document.createElement('i')
-              moonIcon.className = `moon-icon mdi mdi-moon-${moon_phase.name}`
-              moonIcon.setAttribute('aria-hidden', 'true')
-              moonIcon.setAttribute('data-moon-icon', moonIconDataAttr)
+            cells[0].appendChild(moonIcon)
 
-              // Append the moon icon to the header cell content
-              headerCell.appendChild(moonIcon)
-
-              // Adjust the style to place it below the date
-              moonIcon.style.display = 'block'
-              moonIcon.style.marginTop = '5px'
-            }
+            // Sits below the date rather than beside it.
+            moonIcon.style.display = 'block'
+            moonIcon.style.marginTop = '5px'
           }
         }
       } catch (error) {
