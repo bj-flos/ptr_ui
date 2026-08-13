@@ -307,10 +307,12 @@ const getters = {
     return getters.selected_filter_wheel_config.settings?.default_filter || getters.filter_wheel_options[0][0]
   },
 
-  // Get the site events from the selected config (things like nautical dark start, etc)
-  // convert the times from dublin julian days (the config format) to unix timestamps
-  site_events: (state, getters) => {
-    const site_events = { ...getters.site_config.events } ?? {}
+  /* Site events for any site (things like nautical dark start), converted from
+     the dublin julian days the config stores into unix timestamps.
+     Takes a sitecode rather than reading the selected site, because the home
+     page's booking calendar is for a site nobody has "selected". */
+  site_events_for: state => sitecode => {
+    const site_events = { ...(state.global_config?.[sitecode]?.events ?? {}) }
     for (const e in site_events) {
       // convert dublin julian days to julian days
       const jd = site_events[e] + 2415020
@@ -319,6 +321,12 @@ const getters = {
     }
     return site_events
   },
+
+  /* The selected site's events. The spread here used to run before the `?? {}`
+     could do anything, so with nothing selected -- which is the case on the
+     home page -- this threw "Cannot read properties of undefined (reading
+     'events')" and took the calendar's event sources down with it. */
+  site_events: (state, getters) => getters.site_events_for(state.selected_site),
   site_events_observing_start_time: (state, getters) => {
     return getters.site_events['Observing Begins']
   },

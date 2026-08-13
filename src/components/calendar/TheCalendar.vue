@@ -369,6 +369,18 @@ export default {
     /* The longitude to compute sidereal time against. Prefers whatever the
        caller named, because the store getter follows selected_site rather than
        calendarSite and is NaN wherever no site page has been opened. */
+    /* Observing window for the site this calendar is actually showing.
+       The plain getters follow the selected site, which is right on a site page
+       and empty on the home page -- so the booking modal would draw either
+       nothing or, worse, another observatory's night. */
+    observingWindow () {
+      const events = this.site_events_for(this.calendarSite)
+      return {
+        start: events['Observing Begins'] ?? this.site_events_observing_start_time,
+        end: events['Observing Ends'] ?? this.site_events_observing_end_time
+      }
+    },
+
     effectiveMinTime () {
       return this.minTimeOverride || this.fc_minTime
     },
@@ -393,6 +405,7 @@ export default {
       'site_longitude',
       'timezone',
       'site_events',
+      'site_events_for',
       'site_events_observing_start_time',
       'site_events_observing_end_time'
     ]),
@@ -1317,8 +1330,8 @@ export default {
     // It provides indicators for the start and end time of the present observing night.
     // These values are sourced from the site config, in the site events.
     async getObservingStartEndIndicators () {
-      const observeStart = moment(this.site_events_observing_start_time).tz(this.fc_timeZone)
-      const observeEnd = moment(this.site_events_observing_end_time).tz(this.fc_timeZone)
+      const observeStart = moment(this.observingWindow.start).tz(this.fc_timeZone)
+      const observeEnd = moment(this.observingWindow.end).tz(this.fc_timeZone)
       const startAndEnd = [
         {
           start: observeStart.format(),
