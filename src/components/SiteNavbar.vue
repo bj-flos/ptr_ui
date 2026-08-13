@@ -204,9 +204,11 @@ export default {
 
 <style lang="scss" scoped>
 @import "@/style/_variables.scss";
-/* Sized to the 75px bar with room to breathe; width follows. */
+/* The lockup stacks three rows -- wordmark, rule, ASTERISM -- into the height
+   of the bar, so it has to take nearly all of the 75px or the type inside ends
+   up smaller than the menu beside it. */
 .brand-lockup {
-  height: 46px;
+  height: 64px;
   width: auto;
 }
 
