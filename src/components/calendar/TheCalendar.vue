@@ -416,6 +416,7 @@ export default {
       'userName',
       'userId'
     ]),
+    ...mapGetters('user_data', ['userFullName']),
     ...mapGetters('sitestatus', [
       'forecast'
     ])
@@ -1094,6 +1095,20 @@ export default {
      *  This is run when a user clicks on the calendar to create a new event.
      */
     /**
+     * What a new reservation is called before the student renames it.
+     *
+     * "RTS" for a real time session, so a glance at the calendar says which
+     * kind of booking it is rather than repeating the owner's name twice over.
+     * The name is the person's, not their login: the title is visible to
+     * everyone who can see the calendar, and a nickname here is usually an
+     * email address.
+     */
+    defaultEventTitle (reservationType) {
+      const who = this.userFullName
+      return reservationType === 'realtime' ? `RTS - ${who}` : who
+    },
+
+    /**
      * One of the two tokens was dropped on the grid.
      *
      * The drop time becomes the start, and which token it was decides the
@@ -1117,9 +1132,9 @@ export default {
 
       this.activeEvent.startStr = start.utc().format()
       this.activeEvent.endStr = end.utc().format()
-      this.activeEvent.title = this.userName
+      this.activeEvent.title = this.defaultEventTitle(type)
       this.activeEvent.reservation_type = type
-      this.activeEvent.creator = this.userName
+      this.activeEvent.creator = this.userFullName
       this.activeEvent.id = makeUniqueID()
       this.activeEvent.site = this.calendarSite
       this.activeEvent.resourceId = this.calendarSite
@@ -1135,9 +1150,9 @@ export default {
     newEventSelected (event) {
       this.activeEvent.startStr = moment(event.startStr).utc().format()
       this.activeEvent.endStr = moment(event.endStr).utc().format()
-      this.activeEvent.title = this.userName
       this.activeEvent.reservation_type = 'realtime' // or "project"
-      this.activeEvent.creator = this.userName
+      this.activeEvent.title = this.defaultEventTitle('realtime')
+      this.activeEvent.creator = this.userFullName
       this.activeEvent.id = makeUniqueID()
       this.activeEvent.site = this.calendarSite
       this.activeEvent.resourceId = this.calendarSite

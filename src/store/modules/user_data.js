@@ -36,6 +36,7 @@ const state = {
   // the nickname, which is usually the local part of their email address.
   // Absent on connections that never collected it, so treat it as optional.
   userGivenName: '',
+  userFamilyName: '',
   userEmail: '',
   profileUrl: '',
 
@@ -58,6 +59,17 @@ const state = {
 // getters
 const getters = {
   api: state => state.active_api,
+
+  /* The user's actual name, for anywhere a person is shown to other people.
+     Falls back to the nickname, which for most accounts is the local part of
+     their email address -- fine as a last resort, wrong as a first choice: a
+     reservation labelled "bj.kowalski" tells a classmate less than "BJ
+     Kowalski" does, and shows an email address to everyone who can see the
+     calendar. */
+  userFullName: state => {
+    const parts = [state.userGivenName, state.userFamilyName].filter(Boolean)
+    return parts.length ? parts.join(' ') : state.userName
+  },
   authenticatedUser: state => {
     return {
       admin: state.userIsAdmin,
@@ -79,6 +91,7 @@ const mutations = {
   userId (state, val) { state.userId = val },
   userNickname (state, val) { state.userNickname = val },
   userGivenName (state, val) { state.userGivenName = val },
+  userFamilyName (state, val) { state.userFamilyName = val },
   userEmail (state, val) { state.userEmail = val },
   profileUrl (state, val) { state.profileUrl = val },
 
@@ -130,6 +143,7 @@ const actions = {
     commit('userName', user.nickname)
     commit('userNickname', user.nickname)
     commit('userGivenName', user.given_name || '')
+    commit('userFamilyName', user.family_name || '')
     commit('userEmail', user.email)
     commit('profileUrl', user.picture)
 
@@ -149,6 +163,7 @@ const actions = {
     commit('userName', '')
     commit('userNickname', '')
     commit('userGivenName', '')
+    commit('userFamilyName', '')
     commit('userEmail', '')
     commit('profileUrl', '')
     commit('user_projects', [])

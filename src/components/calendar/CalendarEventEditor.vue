@@ -73,7 +73,7 @@
         </b-field>
         <b-field
           horizontal
-          label="Start Time"
+          :label="`Start Time (${tzLabel})`"
         >
           <b-select v-model="startStr">
             <option
@@ -88,7 +88,7 @@
 
         <b-field
           horizontal
-          label="End Time"
+          :label="`End Time (${tzLabel})`"
         >
           <b-select v-model="endStr">
             <option
@@ -206,7 +206,7 @@
         </b-field>
         <b-field
           horizontal
-          label="Start Time"
+          :label="`Start Time (${tzLabel})`"
         >
           <b-select v-model="startStr">
             <option
@@ -437,6 +437,14 @@ export default {
        moment, and the next .format() throws. That is what broke the editor when
        it was opened from the booking modal. Guessing the reader's zone as a
        last resort keeps it from ever being undefined again. */
+    /* The zone abbreviation, appended to every time label. These pickers are
+       the observatory's clock on a site page and the reader's in the home
+       page's booking modal, and an unlabelled "23:41" gives no way to tell
+       which -- for a telescope that may be a hemisphere away. */
+    tzLabel () {
+      return moment().tz(this.effectiveTimezone).format('z')
+    },
+
     effectiveTimezone () {
       const guessed = moment.tz && moment.tz.guess ? moment.tz.guess() : 'UTC'
       return this.timezoneOverride || this.timezone || guessed
