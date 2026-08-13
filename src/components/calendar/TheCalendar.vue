@@ -40,6 +40,7 @@
       :slot-label-format="fc_slotLabelFormat"
       :event-time-format="fc_eventTimeFormat"
       :locale="fc_locale"
+      :column-header-text="fc_columnHeaderText"
       :time-zone="fc_timeZone"
       :min-time="effectiveMinTime"
       :max-time="effectiveMaxTime"
@@ -500,7 +501,10 @@ export default {
       // column of times does not line up and reads as two different formats.
       fc_eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
       fc_slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-      fc_locale: 'en-GB', // so we can use 0:00 instead of 24:00
+      // en-GB so midnight renders as 0:00 rather than 24:00. It also orders
+      // dates day-first, which is why the column headers are formatted by hand
+      // below rather than left to the locale.
+      fc_locale: 'en-GB',
       fc_minTime: '12:00:00', // start the day column at noon
       fc_maxTime: '36:00:00', // end the day column at noon for the following day
       fc_scrollTime: '16:00:00', // calendar default view starts at 4pm.
@@ -653,6 +657,15 @@ export default {
       api.incrementDate({ days: weeks * 7 })
       const overshoot = weeks * 7 - days
       if (overshoot > 0) api.incrementDate({ days: -overshoot })
+    },
+
+    /* Day column headings, as "Wed 08/12".
+       Formatted here because the locale above is en-GB, which would order these
+       day-first. FullCalendar hands these over as UTC-based date markers, so
+       they are read back the same way -- reading them in the browser's zone
+       would shift the label by a day either side of midnight. */
+    fc_columnHeaderText (date) {
+      return moment.utc(date).format('ddd MM/DD')
     },
 
     // This is connected to the < button in the calendar header left
