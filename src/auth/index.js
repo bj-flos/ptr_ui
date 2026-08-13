@@ -18,6 +18,21 @@ export const useAuth0 = ({
 }) => {
   if (instance) return instance
 
+  // Held here so both the startup build and any later retry use exactly the
+  // same configuration.
+  const clientOptions = {
+    domain: options.domain,
+    client_id: options.clientId,
+    ...(options.audience ? { audience: options.audience } : {}),
+    redirect_uri: redirectUri,
+    // The startup silent /authorize runs in a hidden iframe, and a request
+    // Auth0 refuses never posts a message back -- the SDK just waits out its
+    // timeout, 60 seconds by default, with the app unmounted behind it. Ten is
+    // long enough for a real round trip and short enough that a misconfigured
+    // tenant costs a pause rather than what looks like a dead page.
+    authorizeTimeoutInSeconds: 10
+  }
+
   // The 'instance' is simply a Vue object
   instance = new Vue({
     data () {
@@ -31,28 +46,46 @@ export const useAuth0 = ({
       }
     },
     methods: {
+      /**
+       * The SDK client, built on demand.
+       *
+       * Startup construction can fail -- Auth0 unreachable, or a tenant that
+       * rejects the silent check -- and it used to leave auth0Client null while
+       * every method below dereferenced it, so a click on Log in produced
+       * "Cannot read properties of null" rather than anything a user could act
+       * on. Retrying here also means a failure that was only temporary is over
+       * as soon as someone tries again, with no reload.
+       */
+      async ensureClient () {
+        if (!this.auth0Client) {
+          this.auth0Client = await createAuth0Client(clientOptions)
+        }
+        return this.auth0Client
+      },
       /** Authenticates the user using a popup window */
       async loginWithPopup (o) {
         this.popupOpen = true
 
         try {
-          await this.auth0Client.loginWithPopup(o)
+          const client = await this.ensureClient()
+          await client.loginWithPopup(o)
+          this.user = await client.getUser()
+          this.isAuthenticated = true
         } catch (e) {
-          // eslint-disable-next-line
-          console.error(e);
+          this.error = e
+          // eslint-disable-next-line no-console
+          console.error('[auth] Login failed.', e)
         } finally {
           this.popupOpen = false
         }
-
-        this.user = await this.auth0Client.getUser()
-        this.isAuthenticated = true
       },
       /** Handles the callback when logging in using a redirect */
       async handleRedirectCallback () {
         this.loading = true
         try {
-          await this.auth0Client.handleRedirectCallback()
-          this.user = await this.auth0Client.getUser()
+          const client = await this.ensureClient()
+          await client.handleRedirectCallback()
+          this.user = await client.getUser()
           this.isAuthenticated = true
         } catch (e) {
           this.error = e
@@ -61,25 +94,25 @@ export const useAuth0 = ({
         }
       },
       /** Authenticates the user using the redirect method */
-      loginWithRedirect (o) {
-        return this.auth0Client.loginWithRedirect(o)
+      async loginWithRedirect (o) {
+        return (await this.ensureClient()).loginWithRedirect(o)
       },
       /** Returns all the claims present in the ID token */
-      getIdTokenClaims (o) {
-        return this.auth0Client.getIdTokenClaims(o)
+      async getIdTokenClaims (o) {
+        return (await this.ensureClient()).getIdTokenClaims(o)
       },
       /** Returns the access token. If the token is invalid or missing, a new one is retrieved */
-      getTokenSilently (o) {
-        return this.auth0Client.getTokenSilently(o)
+      async getTokenSilently (o) {
+        return (await this.ensureClient()).getTokenSilently(o)
       },
       /** Gets the access token using a popup window */
 
-      getTokenWithPopup (o) {
-        return this.auth0Client.getTokenWithPopup(o)
+      async getTokenWithPopup (o) {
+        return (await this.ensureClient()).getTokenWithPopup(o)
       },
       /** Logs the user out and removes their session on the authorization server */
-      logout (o) {
-        return this.auth0Client.logout(o)
+      async logout (o) {
+        return (await this.ensureClient()).logout(o)
       }
     },
     /** Use this lifecycle method to instantiate the SDK client */
@@ -94,19 +127,7 @@ export const useAuth0 = ({
       // dead.
       try {
         // Create a new instance of the SDK client using members of the given options object
-        this.auth0Client = await createAuth0Client({
-          domain: options.domain,
-          client_id: options.clientId,
-          ...(options.audience ? { audience: options.audience } : {}),
-          redirect_uri: redirectUri,
-          // The startup silent /authorize runs in a hidden iframe, and a
-          // rejected request (a 403 for an unregistered redirect_uri, say)
-          // never posts a message back -- the SDK just waits out its timeout,
-          // 60 seconds by default, with the app unmounted behind it. Ten is
-          // long enough for a real round trip and short enough that a
-          // misconfigured tenant costs a pause rather than a dead page.
-          authorizeTimeoutInSeconds: 10
-        })
+        await this.ensureClient()
 
         // If the user is returning to the app after authentication..
         if (
