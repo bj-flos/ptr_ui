@@ -9,15 +9,20 @@
         class="menu-title"
         :to="{ path: '/' }"
       >
-        <PTR
-          class="ml-1 mr-2 is-hidden-tablet"
-          with-lambda
-          font-size="40px"
-        />
-        <PhotonRanch
-          class="is-hidden-mobile"
-          :with-lambda="true"
-        />
+        <!-- The lambda alone on a narrow screen; the full lockup once there
+             is room for it. One image rather than the old arrangement of text
+             spans plus a separate lambda, so the wordmark cannot drift out of
+             step with the one the README shows. -->
+        <img
+          class="brand-lambda is-hidden-tablet ml-1 mr-2"
+          src="/img/logos/PTR-lambda.png"
+          alt="Photon Ranch on Asterism"
+        >
+        <img
+          class="brand-lockup is-hidden-mobile"
+          src="/img/logos/PTR-logo-asterism.png"
+          alt="Photon Ranch on Asterism"
+        >
         <span
           v-if="selected_site!=''"
           style="margin: 0;"
@@ -148,17 +153,11 @@
 </template>
 
 <script>
-import PhotonRanch from '@/components/logoText/PhotonRanch'
-import PTR from '@/components/logoText/PTR'
 import { mapState, mapMutations } from 'vuex'
 import { user_mixin } from '@/mixins/user_mixin'
 
 export default {
   name: 'SiteNavbar',
-  components: {
-    PTR,
-    PhotonRanch
-  },
   mixins: [
     user_mixin
   ],
@@ -205,6 +204,17 @@ export default {
 
 <style lang="scss" scoped>
 @import "@/style/_variables.scss";
+/* Sized to the 75px bar with room to breathe; width follows. */
+.brand-lockup {
+  height: 46px;
+  width: auto;
+}
+
+.brand-lambda {
+  height: 40px;
+  width: auto;
+}
+
 .menu-title {
   display:flex;
   align-items:center;
