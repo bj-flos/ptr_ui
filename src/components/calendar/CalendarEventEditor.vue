@@ -24,7 +24,7 @@
       label="User"
     >
       <p class="is-family-primary">
-        {{ eventDetails.creator }}
+        {{ creatorDisplay }}
       </p>
     </b-field>
 
@@ -391,7 +391,10 @@ export default {
     // If an admin opens an event they didn't create, we want them to be able to see the associated project.
     // So we set 'show_everyones_projects' = true
     // Note: this significantly slows down loading times, so always keep disabled by default
-    if (this.userIsAuthenticated && this.eventDetails.creator != this.userName && this.userIsAdmin) {
+    // Compared by id, not by display name: `creator` holds whatever the person
+    // was called when the booking was made, which is a nickname on older events
+    // and a full name on newer ones.
+    if (this.userIsAuthenticated && this.eventDetails.creator_id != this.userId && this.userIsAdmin) {
       this.show_everyones_projects = false
     }
 
@@ -435,6 +438,7 @@ export default {
     ...mapGetters('site_config', [
       'timezone'
     ]),
+    ...mapGetters('user_data', ['userFullName']),
 
     /* Every time formatted in here goes through this.
        The store getter reads global_config[selected_site], so on the home page
@@ -456,6 +460,16 @@ export default {
       return this.timezoneOverride || this.timezone || guessed
     },
     // Whether the user has permission to modify the calendar event
+    /* Who to credit. `creator` is whatever the person was called when the
+       booking was made -- a nickname on anything created before names were
+       stored, which for most accounts is an email local part. For the reader's
+       own bookings the store knows better, so prefer that; there is no
+       directory to look anyone else up in. */
+    creatorDisplay () {
+      if (this.creator_id && this.creator_id === this.userId) return this.userFullName
+      return this.eventDetails.creator
+    },
+
     userCanModify () {
       return (
         this.userIsAdmin ||

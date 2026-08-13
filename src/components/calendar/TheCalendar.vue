@@ -1271,7 +1271,7 @@ export default {
       this.event_hover_data = {
         title: event.title || '',
         type,
-        creator: props.creator || (props.origin === 'scheduler' ? 'the scheduler' : 'unknown'),
+        creator: this.creatorName(props),
         when,
         note: props.reservation_note || ''
       }
@@ -1280,6 +1280,17 @@ export default {
       if (!box) return
       box.style.visibility = 'visible'
       this.positionHoverBox(box, mouseInfo)
+    },
+
+    /* Who to credit for a booking. `creator` holds whatever the person was
+       called when it was made -- a nickname on anything created before names
+       were stored, which for most accounts is an email local part. For the
+       reader's own bookings the store knows their real name, so prefer it;
+       there is no directory to look anyone else up in. */
+    creatorName (props) {
+      if (props.creator_id && props.creator_id === this.userId) return this.userFullName
+      if (props.creator) return props.creator
+      return props.origin === 'scheduler' ? 'the scheduler' : 'unknown'
     },
 
     // Shared by both hover boxes: place it at the pointer, in page coordinates.
