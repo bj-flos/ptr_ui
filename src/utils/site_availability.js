@@ -66,7 +66,14 @@ export function siteReadiness (site, siteOpenStatus) {
     // test -- !roofOpen would call an unknown roof shut.
     roofOpen: roofOpen === true,
     roofKnown: roofOpen !== null,
-    shutReason: enclosure?.shut_reason
+    shutReason: enclosure?.shut_reason,
+    /* Who is driving the roof. Automatic is the normal case and says nothing
+       worth a row; anything else means the site is not following its own
+       schedule, which a student needs to know even when the roof is open --
+       Manual keeps it open through weather the automatic path would have shut
+       it for. An observatory inherits this from its wema along with the rest of
+       the enclosure record, so it is the wema's mode that shows here. */
+    mode: enclosure?.mode
   }
 }
 
@@ -98,13 +105,23 @@ export function readinessRows (readiness) {
   if (!readiness.online) {
     return [{ label: 'Status', text: 'Offline', color: STATUS_RED }]
   }
-  return [
+  const rows = [
     { label: 'Status', text: 'Online', color: STATUS_GREEN },
     readiness.weatherOk
       ? { label: 'Weather', text: 'ok', color: STATUS_GREEN }
       : { label: 'Weather', text: 'poor', color: STATUS_RED },
     { label: 'Safety', ...roofRow(readiness) }
   ]
+
+  /* Only when it is not Automatic. Every site would otherwise carry a row
+     saying it is behaving normally, which is noise on a card this small.
+     Amber rather than red: a roof under manual control is an operator being
+     deliberate, not a fault. */
+  if (readiness.mode && readiness.mode !== 'Automatic') {
+    rows.push({ label: 'Mode', text: readiness.mode, color: STATUS_AMBER })
+  }
+
+  return rows
 }
 
 /* Split out so the roof wording lives beside the roof toast wording. A roof
