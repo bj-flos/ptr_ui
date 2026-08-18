@@ -29,13 +29,12 @@ import { zone_label, browser_zone_label } from '@/utils/timezones'
  * The wema gives Operational Window Start and Cool Down, Open the same moment
  * -- both are cool_down_open -- so sorting by time alone leaves their order to
  * however the config happened to come back, and the round trip through the
- * config store does not preserve the order they were declared in. The window
- * opening is the broader statement, so it reads first.
+ * config store does not preserve the order they were declared in.
  *
  * Anything not listed sorts after what is, alphabetically among itself. */
 const TIED_EVENT_ORDER = [
-  'operational window start',
-  'cool down, open'
+  'cool down, open',
+  'operational window start'
 ]
 
 function tie_rank (key) {
