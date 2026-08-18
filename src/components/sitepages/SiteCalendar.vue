@@ -183,7 +183,9 @@ $calendar-height: calc(#{$content-view-height} - #{$content-padding * 2});
 
   @include fullhd {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    /* 3:1 rather than 2:1 -- the controls column takes a quarter of the width
+       instead of a third, which is a 25% cut, and the calendar keeps it. */
+    grid-template-columns: 3fr 1fr;
     grid-template-rows: $calendar-height;
   }
 }

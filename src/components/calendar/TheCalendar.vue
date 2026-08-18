@@ -2236,6 +2236,13 @@ $sky-darkness-z-index: 15;
 // Prevent the row time labels from changing the row heights
 .fc-axis {
   position: relative;
+  /* Sized to their contents rather than sharing the table's spare width.
+     "23:00" and "12.49" measure 33px in this font, plus the 5px the span is
+     offset by; the first column also has to hold "OBS Local" at 60px. */
+  width: 44px;
+  &:first-child {
+    width: 66px;
+  }
   span {
     color: #aaa;
     position:absolute;
