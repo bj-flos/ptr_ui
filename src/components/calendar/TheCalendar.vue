@@ -1125,7 +1125,10 @@ export default {
            * A div matches none of those rules, and the cell is the positioned
            * ancestor. Added after the UTC and SID clones are taken, so they do
            * not inherit a copy. */
-          if (this.axisZoneLabel) {
+          // Only the cell that carries the label: the other rows in this
+          // table have an axis cell with no span, and a zone there is a
+          // stray "PDT" under nothing.
+          if (this.axisZoneLabel && localSpan) {
             const zone = document.createElement('div')
             zone.className = 'fc-axis-zone'
             zone.textContent = this.axisZoneLabel
