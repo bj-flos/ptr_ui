@@ -1085,6 +1085,15 @@ export default {
 
         const localHeader = e.querySelector('.fc-axis')
         if (localHeader) {
+          /* Drop the zone left by an earlier pass before anything is cloned.
+             This runs on every render, and the UTC and SID cells are cloned
+             from this one -- so a zone still attached here was copied into
+             them, and every render added another. */
+          const staleZone = localHeader.querySelector('.fc-axis-zone')
+          if (staleZone) {
+            staleZone.remove()
+          }
+
           // Set local header text. The axis renders whatever zone fc_timeZone
           // names, so the label has to be told which one that is -- the home
           // page's booking modal runs this calendar on the reader's own clock.
@@ -1116,7 +1125,7 @@ export default {
            * A div matches none of those rules, and the cell is the positioned
            * ancestor. Added after the UTC and SID clones are taken, so they do
            * not inherit a copy. */
-          if (this.axisZoneLabel && !localHeader.querySelector('.fc-axis-zone')) {
+          if (this.axisZoneLabel) {
             const zone = document.createElement('div')
             zone.className = 'fc-axis-zone'
             zone.textContent = this.axisZoneLabel
