@@ -45,7 +45,10 @@ const base_config = {
   settimezone: false, // Just use the provided UTC time when using Celestial.date(); ignore timezone.
 
   container: 'celestial-map', // ID of parent element, e.g. div
-  datapath: '/data', // Path/URL to data files, empty = subfolder 'data'
+  // Resolved against the app's base path. Hard-coding '/data' broke the
+  // chart once the app moved under /ptr: the root is the parent app's, and
+  // it answers index.html, which d3.json then tries to parse as JSON.
+  datapath: `${process.env.BASE_URL || '/'}data`, // Path/URL to data files
   stars: {
     show: true, // Show stars
     limit: 6, // Show only stars brighter than limit magnitude

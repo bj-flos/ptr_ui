@@ -334,7 +334,8 @@ export default {
     }
 
     // Add custom data to display on the map
-    const custom_data_path = ['/data/all_objects.json', '/data/galactic_points.json']
+    const base = process.env.BASE_URL || '/'
+    const custom_data_path = [`${base}data/all_objects.json`, `${base}data/galactic_points.json`]
     add_custom_data(Celestial, config, custom_data_path)
     // add_custom_data(Celestial, config, galactic_data_path);
 

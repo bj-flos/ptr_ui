@@ -290,7 +290,7 @@ export default {
             name: this.commonlist[i].name,
             nickname: this.commonlist[i].alt,
             type: this.commonlist[i].group,
-            image: '/targs/DefaultTargetImages/' + this.commonlist[i].name.replace(/ /g, '') + '.jpg',
+            image: (process.env.BASE_URL || '/') + 'targs/DefaultTargetImages/' + this.commonlist[i].name.replace(/ /g, '') + '.jpg',
             ra: this.commonlist[i].ra,
             dec: this.commonlist[i].dec,
             starttime: this.dateobsreal,

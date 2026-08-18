@@ -1000,7 +1000,7 @@ export default {
             name: this.common_targets_list[i].name,
             nickname: this.common_targets_list[i].alt,
             type: this.common_targets_list[i].group,
-            image: '/targs/DefaultTargetImages/' + this.common_targets_list[i].name.replace(/ /g, '') + '.jpg',
+            image: (process.env.BASE_URL || '/') + 'targs/DefaultTargetImages/' + this.common_targets_list[i].name.replace(/ /g, '') + '.jpg',
             ra: this.common_targets_list[i].ra,
             dec: this.common_targets_list[i].dec,
             starttime: this.date_obs_real,
