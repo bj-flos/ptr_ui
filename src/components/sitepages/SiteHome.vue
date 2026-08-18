@@ -27,28 +27,16 @@
       />
     </div>
 
-    <!-- This is a temporary solution only. Does not scale. -->
-    <!-- Add ClearDarkSky charts to site homepage -->
+    <!-- ClearDarkSky chart, shown when the site config names one. -->
     <div
-      v-if="['mrc', 'mrc1', 'mrc2'].indexOf(sitecode.toLowerCase()) != -1"
+      v-if="clear_sky_chart_id"
       class="level"
     >
-      <a href="https://www.cleardarksky.com/c/SaBarbCAkey.html">
-        <img src="https://www.cleardarksky.com/c/SaBarbCAcsk.gif?c=1594801"></a>
-    </div>
-    <div
-      v-if="['aro', 'aro1', 'aro2', 'saf'].indexOf(sitecode.toLowerCase()) != -1"
-      class="level"
-    >
-      <a href="https://www.cleardarksky.com/c/LmyRdgObNMkey.html">
-        <img src="https://www.cleardarksky.com/c/LmyRdgObNMcsk.gif?c=1594801"></a>
-    </div>
-    <div
-      v-if="sitecode.toLowerCase()=='sro'"
-      class="level"
-    >
-      <a href="https://www.cleardarksky.com/c/SROCAkey.html">
-        <img src="https://www.cleardarksky.com/c/SROCAcsk.gif?c=1076447"></a>
+      <a :href="clear_sky_chart_key_url">
+        <img
+          :src="clear_sky_chart_image_url"
+          :alt="`Clear Sky Chart for ${site_name}`"
+        ></a>
     </div>
 
     <div style="height: 2em;" />
@@ -76,8 +64,17 @@ export default {
     ...mapGetters('site_config', [
       'site_latitude',
       'site_longitude',
-      'site_name'
+      'site_name',
+      'clear_sky_chart_id'
     ]),
+    clear_sky_chart_key_url () {
+      return `https://www.cleardarksky.com/c/${this.clear_sky_chart_id}key.html`
+    },
+    clear_sky_chart_image_url () {
+      // The 'c' value identifies PTR as the embedder to cleardarksky.com. It is
+      // not per-site, and the image serves fine without it.
+      return `https://www.cleardarksky.com/c/${this.clear_sky_chart_id}csk.gif?c=1594801`
+    },
     userIsAdmin () {
       return this.$store.state.user_data.userIsAdmin
     }

@@ -278,6 +278,15 @@ const getters = {
     return getters.site_config?.TZ_database_name
   },
 
+  /* The Clear Sky Chart key for this site, eg. 'SaBarbCA', as published in the
+   * site config. A chart covers a physical location rather than a telescope, so
+   * an obs falls back to the value on its wema. Null means no chart is shown. */
+  clear_sky_chart_id: (state, getters) => {
+    return getters.site_config?.clear_sky_chart_id ??
+      getters.wema_config?.clear_sky_chart_id ??
+      null
+  },
+
   /* These getters are used to customize the control form fields. */
   // Available camera areas
   camera_areas: (state, getters) => {
