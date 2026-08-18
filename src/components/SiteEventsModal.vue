@@ -24,6 +24,25 @@ import moment from 'moment'
 import { mapGetters } from 'vuex'
 import { zone_label, browser_zone_label } from '@/utils/timezones'
 
+/* Events that fall on the same instant, in the order they should read.
+ *
+ * The wema gives Operational Window Start and Cool Down, Open the same moment
+ * -- both are cool_down_open -- so sorting by time alone leaves their order to
+ * however the config happened to come back, and the round trip through the
+ * config store does not preserve the order they were declared in. The window
+ * opening is the broader statement, so it reads first.
+ *
+ * Anything not listed sorts after what is, alphabetically among itself. */
+const TIED_EVENT_ORDER = [
+  'operational window start',
+  'cool down, open'
+]
+
+function tie_rank (key) {
+  const index = TIED_EVENT_ORDER.indexOf(key)
+  return index == -1 ? TIED_EVENT_ORDER.length : index
+}
+
 export default {
   name: 'SiteEventsModal',
   props: ['sitecode'],
@@ -142,7 +161,10 @@ export default {
       // Chronological by absolute time, which is what the UTC column shows.
       // The table's default-sort points at a hidden column, so ordering the
       // rows here does not depend on that still working.
-      tableData.sort((a, b) => a.unix - b.unix)
+      tableData.sort((a, b) =>
+        (a.unix - b.unix) ||
+        (tie_rank(a.key) - tie_rank(b.key)) ||
+        a.key.localeCompare(b.key))
       this.site_events = tableData
     }
   }
