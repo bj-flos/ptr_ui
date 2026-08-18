@@ -74,15 +74,6 @@
            already-formatted lines. Show them as they were written. -->
       <pre v-else>{{ legacyReport }}</pre>
     </div>
-
-    <div style="margin-bottom: 1em;">
-      <b-button @click="showOwmStatus">
-        (alternate method) show OpenWeatherMap Status
-      </b-button>
-    </div>
-    <b-modal v-model="owmModalVisible">
-      <pre>{{ legacyReport }}</pre>
-    </b-modal>
   </div>
 </template>
 
@@ -94,7 +85,6 @@ export default {
   name: 'OWMReport',
   data () {
     return {
-      owmModalVisible: false,
       owmReport: '...loading...'
     }
   },
@@ -148,9 +138,6 @@ export default {
       this.$store.dispatch('sitestatus/getLatestOwmReport').then((res) => {
         this.owmReport = this.$store.getters['sitestatus/owmReport']
       })
-    },
-    showOwmStatus () {
-      this.owmModalVisible = true
     },
     percent (value) {
       return value == null ? '-' : `${Math.round(value)}%`
