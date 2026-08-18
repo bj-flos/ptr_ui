@@ -88,6 +88,7 @@
 
 <script>
 import { mapGetters } from 'vuex'
+import { zone_label } from '@/utils/timezones'
 
 export default {
   name: 'OWMReport',
@@ -103,29 +104,9 @@ export default {
       'timezone'
     ]),
 
-    /* The site's zone as a short label, eg. 'PDT' or 'AEST'.
-     *
-     * Preferred source is the IANA name through Intl, because it follows
-     * daylight saving: the config's `timezone` string is written by hand and
-     * mrc has said PST since it was created, summer included.
-     *
-     * Intl only knows letter abbreviations for a few regions though, and
-     * answers 'GMT+10' for Australia/Melbourne. Where it falls back to an
-     * offset the site's own abbreviation is the better label, so use that
-     * when it has one, and the offset when it does not. */
+    /* The site's zone, for the heading. */
     siteZoneLabel () {
-      const configured = this.$store.getters['site_config/site_config']?.timezone
-      if (!this.timezone) { return configured || '' }
-      try {
-        const parts = new Intl.DateTimeFormat('en-US', { timeZone: this.timezone, timeZoneName: 'short' })
-          .formatToParts(new Date())
-        const label = parts.find(p => p.type == 'timeZoneName')?.value ?? ''
-        if (label && !label.startsWith('GMT')) { return label }
-        return configured || label
-      } catch (e) {
-        // An unrecognised zone name should cost the heading its suffix, nothing more.
-        return configured || ''
-      }
+      return zone_label(this.timezone, this.$store.getters['site_config/site_config']?.timezone)
     },
 
     /* Names the night the report covers. Falls back to the bare title when the

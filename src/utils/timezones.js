@@ -87,4 +87,43 @@ function utc_offset_from_coordinates (lat, lng, date = new Date()) {
   }
 }
 
-export { utc_offset_from_coordinates }
+/**
+ * A short label for a timezone, eg. 'PDT' or 'AEST'.
+ *
+ * Intl follows daylight saving, which a hand-written abbreviation in a site
+ * config does not -- mrc's says PST all summer. But Intl only knows letter
+ * abbreviations for a few regions and answers 'GMT+10' for Australia/Melbourne,
+ * where the site's own 'AEST' reads better. So: prefer Intl, and fall back to
+ * the supplied label only where Intl gives an offset rather than a name.
+ *
+ * @param {String} timeZone tz database name, eg. 'America/Los_Angeles'
+ * @param {String} fallback the site's own abbreviation, if it publishes one
+ * @returns {String} the label, or '' when neither source has one
+ */
+function zone_label (timeZone, fallback = '') {
+  if (!timeZone) { return fallback }
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'short' })
+      .formatToParts(new Date())
+    const label = parts.find(p => p.type == 'timeZoneName')?.value ?? ''
+    if (label && !label.startsWith('GMT')) { return label }
+    return fallback || label
+  } catch (e) {
+    // An unrecognised zone should cost a label, nothing more.
+    return fallback
+  }
+}
+
+/**
+ * The same label for whatever zone the browser is in.
+ * @returns {String}
+ */
+function browser_zone_label () {
+  try {
+    return zone_label(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  } catch (e) {
+    return ''
+  }
+}
+
+export { utc_offset_from_coordinates, zone_label, browser_zone_label }

@@ -22,6 +22,7 @@
 <script>
 import moment from 'moment'
 import { mapGetters } from 'vuex'
+import { zone_label, browser_zone_label } from '@/utils/timezones'
 
 export default {
   name: 'SiteEventsModal',
@@ -44,6 +45,16 @@ export default {
       'buildRotatorTabStatus'
     ]),
 
+    /* Zone labels for the column headings, so a reader can tell which clock
+     * each time is on without knowing where the site is. */
+    siteZoneLabel () {
+      return zone_label(this.timezone, this.$store.getters['site_config/site_config']?.timezone)
+    },
+
+    userZoneLabel () {
+      return browser_zone_label()
+    },
+
     columns () {
       return [
         // Widths are fixed so the table does not re-lay out when the site
@@ -53,7 +64,7 @@ export default {
           field: 'key',
           label: 'key',
           searchable: false,
-          width: '40%',
+          width: '45%',
           cellClass: 'site-events-table-key-cell'
         },
         {
@@ -65,22 +76,9 @@ export default {
         },
         {
           field: 'date',
+          // Holds MM/DD, so it needs far less room than it was given.
           label: 'date',
           searchable: false,
-          width: '22%',
-          sortable: true
-        },
-        {
-          field: 'observatory',
-          label: 'site',
-          visible: true,
-          width: '13%',
-          sortable: true
-        },
-        {
-          field: 'user',
-          label: 'user',
-          visible: true,
           width: '12%',
           sortable: true
         },
@@ -89,6 +87,20 @@ export default {
           label: 'UTC',
           searchable: false,
           width: '13%',
+          sortable: true
+        },
+        {
+          field: 'observatory',
+          label: this.siteZoneLabel ? `site (${this.siteZoneLabel})` : 'site',
+          visible: true,
+          width: '15%',
+          sortable: true
+        },
+        {
+          field: 'user',
+          label: this.userZoneLabel ? `user (${this.userZoneLabel})` : 'user',
+          visible: true,
+          width: '15%',
           sortable: true
         },
         {
@@ -127,6 +139,10 @@ export default {
           })
         }
       }
+      // Chronological by absolute time, which is what the UTC column shows.
+      // The table's default-sort points at a hidden column, so ordering the
+      // rows here does not depend on that still working.
+      tableData.sort((a, b) => a.unix - b.unix)
       this.site_events = tableData
     }
   }
