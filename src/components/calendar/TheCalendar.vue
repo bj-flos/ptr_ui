@@ -2238,10 +2238,14 @@ $sky-darkness-z-index: 15;
   position: relative;
   /* Sized to their contents rather than sharing the table's spare width.
      "23:00" and "12.49" measure 33px in this font, plus the 5px the span is
-     offset by; the first column also has to hold "OBS Local" at 60px. */
-  width: 44px;
+     offset by; the first column also has to hold "OBS Local" at 60px.
+
+     !important because FullCalendar measures these columns itself and writes
+     the result inline, which a class rule cannot outrank. The same widths
+     apply to the header and body tables, so the two stay aligned. */
+  width: 44px !important;
   &:first-child {
-    width: 66px;
+    width: 66px !important;
   }
   span {
     color: #aaa;
