@@ -297,7 +297,7 @@ const mutations = {
   siteOpenStatus (state, val) { state.site_open_status = val },
 
   new_weather_status (state, status) {
-    state.weather = status.observing_conditions
+    state.weather = status?.observing_conditions ?? {}
   },
   new_forecast_status (state, status) {
     state.forecast = status?.forecast || []
@@ -306,7 +306,7 @@ const mutations = {
     state.daily_forecast = status?.forecast_daily || []
   },
   new_enclosure_status (state, status) {
-    state.enclosure = status.enclosure
+    state.enclosure = status?.enclosure ?? {}
   },
   new_device_status (state, status) {
     const device_types = [
@@ -328,10 +328,10 @@ const mutations = {
     })
   },
   new_wema_settings_status (state, status) {
-    state.wema_settings = status.wema_settings
+    state.wema_settings = status?.wema_settings ?? {}
   },
   new_obs_settings_status (state, status) {
-    state.obs_settings = status.obs_settings
+    state.obs_settings = status?.obs_settings ?? {}
   },
 
   storeNewOwmReport (state, { wema_name, newReport, publishedAt }) {
