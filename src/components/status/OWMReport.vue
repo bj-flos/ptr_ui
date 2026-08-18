@@ -67,7 +67,7 @@
         </div>
 
         <p class="owm-report-meta">
-          Roof would {{ report.open_at_start ? 'open' : 'stay shut' }} at the start of the night.
+          Roof {{ report.open_at_start ? 'could open' : 'should stay closed' }} at the start of the night.
         </p>
       </div>
 
@@ -144,8 +144,8 @@ export default {
       return value == null ? '-' : `${Number(value).toFixed(1)} m/s`
     },
     roofPlan (plan) {
-      if (plan == 'open') { return 'would open' }
-      if (plan == 'close') { return 'would close' }
+      if (plan == 'open') { return 'could open' }
+      if (plan == 'close') { return 'should close' }
       return ''
     }
   }

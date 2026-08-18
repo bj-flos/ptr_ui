@@ -1,4 +1,5 @@
 import axios from 'axios'
+import Vue from 'vue'
 
 import { statusAgeDisplay, STALE_AGE_MS } from './getters/status_utils'
 import helpers from '../../../utils/helpers'
@@ -18,7 +19,6 @@ import selector_getters from './getters/selector_getters'
 import wema_settings_getters from './getters/wema_settings_getters'
 import obs_settings_getters from './getters/obs_settings_getters'
 import accumulated_getters from './getters/accumulated_getters'
-import moment from 'moment'
 
 const hasKey = (obj, key) => { return Object.keys(obj).includes(key) }
 
@@ -330,8 +330,11 @@ const mutations = {
     state.obs_settings = status.obs_settings
   },
 
-  storeNewOwmReport (state, { wema_name, newReport, newTimestamp }) {
-    state.siteOwmReports[wema_name] = { report: newReport, timestamp: newTimestamp }
+  storeNewOwmReport (state, { wema_name, newReport, publishedAt }) {
+    // Vue.set: wema names are added as sites are visited, and a plain
+    // assignment leaves a new key non-reactive, so the panel would keep
+    // rendering whatever it read first.
+    Vue.set(state.siteOwmReports, wema_name, { report: newReport, publishedAt })
   },
 
   status (state, status) {
@@ -469,23 +472,30 @@ const actions = {
     }
   },
 
+  /* Replace the stored report whenever the wema has published a newer one.
+   *
+   * This used to skip the request entirely for an hour after the last one.
+   * Because the store is persisted, that hour survived reloads: a site could
+   * publish a new report and every refresh would still show the old one until
+   * the window elapsed. Comparing what the wema published, rather than how
+   * long ago we asked, means the panel updates as soon as there is something
+   * new and never re-renders on an unchanged report. */
   getLatestOwmReport ({ commit, rootState, rootGetters, state }) {
     const wema_name = rootGetters['site_config/wema_name']
-    if (wema_name) {
-      // request and store a new report if not cached or cached more than 1 hour ago
-      if (!(wema_name in state.siteOwmReports) || moment(state.siteOwmReports[wema_name].timestamp).isBefore(moment().subtract(1, 'hours'))) {
-        return new Promise((resolve, reject) => {
-          const url = rootState.api_endpoints.status_endpoint + `/${wema_name}/owm_report`
-          axios.get(url).then(response => {
-            commit('storeNewOwmReport', { wema_name, newReport: response.data.status.owm_report, newTimestamp: moment() })
-            resolve()
-          }).catch(e => {
-            console.log(e)
-            reject(e)
-          })
-        })
+    if (!wema_name) { return Promise.resolve() }
+
+    const url = rootState.api_endpoints.status_endpoint + `/${wema_name}/owm_report`
+    return axios.get(url).then(response => {
+      const publishedAt = response.data?.server_timestamp_ms ?? 0
+      // Entries stored before this change carry no publishedAt, so the first
+      // response after an upgrade always wins and the stale one is replaced.
+      const cached = state.siteOwmReports[wema_name]
+      if (!cached || publishedAt > (cached.publishedAt ?? 0)) {
+        commit('storeNewOwmReport', { wema_name, newReport: response.data.status.owm_report, publishedAt })
       }
-    }
+    }).catch(e => {
+      console.log(e)
+    })
   },
 
   // Reset to empty values. Used for sites without any status available.
