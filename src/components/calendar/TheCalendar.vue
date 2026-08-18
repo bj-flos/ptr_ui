@@ -194,6 +194,7 @@
 import axios from 'axios'
 import moment from 'moment'
 import { mapState, mapGetters } from 'vuex'
+import { zone_label } from '@/utils/timezones'
 
 import CalendarEventEditor from '@/components/calendar/CalendarEventEditor'
 import ObservationViewer from '@/components/calendar/ObservationViewer'
@@ -293,7 +294,7 @@ export default {
     // modal, where the axis runs on the reader's local time instead.
     localAxisLabel: {
       type: String,
-      default: 'Obs. Local'
+      default: 'OBS Local'
     },
 
     // The observatory's longitude, for the sidereal column. Normally left unset
@@ -483,6 +484,13 @@ export default {
       return this.siteLatitudeOverride != null && isFinite(this.siteLatitudeOverride)
         ? this.siteLatitudeOverride
         : this.site_latitude
+    },
+
+    /* The zone the left axis is drawn in, as a short label. fc_timeZone is
+     * the observatory's own zone on a site page and the reader's in the
+     * booking modal, so this names whichever clock the column is showing. */
+    axisZoneLabel () {
+      return zone_label(this.fc_timeZone, this.$store.getters['site_config/site_config']?.timezone)
     },
 
     /* The hourly forecast, extended with the daily one for the days it does
@@ -1080,8 +1088,18 @@ export default {
           // Set local header text. The axis renders whatever zone fc_timeZone
           // names, so the label has to be told which one that is -- the home
           // page's booking modal runs this calendar on the reader's own clock.
-          if (localHeader.querySelector('span')) {
-            localHeader.querySelector('span').textContent = this.localAxisLabel
+          const localSpan = localHeader.querySelector('span')
+          if (localSpan) {
+            localSpan.textContent = this.localAxisLabel
+            // The zone goes on its own line beneath, so the heading says which
+            // clock the column is on without widening the axis.
+            if (this.axisZoneLabel) {
+              localSpan.appendChild(document.createElement('br'))
+              const zone = document.createElement('span')
+              zone.className = 'fc-axis-zone'
+              zone.textContent = this.axisZoneLabel
+              localSpan.appendChild(zone)
+            }
           }
 
           // Add UTC header
@@ -2257,6 +2275,15 @@ $sky-darkness-z-index: 15;
     z-index: $now-indicator-z-index;
     opacity: 1;
   }
+}
+
+/* The zone beneath the left axis heading. Smaller and dimmer, so the label
+   still reads as one heading rather than two. */
+.fc-axis-zone {
+  display: block;
+  font-size: 0.8em;
+  opacity: 0.7;
+  font-weight: normal;
 }
 
 /* Styles for the lines showing the start and end of observing
