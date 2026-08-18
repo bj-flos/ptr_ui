@@ -34,6 +34,7 @@ const state = {
   enclosure: {},
   siteOwmReports: {},
   forecast: [],
+  daily_forecast: [],
 
   screen: {},
   focuser: {},
@@ -301,6 +302,9 @@ const mutations = {
   new_forecast_status (state, status) {
     state.forecast = status?.forecast || []
   },
+  new_daily_forecast_status (state, status) {
+    state.daily_forecast = status?.forecast_daily || []
+  },
   new_enclosure_status (state, status) {
     state.enclosure = status.enclosure
   },
@@ -400,6 +404,7 @@ const actions = {
     // Get this separately because the wema settings aren't included in the `complete_status` endpoint
     dispatch('getLatestWemaSettings')
     dispatch('getLatestForecast')
+    dispatch('getLatestDailyForecast')
 
     // Clear the existing status if we load a new site
     if (state.site != current_site) {
@@ -429,6 +434,7 @@ const actions = {
       commit('site', current_site)
 
       dispatch('getLatestForecast')
+      dispatch('getLatestDailyForecast')
     } else {
       console.warn(`Status not available for ${current_site}.`)
     }
@@ -470,6 +476,21 @@ const actions = {
         console.log(e)
       })
     }
+  },
+
+  /* The daily forecast, on its own lane because the hourly series only
+   * reaches a couple of days and the week view needs the rest. */
+  getLatestDailyForecast ({ commit, rootState, rootGetters }) {
+    const wema_name = rootGetters['site_config/wema_name']
+    if (!wema_name) { return }
+    const url = rootState.api_endpoints.status_endpoint + `/${wema_name}/forecast_daily`
+    axios.get(url).then(response => {
+      commit('new_daily_forecast_status', response.data.status)
+    }).catch(e => {
+      // A site that has not published one yet is not an error; the calendar
+      // simply draws what hourly coverage it has.
+      console.log(e)
+    })
   },
 
   /* Replace the stored report whenever the wema has published a newer one.

@@ -485,8 +485,19 @@ export default {
         : this.site_latitude
     },
 
+    /* The hourly forecast, extended with the daily one for the days it does
+     * not reach.
+     *
+     * One Call answers with about two days of hours against eight of days, so
+     * on its own the hourly series left most of a week view blank. Each day
+     * beyond the hourly horizon is spread across its own 24 hours at that
+     * day's quality, which is what lets the existing band grouping draw it:
+     * a whole day of one quality collapses into a single bar, exactly as a
+     * run of like hours does. Marked resolution 'day', so a reader is not
+     * told the weather at 3am was forecast hour by hour when it was not. */
     effectiveForecast () {
-      return this.forecastOverride || this.forecast
+      const hourly = this.forecastOverride || this.forecast
+      return hourly.concat(this.dailyForecastAsHours(hourly))
     },
 
     effectiveLongitude () {
@@ -516,7 +527,8 @@ export default {
     ]),
     ...mapGetters('user_data', ['userFullName']),
     ...mapGetters('sitestatus', [
-      'forecast'
+      'forecast',
+      'dailyForecast'
     ])
   },
 
@@ -1819,6 +1831,44 @@ export default {
           }
         })
       }
+    },
+
+    /**
+     * The daily forecast as hour-shaped entries, for days the hourly series
+     * does not cover.
+     *
+     * Days already inside the hourly horizon are skipped rather than drawn
+     * twice: hourly detail is better than a day average wherever it exists.
+     */
+    dailyForecastAsHours (hourly) {
+      const days = this.dailyForecast || []
+      if (days.length == 0) {
+        return []
+      }
+
+      const lastHour = hourly
+        .filter(f => f && f.utc_long_form)
+        .reduce((latest, f) => Math.max(latest, moment(f.utc_long_form).valueOf()), 0)
+
+      const filler = []
+      days.forEach(day => {
+        if (!day || !day.date) {
+          return
+        }
+        for (let hour = 0; hour < 24; hour++) {
+          const at = moment.utc(day.date, 'YYYY-MM-DD').add(hour, 'hours')
+          if (at.valueOf() <= lastHour) {
+            continue
+          }
+          filler.push({
+            ...day,
+            utc_long_form: at.format('YYYY-MM-DDTHH:mm:ss') + 'Z',
+            utc_clock_hour: at.format('HH'),
+            resolution: 'day'
+          })
+        }
+      })
+      return filler
     },
 
     /**
