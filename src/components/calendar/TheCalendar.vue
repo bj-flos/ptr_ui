@@ -1092,9 +1092,11 @@ export default {
           if (localSpan) {
             localSpan.textContent = this.localAxisLabel
             // The zone goes on its own line beneath, so the heading says which
-            // clock the column is on without widening the axis.
+            // clock the column is on without widening the axis. The axis span
+            // is laid out nowrap, so a <br> put the two lines on top of each
+            // other -- the class opens it up and the zone block stacks.
+            localSpan.classList.add('fc-axis-heading')
             if (this.axisZoneLabel) {
-              localSpan.appendChild(document.createElement('br'))
               const zone = document.createElement('span')
               zone.className = 'fc-axis-zone'
               zone.textContent = this.axisZoneLabel
@@ -2277,13 +2279,20 @@ $sky-darkness-z-index: 15;
   }
 }
 
-/* The zone beneath the left axis heading. Smaller and dimmer, so the label
-   still reads as one heading rather than two. */
+/* The left axis heading, stacked: the label with its zone beneath. The axis
+   span is nowrap by default, which collapsed both lines into one row. */
+.fc-axis-heading {
+  display: block;
+  white-space: normal;
+  line-height: 1.15;
+}
+/* Smaller and dimmer, so the pair still reads as one heading. */
 .fc-axis-zone {
   display: block;
   font-size: 0.8em;
   opacity: 0.7;
   font-weight: normal;
+  line-height: 1.15;
 }
 
 /* Styles for the lines showing the start and end of observing
