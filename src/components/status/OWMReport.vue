@@ -1,13 +1,13 @@
 <template>
   <div>
     <div style="margin-bottom: 1em;">
-      OWM Report
+      OpenWeatherMap Report
       <pre>{{ owmReport }}</pre>
     </div>
 
     <div style="margin-bottom: 1em;">
       <b-button @click="showOwmStatus">
-        (alternate method) show OWM Status
+        (alternate method) show OpenWeatherMap Status
       </b-button>
     </div>
     <b-modal v-model="owmModalVisible">
