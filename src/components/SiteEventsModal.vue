@@ -82,7 +82,7 @@ export default {
           field: 'key',
           label: 'key',
           searchable: false,
-          width: '45%',
+          width: '34%',
           cellClass: 'site-events-table-key-cell'
         },
         {
@@ -111,14 +111,15 @@ export default {
           field: 'observatory',
           label: this.siteZoneLabel ? `site (${this.siteZoneLabel})` : 'site',
           visible: true,
-          width: '15%',
+          // Wide enough for a heading like "site (AEST)" to stay on one line.
+          width: '20%',
           sortable: true
         },
         {
           field: 'user',
           label: this.userZoneLabel ? `user (${this.userZoneLabel})` : 'user',
           visible: true,
-          width: '15%',
+          width: '21%',
           sortable: true
         },
         {

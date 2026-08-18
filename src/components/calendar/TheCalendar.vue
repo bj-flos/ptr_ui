@@ -1091,17 +1091,7 @@ export default {
           const localSpan = localHeader.querySelector('span')
           if (localSpan) {
             localSpan.textContent = this.localAxisLabel
-            // The zone goes on its own line beneath, so the heading says which
-            // clock the column is on without widening the axis. The axis span
-            // is laid out nowrap, so a <br> put the two lines on top of each
-            // other -- the class opens it up and the zone block stacks.
             localSpan.classList.add('fc-axis-heading')
-            if (this.axisZoneLabel) {
-              const zone = document.createElement('span')
-              zone.className = 'fc-axis-zone'
-              zone.textContent = this.axisZoneLabel
-              localSpan.appendChild(zone)
-            }
           }
 
           // Add UTC header
@@ -1117,6 +1107,21 @@ export default {
             sidHeader.querySelector('span').textContent = 'SID'
           }
           e.appendChild(sidHeader)
+
+          /* The zone, on its own line under the label.
+           *
+           * A div on the cell rather than a span inside the label: FullCalendar
+           * positions axis spans absolutely with `top: -1px`, which outranked
+           * anything set here and painted the zone straight over the label.
+           * A div matches none of those rules, and the cell is the positioned
+           * ancestor. Added after the UTC and SID clones are taken, so they do
+           * not inherit a copy. */
+          if (this.axisZoneLabel && !localHeader.querySelector('.fc-axis-zone')) {
+            const zone = document.createElement('div')
+            zone.className = 'fc-axis-zone'
+            zone.textContent = this.axisZoneLabel
+            localHeader.appendChild(zone)
+          }
         }
       })
 
@@ -2291,15 +2296,15 @@ $sky-darkness-z-index: 15;
    `position: static`, so rather than fight it the zone is placed explicitly:
    absolute against the label span, one line down. */
 .fc-axis-zone {
-  position: absolute !important;
-  top: 1.15em;
-  left: 0;
-  right: 0;
-  display: block;
+  position: absolute;
+  top: 1.25em;
+  left: 4px;
+  right: 4px;
   font-size: 0.8em;
   opacity: 0.7;
   font-weight: normal;
   line-height: 1.15;
+  pointer-events: none;
 }
 
 /* Styles for the lines showing the start and end of observing
