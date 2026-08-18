@@ -1673,23 +1673,33 @@ export default {
     // It provides indicators for the start and end time of the present observing night.
     // These values are sourced from the site config, in the site events.
     async getObservingStartEndIndicators () {
-      const observeStart = moment(this.observingWindow.start).tz(this.fc_timeZone)
-      const observeEnd = moment(this.observingWindow.end).tz(this.fc_timeZone)
-      const startAndEnd = [
-        {
-          start: observeStart.format(),
-          end: observeStart.add('1', 'minutes').format(),
-          rendering: 'background',
-          classNames: ['fc-observing-start-end-time', 'start']
-        },
-        {
-          start: observeEnd.format(),
-          end: observeEnd.add('1', 'minutes').format(),
-          rendering: 'background',
-          classNames: ['fc-observing-start-end-time', 'end']
+      /* A marker is drawn only for a time the site actually publishes.
+       *
+       * moment(undefined) is the current time, so a site missing one of these
+       * events used to get a line labelled "Observing Starts" drawn at
+       * whatever time the page was opened -- reading as data, moving with the
+       * clock, and landing after "Observing Ends" for most of the day. Better
+       * to draw nothing than to invent a boundary. */
+      const marker = (value, kind) => {
+        if (!value) {
+          return null
         }
-      ]
-      return startAndEnd
+        const at = moment(value).tz(this.fc_timeZone)
+        if (!at.isValid()) {
+          return null
+        }
+        return {
+          start: at.format(),
+          end: at.clone().add(1, 'minutes').format(),
+          rendering: 'background',
+          classNames: ['fc-observing-start-end-time', kind]
+        }
+      }
+
+      return [
+        marker(this.observingWindow.start, 'start'),
+        marker(this.observingWindow.end, 'end')
+      ].filter(Boolean)
     },
 
     // This eventSource creates and returns the background events that shade the
