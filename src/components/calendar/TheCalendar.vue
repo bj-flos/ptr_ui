@@ -2286,8 +2286,12 @@ $sky-darkness-z-index: 15;
   white-space: normal;
   line-height: 1.15;
 }
-/* Smaller and dimmer, so the pair still reads as one heading. */
+/* Smaller and dimmer, so the pair still reads as one heading.
+   position: static is the load-bearing part -- FullCalendar absolutely
+   positions the spans in the axis, so without it the zone was taken out of
+   flow and painted on top of the label rather than beneath it. */
 .fc-axis-zone {
+  position: static;
   display: block;
   font-size: 0.8em;
   opacity: 0.7;
