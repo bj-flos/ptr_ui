@@ -59,6 +59,7 @@
       :event-sources="fc_eventSources"
       :event-render="fc_eventRender"
       :day-render="dayRender"
+      :dates-render="fc_datesRender"
       :resources="fc_resources"
       :plugins="fc_plugins"
       :editable="fc_editable"
@@ -211,7 +212,7 @@ import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid'
 import bootstrapPlugin from '@fullcalendar/bootstrap'
 import momentTimezonePlugin from '@fullcalendar/moment-timezone'
 
-import { makeUniqueID, copyFcEvent, convertFullCalendarEventToPtrFormat, convertEventEditorResponseToPtrFormat, getMoonPhaseDays, rgba_from_illumination, oneDayTwilight, removeSensitiveData } from '@/utils/calendar_utils.js'
+import { makeUniqueID, copyFcEvent, convertFullCalendarEventToPtrFormat, convertEventEditorResponseToPtrFormat, getMoonPhaseDays, rgba_from_illumination, oneDayTwilight, removeSensitiveData, operationalAnchor } from '@/utils/calendar_utils.js'
 import helpers from '@/utils/helpers'
 
 // must manually include stylesheets for each plugin
@@ -347,11 +348,11 @@ export default {
   mounted () {
     this.fullCalendarApi = this.$refs.fullCalendar.getApi()
 
-    // Open one day back, so today is the second column with yesterday beside
-    // it. This used to be two blind incrementDateBack() calls, which landed one
-    // or two days back depending on whether the view snapped to a week
-    // boundary; alignRangeToToday measures instead of stepping blind.
-    this.alignRangeToToday(-1)
+    /* Open on the night's operational window rather than on a civil day.
+       The config often has not arrived yet at mount, in which case anchorDay
+       falls back to today and the global_config watcher redoes this once the
+       real events land. */
+    this.alignRangeToAnchor()
 
     // Once we've mounted, we're able to access the fullCalendar $ref.
     // We need this to access the fullCalendar.getApi() method.
@@ -379,8 +380,8 @@ export default {
     )
     if (window.innerWidth < phoneScreenWidthMax) {
       this.fullCalendarApi.changeView('timeGridDay')
-      // One column, so it should be today's.
-      this.alignRangeToToday(0)
+      // One column, so it should be the anchor day's.
+      this.alignRangeToAnchor()
     }
 
     this.$store.dispatch('user_data/fetchAllProjects')
@@ -398,6 +399,13 @@ export default {
       this.refreshCalendarView()
     },
     global_config () {
+      /* The site's events arrive with the config, so the anchor computed at
+         mount was a fallback. Redo it -- but only while the view is still
+         where mount left it, so a config refresh cannot yank the calendar out
+         from under someone who has paged away. */
+      if (!this.hasUserNavigated) {
+        this.alignRangeToAnchor()
+      }
       this.refreshCalendarView()
     },
     userId () {
@@ -468,6 +476,30 @@ export default {
         start: events['Observing Begins'] ?? this.site_events_observing_start_time,
         end: events['Observing Ends'] ?? this.site_events_observing_end_time
       }
+    },
+
+    /* The night's operational window -- when the enclosure may be open, which
+       is wider than the observing window inside it. Read for the same site the
+       calendar is showing, for the same reason observingWindow does. */
+    operationalWindow () {
+      const events = this.site_events_for(this.calendarSite)
+      return {
+        start: events['Operational Window Start'],
+        end: events['Operational Window Closes']
+      }
+    },
+
+    /* The day the calendar should open on: the operational window that is
+       running, about to run, or only just finished. A site publishing no
+       operational window falls back to today, which is what the calendar did
+       before this existed. */
+    anchorDay () {
+      const anchor = operationalAnchor(
+        Date.now(),
+        this.operationalWindow.start,
+        this.operationalWindow.end
+      )
+      return anchor === null ? this.todayInCalendarZone() : this.dayInCalendarZone(anchor)
     },
 
     effectiveMinTime () {
@@ -711,7 +743,16 @@ export default {
 
       // Flag to indicate whether the eventDrop function ran (which means that our event was
       // drag-and-dropped in a successful location)
-      eventDropDidRun: false
+      eventDropDidRun: false,
+
+      /* Set once the user moves the view themselves. The config can land well
+         after mount, and re-anchoring then is right only if nobody has taken
+         the calendar somewhere on purpose in the meantime. */
+      hasUserNavigated: false,
+
+      // Which view last rendered, and the day it was showing -- see fc_datesRender.
+      renderedViewType: null,
+      rememberedDay: null
     }
   },
 
@@ -722,17 +763,6 @@ export default {
       return this.userIsAdmin || obj.creator_id === this.userId
     },
 
-    /**
-     * The `today` button: bring the view back so today is the second column,
-     * with yesterday beside it, so the run-up to tonight stays visible.
-     *
-     * Deliberately driven by incrementDate rather than today() or gotoDate().
-     * Both of those move the calendar's currentDate without the visible range
-     * following it here -- the range is only ever moved by incrementDate, which
-     * is what the arrow buttons use. So this measures how far the current range
-     * start is from where it should be and steps that many days, exactly as
-     * pressing the arrows repeatedly would.
-     */
     /* Day column headings, as "Wed 08/12".
        Formatted here because the locale is en-GB, chosen so midnight renders as
        0:00 rather than 24:00, which would otherwise order these day-first.
@@ -743,20 +773,38 @@ export default {
       return moment.utc(date).format('ddd MM/DD')
     },
 
-    /* Move the visible range so it starts `offsetDays` from today.
+    /* Which calendar day an instant falls on, in the zone the grid is drawn
+       in, as YYYY-MM-DD. Days are compared as labels rather than instants
+       throughout: the site's midnight and the browser's are different moments,
+       and diffing them directly leaves a fractional day behind. */
+    dayInCalendarZone (ms) {
+      const zone = this.fc_timeZone
+      return (zone ? moment(ms).tz(zone) : moment(ms)).format('YYYY-MM-DD')
+    },
+
+    todayInCalendarZone () {
+      return this.dayInCalendarZone(Date.now())
+    },
+
+    /* The day the visible range currently starts on. FullCalendar hands
+       activeStart over as a UTC-based date marker, so it is read back the same
+       way -- see fc_columnHeaderText. */
+    currentRangeStartDay () {
+      const api = this.fullCalendarApi
+      if (!api || !api.view) return null
+      return moment.utc(api.view.activeStart).format('YYYY-MM-DD')
+    },
+
+    /* Move the visible range so it starts on `day` (YYYY-MM-DD).
        Driven by incrementDate rather than today() or gotoDate(): those move the
        calendar's currentDate without the visible range following it here, while
        incrementDate is what the arrow buttons use and does move it. */
-    alignRangeToToday (offsetDays) {
+    alignRangeToDay (day) {
       const api = this.fullCalendarApi
-      if (!api || !api.view) return
+      if (!api || !api.view || !day) return
 
-      const midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate())
-      const now = new Date()
-      const wanted = midnight(new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetDays))
-      const current = midnight(api.view.activeStart)
-
-      const days = Math.round((wanted - current) / 86400000)
+      const current = this.currentRangeStartDay()
+      const days = moment.utc(day).diff(moment.utc(current), 'days')
       if (days === 0) return
 
       if (days < 0 || api.state.viewType !== 'timeGridWeek') {
@@ -775,27 +823,62 @@ export default {
       if (overshoot > 0) api.incrementDate({ days: -overshoot })
     },
 
-    /* The `today` button. In the week view today lands in the second column
-       with yesterday beside it, so the run-up to tonight stays visible; the
-       other views have no columns to centre and simply show today. */
-    goToToday () {
-      const api = this.fullCalendarApi
-      if (!api) return
-      this.alignRangeToToday(api.state.viewType === 'timeGridWeek' ? -1 : 0)
+    /* Put the view on the night's operational window. */
+    alignRangeToAnchor () {
+      this.alignRangeToDay(this.anchorDay)
     },
 
-    /* The `day` button. Switching views keeps whatever currentDate the previous
-       view left, and the week view deliberately starts before today -- so
-       arriving in the day view showed yesterday. */
+    /* The `today` button: always the local day, in every view. In the week
+       view that is the first column rather than the second -- the run-up to
+       tonight is what the back arrow is for. */
+    goToToday () {
+      this.hasUserNavigated = true
+      this.alignRangeToDay(this.todayInCalendarZone())
+    },
+
+    /* The `day` button. The week button beside it is FullCalendar's own, so
+       the day the two views share is carried by fc_datesRender rather than
+       from here -- a custom week button would switch views correctly but lose
+       the active-view highlight the built-in one gets. */
     goToDayView () {
       const api = this.fullCalendarApi
       if (!api) return
+      this.hasUserNavigated = true
       api.changeView('timeGridDay')
-      this.$nextTick(() => this.alignRangeToToday(0))
+    },
+
+    /* Runs on every range render. A view switch resets the range to whatever
+       currentDate the previous view left behind, which is not the day that was
+       on screen -- so the day is remembered while a view is being paged
+       around, and put back the first time the other view renders.
+
+       Only the two time-grid views take part. The month grid starts on
+       whichever Sunday the month happens to open in, so its activeStart is not
+       a day anyone chose, and stepping it by that many days would move the
+       whole month rather than align it. */
+    fc_datesRender (info) {
+      const viewType = info.view.type
+      const previousViewType = this.renderedViewType
+      const dayAligned = t => t === 'timeGridDay' || t === 'timeGridWeek'
+
+      if (viewType !== previousViewType) {
+        this.renderedViewType = viewType
+        if (dayAligned(viewType) && dayAligned(previousViewType) && this.rememberedDay) {
+          this.hasUserNavigated = true
+          const target = this.rememberedDay
+          this.$nextTick(() => this.alignRangeToDay(target))
+        }
+        return
+      }
+
+      if (dayAligned(viewType)) {
+        this.rememberedDay = moment.utc(info.view.activeStart).format('YYYY-MM-DD')
+      }
     },
 
     // This is connected to the < button in the calendar header left
     incrementDateBack () {
+      this.hasUserNavigated = true
       // Move one day in week view
       if (this.fullCalendarApi.state.viewType == 'timeGridWeek') {
         this.fullCalendarApi.incrementDate({ days: -1 })
@@ -814,6 +897,7 @@ export default {
 
     // This is connected to the > button in the calendar header left
     incrementDateForward () {
+      this.hasUserNavigated = true
       // Move one day in week view
       if (this.fullCalendarApi.state.viewType == 'timeGridWeek') {
         // Do this +7 - 6 weirdness because the calendar only likes to move forward in 7 day chunks

@@ -251,6 +251,44 @@ const oneDayTwilight = (timestamp, latitude, longitude) => {
   return events
 }
 
+/* The day the calendar should open on, as a unix timestamp in ms.
+ *
+ * A telescope's unit of work is the observing night, not the civil day, and a
+ * night straddles midnight -- so the useful anchor is the operational window
+ * rather than "today". A window counts as the one to show from two hours
+ * before it opens until two hours after it closes; outside that band the
+ * anchor is the next window start still ahead of `now`.
+ *
+ * The trailing two hours also cover a stale config: the site only recomputes
+ * its events at nightly reset, so between close and reset the config still
+ * describes the night that just finished, and during that gap this keeps
+ * showing it rather than jumping a day early.
+ *
+ * Only one night of events is ever published, so the following window is taken
+ * as this one plus 24h. That drifts by the few minutes a day sunset moves,
+ * which does not survive rounding to a calendar day.
+ *
+ * Returns null when either bound is missing. A site that publishes no
+ * operational window gets no invented one -- the caller falls back to today,
+ * the same way getObservingStartEndIndicators draws nothing rather than a
+ * boundary it had to guess.
+ */
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+const operationalAnchor = (nowMs, startMs, endMs) => {
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return null
+  }
+  const withinBand = nowMs >= startMs - TWO_HOURS_MS && nowMs <= endMs + TWO_HOURS_MS
+  if (withinBand) {
+    return startMs
+  }
+  // Before the band the window is still ahead, so it is itself the next one;
+  // only past it does the anchor roll forward a night.
+  return startMs > nowMs ? startMs : startMs + ONE_DAY_MS
+}
+
 export {
   removeSensitiveData,
   makeUniqueID,
@@ -259,5 +297,6 @@ export {
   convertEventEditorResponseToPtrFormat,
   getMoonPhaseDays,
   rgba_from_illumination,
-  oneDayTwilight
+  oneDayTwilight,
+  operationalAnchor
 }
