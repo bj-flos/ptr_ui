@@ -15,7 +15,7 @@
         title="Drag onto the calendar to book time you drive yourself"
       >
         <EyeThroughTelescopeIcon :size="30" />
-        <span>You drive it</span>
+        <span>Manual operation</span>
       </div>
       <div
         class="observation-token"
@@ -23,7 +23,7 @@
         title="Drag onto the calendar to have the computer take it for you"
       >
         <ComputerThroughTelescopeIcon :size="30" />
-        <span>Automation has it</span>
+        <span>Use Automation</span>
       </div>
     </div>
 

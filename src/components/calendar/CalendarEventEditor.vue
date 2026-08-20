@@ -345,7 +345,7 @@ export default {
     // selected there.
     'timezoneOverride',
     // When a reservation is started from one of the calendar's drag tokens the
-    // kind is already chosen -- "You drive it" is a real time session and
+    // kind is already chosen -- "Manual operation" is a real time session and
     // nothing else -- so the other tab is not an option to offer.
     'lockedType'
   ],
@@ -673,7 +673,7 @@ export default {
   },
   methods: {
     /* Which reservation tabs to offer. Both, unless the caller has already
-       settled the question -- dragging "You drive it" onto the grid says real
+       settled the question -- dragging "Manual operation" onto the grid says real
        time session and nothing else, so offering a Project Session tab beside
        it invites picking one the drag has already ruled out. */
     showsTab (type) {

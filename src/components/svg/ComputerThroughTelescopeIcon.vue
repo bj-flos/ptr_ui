@@ -6,7 +6,7 @@
     :height="size"
     viewBox="0 0 48 48"
     role="img"
-    aria-label="Automation has it"
+    aria-label="Use Automation"
     focusable="false"
   >
     <!-- tripod -->
