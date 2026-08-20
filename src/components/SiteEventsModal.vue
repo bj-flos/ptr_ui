@@ -101,18 +101,18 @@ export default {
           sortable: true
         },
         {
-          field: 'UTC',
-          label: 'UTC',
-          searchable: false,
-          width: '13%',
-          sortable: true
-        },
-        {
           field: 'observatory',
           label: this.siteZoneLabel ? `site (${this.siteZoneLabel})` : 'site',
           visible: true,
           // Wide enough for a heading like "site (AEST)" to stay on one line.
           width: '20%',
+          sortable: true
+        },
+        {
+          field: 'UTC',
+          label: 'UTC',
+          searchable: false,
+          width: '13%',
           sortable: true
         },
         {
