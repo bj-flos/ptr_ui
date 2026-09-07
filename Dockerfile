@@ -25,9 +25,19 @@ ENV PUBLIC_PATH=$PUBLIC_PATH \
     NODE_OPTIONS=--max-old-space-size=4096
 RUN npx vue-cli-service build
 
+# Source maps are 10.5MB next to a 4.6MB bundle and are of no use to anyone
+# loading this over a tunnel. Kept out of the image rather than turned off in
+# vue.config.js, so a local build still produces them.
+RUN find /app/dist -name '*.map' -delete
+
 FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# gzip is off in stock nginx, and this bundle is not small: the stylesheet
+# alone is 7.5MB and chunk-vendors 3.9MB. Served raw through the tunnel the
+# browser gave up on all three with ERR_HTTP2_PROTOCOL_ERROR while the same
+# bytes fetched fine over HTTP/1.1.
+#
 # vue-router runs in history mode, so a deep link like /site/dpo-17/targets is
 # not a file: without the fallback, refreshing on any route but / is a 404.
 #
@@ -40,6 +50,12 @@ RUN printf '%s\n' \
     'server {' \
     '    listen 8082;' \
     '    root /usr/share/nginx/html;' \
+    '    gzip on;' \
+    '    gzip_vary on;' \
+    '    gzip_proxied any;' \
+    '    gzip_comp_level 6;' \
+    '    gzip_min_length 1024;' \
+    '    gzip_types text/plain text/css application/javascript application/json image/svg+xml application/manifest+json;' \
     '    location / { try_files $uri $uri/ /index.html; }' \
     '    location = /config.js { try_files $uri =404; }' \
     '    location /js/  { try_files $uri =404; }' \
