@@ -2,6 +2,8 @@
  *  This module stores state related to development tools.
  */
 
+import { runtimeConfig } from '@/runtime_config'
+
 // initial state
 const state = {
   /* Every endpoint comes from the environment; see .env.local.
@@ -11,20 +13,20 @@ const state = {
     silently sending this development build's traffic to LCO production.
     */
 
-  active_api: process.env.VUE_APP_ACTIVE_API || '', // prod
+  active_api: runtimeConfig('VUE_APP_ACTIVE_API', process.env.VUE_APP_ACTIVE_API) || '', // prod
 
-  jobs_api: process.env.VUE_APP_JOBS_API || '', // prod
+  jobs_api: runtimeConfig('VUE_APP_JOBS_API', process.env.VUE_APP_JOBS_API) || '', // prod
 
-  calendar_api: process.env.VUE_APP_CALENDAR_API || '', // prod
+  calendar_api: runtimeConfig('VUE_APP_CALENDAR_API', process.env.VUE_APP_CALENDAR_API) || '', // prod
 
-  projects_endpoint: process.env.VUE_APP_PROJECTS_ENDPOINT || '', // prod
+  projects_endpoint: runtimeConfig('VUE_APP_PROJECTS_ENDPOINT', process.env.VUE_APP_PROJECTS_ENDPOINT) || '', // prod
 
-  logs_endpoint: process.env.VUE_APP_LOGS_ENDPOINT || '', // prod
+  logs_endpoint: runtimeConfig('VUE_APP_LOGS_ENDPOINT', process.env.VUE_APP_LOGS_ENDPOINT) || '', // prod
 
-  quickanalysis_endpoint: process.env.VUE_APP_QUICKANALYSIS_ENDPOINT || '',
+  quickanalysis_endpoint: runtimeConfig('VUE_APP_QUICKANALYSIS_ENDPOINT', process.env.VUE_APP_QUICKANALYSIS_ENDPOINT) || '',
   // quickanalysis_endpoint: 'http://localhost:5000',
 
-  status_endpoint: process.env.VUE_APP_STATUS_ENDPOINT || '' // prod
+  status_endpoint: runtimeConfig('VUE_APP_STATUS_ENDPOINT', process.env.VUE_APP_STATUS_ENDPOINT) || '' // prod
 }
 
 // getters

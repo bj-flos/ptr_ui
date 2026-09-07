@@ -1,3 +1,4 @@
+import { runtimeConfig } from '@/runtime_config'
 import { NotificationProgrammatic as Notification, DialogProgrammatic as Dialog } from 'buefy'
 
 // Uncomment this if you need to run locally without an internet connection
@@ -11,7 +12,7 @@ import { NotificationProgrammatic as Notification, DialogProgrammatic as Dialog 
 const UiSyncPlugin = (store) => {
   // Unset means no ui sync, as with every other endpoint. This was hardcoded
   // to production and was the second of the two things still reaching LCO.
-  const websocketServerUrl = process.env.VUE_APP_UISYNC_URL || ''
+  const websocketServerUrl = runtimeConfig('VUE_APP_UISYNC_URL', process.env.VUE_APP_UISYNC_URL) || ''
   if (!websocketServerUrl) {
     console.info('ui_sync: VUE_APP_UISYNC_URL is unset, ui sync is off')
     return

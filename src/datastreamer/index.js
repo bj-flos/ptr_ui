@@ -1,10 +1,11 @@
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import topic_handlers from './topic_handlers'
 import store from '../store'
+import { runtimeConfig } from '@/runtime_config'
 
 // The live status stream. Unset means no datastream, which is the right
 // default: the address that used to be here was LCO production.
-const DATASTREAM_URL = process.env.VUE_APP_DATASTREAM_URL || ''
+const DATASTREAM_URL = runtimeConfig('VUE_APP_DATASTREAM_URL', process.env.VUE_APP_DATASTREAM_URL) || ''
 if (!DATASTREAM_URL) {
   console.info('datastreamer: VUE_APP_DATASTREAM_URL is unset, live updates are off')
 }

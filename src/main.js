@@ -1,3 +1,4 @@
+import { runtimeConfig } from '@/runtime_config'
 import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
@@ -18,10 +19,10 @@ import { Auth0Plugin, getInstance } from './auth'
 // A tenant set in .env.local fully overrides auth_config.json, so a local or
 // dev tenant can be used without editing tracked config. With no env vars set,
 // the checked-in photonranch tenant is used exactly as before.
-const envDomain = process.env.VUE_APP_AUTH0_DOMAIN
+const envDomain = runtimeConfig('VUE_APP_AUTH0_DOMAIN', process.env.VUE_APP_AUTH0_DOMAIN)
 const domain = envDomain || authConfig.domain
-const clientId = envDomain ? process.env.VUE_APP_AUTH0_CLIENT_ID : authConfig.clientId
-const audience = envDomain ? process.env.VUE_APP_AUTH0_AUDIENCE : authConfig.audience
+const clientId = envDomain ? runtimeConfig('VUE_APP_AUTH0_CLIENT_ID', process.env.VUE_APP_AUTH0_CLIENT_ID) : authConfig.clientId
+const audience = envDomain ? runtimeConfig('VUE_APP_AUTH0_AUDIENCE', process.env.VUE_APP_AUTH0_AUDIENCE) : authConfig.audience
 // The app is served under BASE_URL (publicPath — '/ptr/' when reached through
 // the nina-scheduler nginx), so the callback has to carry that base too: a bare
 // origin sends Auth0 back to '/', which is the NINA GUI rather than this app.
@@ -30,7 +31,7 @@ const audience = envDomain ? process.env.VUE_APP_AUTH0_AUDIENCE : authConfig.aud
 // resulting URL must still be registered as an Allowed Callback URL in the
 // Auth0 tenant. VUE_APP_AUTH0_REDIRECT_URI overrides it outright.
 const redirectUri =
-  process.env.VUE_APP_AUTH0_REDIRECT_URI ||
+  runtimeConfig('VUE_APP_AUTH0_REDIRECT_URI', process.env.VUE_APP_AUTH0_REDIRECT_URI) ||
   window.location.origin + process.env.BASE_URL
 
 // Hide the 'you are running in development mode!' warning in the console.
