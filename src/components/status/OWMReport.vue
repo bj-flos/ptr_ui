@@ -18,6 +18,7 @@
             <thead>
               <tr>
                 <th>Hour (UTC)</th>
+                <th>Hour ({{ siteZoneLabel || 'local' }})</th>
                 <th class="has-text-right">
                   FNumber
                 </th>
@@ -43,6 +44,9 @@
                 :key="hour.iso_time || hour.hour_utc"
               >
                 <td>{{ hour.hour_utc }}</td>
+                <!-- Same instant, site clock. Older reports carry no local
+                     hour; an empty cell is better than a wrong one. -->
+                <td>{{ hour.hour_local == null ? '' : hour.hour_local }}</td>
                 <td class="has-text-right">
                   {{ hour.fitzgerald_number }}
                 </td>
@@ -64,10 +68,6 @@
             </tbody>
           </table>
         </div>
-
-        <p class="owm-report-meta">
-          Roof {{ report.open_at_start ? 'could open' : 'should stay closed' }} at the start of the night.
-        </p>
       </div>
 
       <!-- Reports published before the wema sent structured data are a list of
@@ -145,9 +145,16 @@ export default {
     wind (value) {
       return value == null ? '-' : `${Number(value).toFixed(1)} m/s`
     },
+    /* The roof column carries the plan for that hour. It used to be a
+     * sentence under the table about the start of the night, which meant a
+     * reader looking at 22:00 had nothing to read. 'close' is what an older
+     * wema sent for the same thing. */
     roofPlan (plan) {
-      if (plan == 'open') { return 'could open' }
-      if (plan == 'close') { return 'should close' }
+      if (plan == 'open') { return 'Open' }
+      if (plan == 'opens') { return 'Opens' }
+      // 'close' is what an older wema sent for the closing hour.
+      if (plan == 'closes' || plan == 'close') { return 'Closes' }
+      if (plan == 'stay_closed') { return 'Stay closed' }
       return ''
     }
   }
