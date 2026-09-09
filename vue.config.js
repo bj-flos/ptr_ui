@@ -7,6 +7,27 @@ module.exports = {
   // of at the parent host's root — where they would hit the NINA GUI.
   // Override with PUBLIC_PATH=/ to serve at the root again.
   publicPath: process.env.PUBLIC_PATH || '/ptr/',
+
+  pwa: {
+    workboxOptions: {
+      /* config.js carries this deployment's endpoints and tenant, and it is the
+       * one file that must NOT be precached. Workbox picks up everything in
+       * public/, so it was being frozen into the app shell along with the
+       * bundle: a deploy changed the file on the server while every existing
+       * browser went on reading the version its service worker had cached.
+       * That surfaced as a login attempting a host from two deploys earlier,
+       * with no clue in the network tab because the request never left.
+       *
+       * Excluded here so it is always fetched from the network, which is what
+       * the no-store headers on it already assume. */
+      exclude: [/config\.js$/, /\.map$/],
+      /* Take over as soon as the new worker installs. Without these a fresh
+       * deploy sits behind the old shell until every tab is closed, and
+       * "shift-reload to update" is not a thing a user should have to know. */
+      skipWaiting: true,
+      clientsClaim: true
+    }
+  },
   css: {
     loaderOptions: {
       sass: {

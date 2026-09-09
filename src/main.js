@@ -19,10 +19,12 @@ import { Auth0Plugin, getInstance } from './auth'
 // A tenant set in .env.local fully overrides auth_config.json, so a local or
 // dev tenant can be used without editing tracked config. With no env vars set,
 // the checked-in photonranch tenant is used exactly as before.
-const envDomain = runtimeConfig('VUE_APP_AUTH0_DOMAIN', process.env.VUE_APP_AUTH0_DOMAIN)
-const domain = envDomain || authConfig.domain
-const clientId = envDomain ? runtimeConfig('VUE_APP_AUTH0_CLIENT_ID', process.env.VUE_APP_AUTH0_CLIENT_ID) : authConfig.clientId
-const audience = envDomain ? runtimeConfig('VUE_APP_AUTH0_AUDIENCE', process.env.VUE_APP_AUTH0_AUDIENCE) : authConfig.audience
+// Descope. The project id is the whole of the tenant configuration -- there is
+// no domain or client secret to carry -- and like every other endpoint it comes
+// from config.js at run time so one image serves every deployment.
+const projectId =
+  runtimeConfig('VUE_APP_DESCOPE_PROJECT_ID', process.env.VUE_APP_DESCOPE_PROJECT_ID) ||
+  authConfig.descopeProjectId
 // The app is served under BASE_URL (publicPath — '/ptr/' when reached through
 // the nina-scheduler nginx), so the callback has to carry that base too: a bare
 // origin sends Auth0 back to '/', which is the NINA GUI rather than this app.
@@ -41,12 +43,8 @@ Vue.use(JsonViewer)
 Vue.use(LoadScript)
 Vue.use(Buefy)
 Vue.use(Auth0Plugin, {
-  domain,
-  clientId,
+  projectId,
   redirectUri,
-  // Omitted entirely when unset — an unregistered audience makes Auth0 reject
-  // the authorize request with "Service not found".
-  ...(audience ? { audience } : {}),
   onRedirectCallback: appState => {
     // router paths are relative to BASE_URL, so the raw pathname has to have the
     // base stripped before it is pushed — otherwise the base is applied twice
