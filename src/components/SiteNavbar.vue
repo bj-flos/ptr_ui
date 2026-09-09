@@ -82,13 +82,11 @@
               Welcome back{{ userGivenName ? ' ' + userGivenName : '' }}
             </p>
             <div style="width:8px" />
-            <img
-              :src="profileUrl"
-              width="25"
-              height="25"
-              style="border-radius: 50%;"
-              referrerpolicy="no-referrer"
-            >
+            <!-- Not a bare <img src="profileUrl">: the provider supplies a
+                 picture only for accounts that have one, which under Descope
+                 means social sign-ins and little else. An empty src renders as
+                 a broken image, so the avatar falls back to initials. -->
+            <UserAvatar :size="25" />
           </div>
 
           <div class="navbar-dropdown">
@@ -163,6 +161,7 @@
 </template>
 
 <script>
+import UserAvatar from '@/components/UserAvatar'
 import NavbarSiteDropdown from '@/components/NavbarSiteDropdown'
 import { mapState, mapMutations } from 'vuex'
 import { user_mixin } from '@/mixins/user_mixin'
@@ -170,7 +169,8 @@ import { user_mixin } from '@/mixins/user_mixin'
 export default {
   name: 'SiteNavbar',
   components: {
-    NavbarSiteDropdown
+    NavbarSiteDropdown,
+    UserAvatar
   },
   mixins: [
     user_mixin

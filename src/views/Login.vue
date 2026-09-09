@@ -5,7 +5,7 @@
       <div class="login-card">
         <img
           class="login-logo"
-          src="/img/logos/PTR-logo-asterism.svg"
+          :src="`${publicPath}img/logos/PTR-logo-asterism.svg`"
           alt="Photon Ranch"
         >
 
@@ -58,6 +58,15 @@ import SiteNavbar from '@/components/SiteNavbar'
 export default {
   name: 'Login',
   components: { SiteNavbar },
+
+  computed: {
+    /* public/ is copied verbatim, so webpack never rewrites these URLs.
+     * A leading slash resolves at the host root, which is not this app
+     * once it is served under a base such as /ptr/. */
+    publicPath () {
+      return process.env.BASE_URL
+    }
+  },
 
   data () {
     return {

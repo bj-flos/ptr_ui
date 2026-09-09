@@ -5,7 +5,7 @@
       <div class="invite-card">
         <img
           class="invite-logo"
-          src="/img/logos/PTR-logo-asterism.svg"
+          :src="`${publicPath}img/logos/PTR-logo-asterism.svg`"
           alt="Photon Ranch"
         >
 
@@ -99,6 +99,15 @@ import { getInstance } from '@/auth'
 export default {
   name: 'Invite',
   components: { SiteNavbar },
+
+  computed: {
+    /* public/ is copied verbatim, so webpack never rewrites these URLs.
+     * A leading slash resolves at the host root, which is not this app
+     * once it is served under a base such as /ptr/. */
+    publicPath () {
+      return process.env.BASE_URL
+    }
+  },
 
   data () {
     return {

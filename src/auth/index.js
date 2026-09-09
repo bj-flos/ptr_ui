@@ -63,6 +63,11 @@ function shapeUser (me, sdk) {
     sub: details.userId || details.sub || '',
     name: details.name || email,
     nickname: details.name || email.split('@')[0],
+    // Descope spells these givenName/familyName; the store and the greeting
+    // read the OIDC given_name/family_name. Without the mapping the navbar
+    // says "Welcome back" to nobody in particular.
+    given_name: details.givenName || '',
+    family_name: details.familyName || '',
     email,
     picture: details.picture,
     [APP_METADATA_CLAIM]: { roles: rolesFromToken(sdk) }
@@ -121,17 +126,29 @@ export const useAuth = ({
         return this.sdk
       },
 
-      /** Pull user and authentication state out of the SDK. */
+      /**
+       * Pull user and authentication state out of the SDK.
+       *
+       * Authentication is decided by whether the provider will tell us who the
+       * user is, NOT by whether a session token can be read from browser
+       * storage. A project configured to keep the session in a cookie hands
+       * the browser nothing to read -- the SDK's own README says so -- and
+       * judging by the token made a signed-in user look signed out: the app
+       * mounted with no session, and the route guard sent anyone clicking
+       * Profile back to the provider they had just come from.
+       */
       async refreshState () {
         const sdk = await this.ensureClient()
-        const token = sdk.getSessionToken()
-        if (!token) {
-          this.isAuthenticated = false
-          this.user = {}
-          return
-        }
         try {
-          this.user = shapeUser(await sdk.me(), sdk)
+          const me = await sdk.me()
+          // The SDK reports failure in the response rather than by throwing,
+          // so an unchecked await reads a rejection as a signed-in user.
+          if (!me || me.ok === false || !me.data) {
+            this.isAuthenticated = false
+            this.user = {}
+            return
+          }
+          this.user = shapeUser(me, sdk)
           this.isAuthenticated = true
         } catch (e) {
           this.error = e
