@@ -256,15 +256,28 @@ export const useAuth = ({
 
         // State changes can arrive from a background refresh as well as from a
         // login, so the app follows the SDK rather than polling it.
-        sdk.onIsAuthenticatedChange(async (isAuthenticated) => {
+        //
+        // NEITHER of these may call refreshState. refreshState calls me(),
+        // me() updates the SDK's user and authentication state, and that fires
+        // both of these -- two independent paths back into the call that
+        // triggered them. Measured signed out, a single page load made 427
+        // refreshState calls and around 200 requests to /v1/auth/me, enough
+        // for Descope to start answering 503; each failed refresh then set
+        // isAuthenticated false, which is what sent a signed-in user clicking
+        // Profile back to the login page. Cutting one path only halved it.
+        //
+        // Both callbacks are handed exactly what they would have re-fetched,
+        // so they use it instead. refreshState is left for startup and for
+        // finishing a login, where nothing has fired yet.
+        sdk.onIsAuthenticatedChange((isAuthenticated) => {
           this.isAuthenticated = !!isAuthenticated
-          if (isAuthenticated) {
-            await this.refreshState()
-          } else {
-            this.user = {}
-          }
+          if (!isAuthenticated) { this.user = {} }
         })
-        sdk.onUserChange(() => { this.refreshState() })
+        // shapeUser reads me.data, and this callback is handed the user
+        // directly, so wrap it to keep one shaping path rather than two.
+        sdk.onUserChange((user) => {
+          if (user) { this.user = shapeUser({ data: user }, sdk) }
+        })
 
         // Only acts when the URL carries the code and state Descope sends
         // back, so it is safe on an ordinary page load.
