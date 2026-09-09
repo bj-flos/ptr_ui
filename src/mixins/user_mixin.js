@@ -37,10 +37,13 @@ export const user_mixin = {
         }
       }
     },
+    /* Sign-in starts on our own page, which carries the logo and the terms
+     * being accepted, and hands off to the provider from there. Going straight
+     * to the provider would mean a user never sees either. */
     login () {
-      this.$auth.loginWithPopup().then(() => {
-        this.$store.dispatch('user_data/newUserLogin', this.$auth.user)
-      })
+      const current = this.$router.currentRoute.fullPath
+      if (current === '/login') { return }
+      this.$router.push({ path: '/login', query: { redirect: current } })
     },
     logout () {
       // save the path we will redirect back to after logout is complete

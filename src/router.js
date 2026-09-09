@@ -11,6 +11,9 @@ import AdminOnly from './views/AdminOnly.vue'
 import About from './views/info/About.vue'
 import Resources from './views/info/Resources.vue'
 import ReservationInfo from './views/info/ReservationInfo.vue'
+import Login from './views/Login.vue'
+import Invite from './views/Invite.vue'
+import LegalPage from './views/info/LegalPage.vue'
 import ImageView from './views/ImageView.vue'
 
 // Observatories
@@ -53,6 +56,19 @@ const router = new VueRouter({
     { path: '/about', name: 'about', component: About },
     { path: '/resources', name: 'resources', component: Resources },
     { path: '/info/reservations', name: 'reservations', component: ReservationInfo },
+
+    // Our own sign-in page: the logo and the terms someone is accepting
+    // belong on a page we control, even though the credentials are
+    // entered at the identity provider.
+    { path: '/login', name: 'login', component: Login },
+
+    // Where a Descope invitation lands. The invite is a magic link, so
+    // the token arrives as ?t= and is verified here.
+    { path: '/invite', name: 'invite', component: Invite },
+
+    // One component, two documents -- they differ only in their text.
+    { path: '/info/privacy', name: 'privacy', component: LegalPage, props: { contentKey: 'privacy' } },
+    { path: '/info/terms', name: 'terms', component: LegalPage, props: { contentKey: 'terms' } },
 
     { path: '/profile', name: 'profile', component: Profile, beforeEnter: authGuard },
     { path: '/data/:user', name: 'data', component: UserData },
