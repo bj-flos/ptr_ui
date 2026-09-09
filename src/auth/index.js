@@ -256,13 +256,16 @@ export const useAuth = ({
 
         // State changes can arrive from a background refresh as well as from a
         // login, so the app follows the SDK rather than polling it.
-        sdk.onIsAuthenticatedChange(async (isAuthenticated) => {
-          this.isAuthenticated = !!isAuthenticated
-          if (isAuthenticated) {
-            await this.refreshState()
-          } else {
-            this.user = {}
-          }
+        //
+        // The signal is a reason to re-ask, NOT the answer. It reports whether
+        // the SDK can read a session token, which is the test refreshState was
+        // changed to stop trusting: assigning it here put that verdict back,
+        // and a background refresh reporting false overwrote the true that
+        // me() had established. The page still looked signed in -- userIsAdmin
+        // lives in the store and nothing flips it -- so the next guarded route
+        // was where it surfaced, sending anyone clicking Profile to Descope.
+        sdk.onIsAuthenticatedChange(async () => {
+          await this.refreshState()
         })
         sdk.onUserChange(() => { this.refreshState() })
 
