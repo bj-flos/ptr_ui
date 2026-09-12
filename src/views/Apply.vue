@@ -108,7 +108,11 @@
         <!-- Last in this section because it changes what the rest of the form
              asks for, and a control that rearranges the page below it is easier
              to follow than one that rearranges the page above it. -->
-        <b-field label="I am a">
+        <b-field
+          label="I am a *"
+          :type="errors.role ? 'is-danger' : ''"
+          :message="errors.role"
+        >
           <b-select
             v-model="form.role"
             placeholder="Select"
@@ -457,6 +461,10 @@ export default {
 
       if (!f.phone) e.phone = 'Please give a phone number.'
       else if (!this.phoneLooksReal(f.phone)) e.phone = 'Please give a full phone number, including area code.'
+
+      /* Required because it decides what the rest of the form asks for: left
+         unset, a student is never offered the school questions at all. */
+      if (!f.role) e.role = 'Please choose the one that fits you best.'
 
       /* The optional fields are only checked when filled in: an empty one is a
          choice, not a mistake. */
