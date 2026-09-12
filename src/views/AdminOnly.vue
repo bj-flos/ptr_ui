@@ -1,5 +1,5 @@
 <template>
-  <div class="page">
+  <div>
     <SiteNavbar />
     <div class="admin-content">
       <div class="has-text title">
