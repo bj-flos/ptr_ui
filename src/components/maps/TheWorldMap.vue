@@ -29,6 +29,7 @@
 import nite from './nite-overlay'
 import { mapState, mapGetters, mapActions } from 'vuex'
 import { makeIcon } from './mapHelpers'
+import MarkerSpiderfier, { markerStatus } from './markerSpiderfier'
 import { siteIsDark } from '@/utils/site_darkness'
 import SiteInfoCard from './SiteInfoCard'
 
@@ -72,7 +73,7 @@ export default {
       siteMarkers: [],
 
       iw: '', // infoWindow
-      oms: '', // OverlappingMarkerSpiderfier
+      oms: '', // MarkerSpiderfier
 
       // The site the card is currently describing.
       activeSite: null,
@@ -98,6 +99,8 @@ export default {
     // Remove the looping intervals that update the sun and daylight regions on the map.
     clearInterval(this.updateTwilightInterval)
     clearInterval(this.updateSunInterval)
+    // The spiderfier holds click, zoom and idle listeners on the map.
+    if (this.oms && this.oms.destroy) this.oms.destroy()
     clearInterval(this.darkRecheckInterval)
     clearTimeout(this.hoverCloseTimer)
     clearTimeout(this.scheduleFetchTimer)
@@ -144,51 +147,65 @@ export default {
     ...mapActions('sitestatus', ['getSiteOpenStatus']),
     ...mapActions('calendar', ['fetchUpcomingEvents']),
 
-    // NB still google.maps.Marker, deliberately. OverlappingMarkerSpiderfier
-    // 1.0.3 calls marker.setMap() and listens for 'position_changed' and
-    // 'visible_changed', none of which AdvancedMarkerElement provides, so this
-    // path cannot move until the spiderfier is replaced.
+    // AdvancedMarkerElement, not google.maps.Marker: Marker is deprecated, and
+    // what held this back -- OverlappingMarkerSpiderfier 1.0.3, which drives
+    // markers through setMap() and a 'spider_format' event -- is now ours, in
+    // ./markerSpiderfier.
+    //
+    // The content element is built once and mutated afterwards. Replacing the
+    // node instead would quietly drop the click and hover listeners bound to it.
     addMarkerWithData (markerData) {
       const white = { r: 255, g: 255, b: 255 }
-      const marker = new google.maps.Marker({
-        position: markerData,
-        draggable: true
-      })
       const site = markerData.site
+      const sizeCoefficient = 1.5
 
-      google.maps.event.addListener(marker, 'spider_format', function (status) {
-        const markerStatus = OverlappingMarkerSpiderfier.markerStatus
-        const showName = status == markerStatus.UNSPIDERFIABLE || status == markerStatus.SPIDERFIED
-        const showPlus = status == markerStatus.SPIDERFIABLE
-        const sizeCoefficient = showName ? 1.5 : 1.5
+      const el = document.createElement('img')
+      el.style.display = 'block'
+      el.style.cursor = 'pointer'
+      // Sized in CSS rather than width/height attributes: 23 * 1.5 is 34.5, and
+      // the attributes take integers.
+      el.style.width = (23 * sizeCoefficient) + 'px'
+      el.style.height = (32 * sizeCoefficient) + 'px'
+      el.alt = markerData.name
+
+      // Content is anchored bottom-centre, which is where the old Icon anchored
+      // too, so the teardrop still points at the site.
+      const marker = new google.maps.marker.AdvancedMarkerElement({
+        position: { lat: markerData.lat, lng: markerData.lng },
+        content: el,
+        map: this.map,
+        // Without this the content is inert and never sees a pointer.
+        gmpClickable: true
+      })
+
+      const format = status => {
+        const showName = status === markerStatus.UNSPIDERFIABLE ||
+                         status === markerStatus.SPIDERFIED
+        const showPlus = status === markerStatus.SPIDERFIABLE
 
         // Remembered so hover can skip a '+' marker: it stands for several
         // telescopes stacked on one point, and the card would have to pick one
         // of them arbitrarily. Clicking still fans them out.
         marker._spiderfiable = showPlus
 
-        marker.setIcon({
-          url: makeIcon(markerData.rgb, white,
-            showPlus ? white : false,
-            showName ? markerData.name : false),
-          scaledSize: new google.maps.Size(23 * sizeCoefficient, 32 * sizeCoefficient) // makes SVG icons work in IE
-        })
+        el.src = makeIcon(markerData.rgb, white,
+          showPlus ? white : false,
+          showName ? markerData.name : false)
+      }
 
-        // Prevent users from repositioning markers
-        marker.setDraggable(false)
-      })
-
-      // The spiderfier binds click itself and only listens for
-      // 'position_changed' and 'visible_changed', so plain mouseover/mouseout
-      // are free to add here without it interfering.
-      marker.addListener('mouseover', () => {
+      // AdvancedMarkerElement has no mouseover/mouseout of its own, so these go
+      // on the content element. The spiderfier binds click there too and stops
+      // it propagating, so the map's own click handler does not close the card
+      // this click just opened.
+      el.addEventListener('mouseover', () => {
         if (marker._spiderfiable) return
         this.showCard(site, marker, false)
       })
-      marker.addListener('mouseout', () => this.scheduleCardClose())
+      el.addEventListener('mouseout', () => this.scheduleCardClose())
 
-      this.oms.addMarker(marker, e => {
-        this.showCard(site, marker, true)
+      this.oms.addMarker(marker, {
+        onClick: () => this.showCard(site, marker, true),
+        onFormat: format
       })
       this.siteMarkers.push(marker)
     },
@@ -263,7 +280,8 @@ export default {
         if (this.oms && typeof this.oms.removeMarker === 'function') {
           this.oms.removeMarker(marker)
         }
-        marker.setMap(null)
+        // AdvancedMarkerElement takes a property, not setMap().
+        marker.map = null
       })
       this.siteMarkers = []
       this.infoWindows.forEach(w => w.close())
@@ -362,9 +380,10 @@ export default {
       this.drawSunMarker()
       this.updateSunInterval = setInterval(this.updateSunPosition, 10000)
 
-      const oms = new OverlappingMarkerSpiderfier(this.map, {
-        markersWontMove: true,
-        markersWontHide: true,
+      // markersWontMove and markersWontHide were hints to OMS about markers it
+      // would otherwise have watched for movement; ours never assumes otherwise,
+      // so only the two options that shape the fan-out carry over.
+      const oms = new MarkerSpiderfier(this.map, {
         keepSpiderfied: true,
         circleFootSeparation: 35,
         // Group only markers that actually overlap. This is not a clusterer:

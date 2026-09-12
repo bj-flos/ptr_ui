@@ -12,7 +12,6 @@ module.exports = {
     $: true,
     d3: true,
     google: true,
-    OverlappingMarkerSpiderfier: true,
     _chatlio: true
   },
   overrides: [
