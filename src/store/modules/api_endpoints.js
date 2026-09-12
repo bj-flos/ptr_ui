@@ -26,7 +26,11 @@ const state = {
   quickanalysis_endpoint: runtimeConfig('VUE_APP_QUICKANALYSIS_ENDPOINT', process.env.VUE_APP_QUICKANALYSIS_ENDPOINT) || '',
   // quickanalysis_endpoint: 'http://localhost:5000',
 
-  status_endpoint: runtimeConfig('VUE_APP_STATUS_ENDPOINT', process.env.VUE_APP_STATUS_ENDPOINT) || '' // prod
+  status_endpoint: runtimeConfig('VUE_APP_STATUS_ENDPOINT', process.env.VUE_APP_STATUS_ENDPOINT) || '', // prod
+
+  /* Where the /apply form posts. Unset everywhere so far: the form says so
+     plainly rather than showing a confirmation for something it never sent. */
+  applications_endpoint: runtimeConfig('VUE_APP_APPLICATIONS_ENDPOINT', process.env.VUE_APP_APPLICATIONS_ENDPOINT) || ''
 }
 
 // getters

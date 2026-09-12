@@ -13,6 +13,7 @@ import Resources from './views/info/Resources.vue'
 import ReservationInfo from './views/info/ReservationInfo.vue'
 import Login from './views/Login.vue'
 import Invite from './views/Invite.vue'
+import Apply from './views/Apply.vue'
 import LegalPage from './views/info/LegalPage.vue'
 import ImageView from './views/ImageView.vue'
 
@@ -65,6 +66,9 @@ const router = new VueRouter({
     // Where a Descope invitation lands. The invite is a magic link, so
     // the token arrives as ?t= and is verified here.
     { path: '/invite', name: 'invite', component: Invite },
+    // Where the navbar Apply button leads. Open to anyone: the whole point is
+    // that the person filling it in does not have an account yet.
+    { path: '/apply', name: 'apply', component: Apply },
 
     // One component, two documents -- they differ only in their text.
     { path: '/info/privacy', name: 'privacy', component: LegalPage, props: { contentKey: 'privacy' } },

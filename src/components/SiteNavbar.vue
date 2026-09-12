@@ -118,19 +118,17 @@
           v-else
           class="navbar-item not-authenticated"
         >
-          <!-- show apply and login when not authenticated -->
-          <b-tooltip
-            label="Under Development"
-            position="is-bottom"
-            type="is-black"
+          <!-- Apply leads to the application form; it was disabled behind an
+               "Under Development" tooltip while there was nowhere for it to go.
+               tag="router-link" so it is a real link -- middle-click and
+               open-in-new-tab work, which a @click handler would break. -->
+          <b-button
+            tag="router-link"
+            to="/apply"
+            class="button"
           >
-            <b-button
-              class="button"
-              disabled
-            >
-              apply
-            </b-button>
-          </b-tooltip>
+            apply
+          </b-button>
           <b-button
             v-if="!userIsAuthenticated"
             class="button"
