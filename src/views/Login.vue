@@ -3,12 +3,6 @@
     <SiteNavbar />
     <div class="container">
       <div class="login-card">
-        <img
-          class="login-logo"
-          :src="`${publicPath}img/logos/PTR-logo-asterism.svg`"
-          alt="Photon Ranch"
-        >
-
         <h1 class="title is-4">
           Sign in to Photon Ranch
         </h1>
@@ -58,15 +52,6 @@ import SiteNavbar from '@/components/SiteNavbar'
 export default {
   name: 'Login',
   components: { SiteNavbar },
-
-  computed: {
-    /* public/ is copied verbatim, so webpack never rewrites these URLs.
-     * A leading slash resolves at the host root, which is not this app
-     * once it is served under a base such as /ptr/. */
-    publicPath () {
-      return process.env.BASE_URL
-    }
-  },
 
   data () {
     return {
@@ -120,13 +105,6 @@ export default {
   margin: 3rem auto;
   padding: 2rem;
   text-align: center;
-}
-
-.login-logo {
-  display: block;
-  width: 220px;
-  max-width: 70%;
-  margin: 0 auto 1.5rem;
 }
 
 .login-lead {
