@@ -198,17 +198,16 @@ export default {
 @import "@/style/_variables.scss";
 @import "@/style/_responsive.scss";
 
-::v-deep .navbar-dropdown {
-  @include tablet {
-    left: -500px;
-  }
-  @include widescreen {
-    left: -300px;
-  }
-  @include fullhd {
-    left: -100px;
-  }
-}
+/* The dropdown keeps Bulma's default left: 0 and extends rightward from the
+   "Sites" item. It used to be pulled left by up to 500px so the 550px-wide
+   panel sat nearer the middle of the bar, but that relies on the panel being
+   allowed to overhang its anchor, and only two views allow it: Home and Site
+   are the only ones whose wrapper around the navbar is positioned
+   (.page-content is absolute, .page is fixed), so the panel escapes clipping
+   there. On every other view the navbar sits in a static wrapper inside
+   App.vue's .router-view, which is overflow-x: hidden and so clips to the page
+   box -- on /adminonly the panel looked pinned inside the page instead of
+   hanging from the menu bar. With no offset there is nothing to clip. */
 
 .no-sites {
   padding: 1.5em 1em;
