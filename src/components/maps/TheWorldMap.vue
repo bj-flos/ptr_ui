@@ -334,6 +334,18 @@ export default {
         // map has any use for, and at zoom 3 dragging him onto the world is
         // only a way to lose the view.
         streetViewControl: false,
+        // Map view only. The satellite imagery is the same globe with a
+        // different skin on it and tells an observer nothing the roadmap does
+        // not, while the switcher it needs sits over the top-left corner of the
+        // world -- which is map, not chrome, on a page whose whole subject is
+        // where the sites are.
+        mapTypeControl: false,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        // No tilt/rotate widget either. Markers are placed by lat/lng on a flat
+        // world held at zoom 3, so a camera that can lean over is a way to lose
+        // that reading and nothing else; dropping the control also takes one
+        // more overlay off the map.
+        cameraControl: false,
         // Keeps panning inside a single world; on its own this does not stop
         // the repeats, which is what the capped container width is for.
         restriction: {
