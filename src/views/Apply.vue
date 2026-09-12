@@ -32,8 +32,7 @@
         </h1>
         <p class="apply-lead">
           Tell us how to reach you and we will be in touch about an observing
-          account. Fields marked <span class="req">*</span> are required; the
-          rest help us place you on a telescope that suits you.
+          account. Fields marked <span class="req">*</span> are required.
         </p>
 
         <h2 class="section-heading">
@@ -105,6 +104,25 @@
             </b-field>
           </div>
         </div>
+
+        <!-- Last in this section because it changes what the rest of the form
+             asks for, and a control that rearranges the page below it is easier
+             to follow than one that rearranges the page above it. -->
+        <b-field label="I am a">
+          <b-select
+            v-model="form.role"
+            placeholder="Select"
+            expanded
+          >
+            <option
+              v-for="r in roles"
+              :key="r.value"
+              :value="r.value"
+            >
+              {{ r.label }}
+            </option>
+          </b-select>
+        </b-field>
 
         <h2 class="section-heading">
           Where you are
@@ -180,75 +198,93 @@
           </div>
         </div>
 
-        <h2 class="section-heading">
-          If you are a student
-          <span class="optional">optional</span>
-        </h2>
+        <!-- Only what the chosen role needs: School for a student or an
+             educator, and the rest for a student alone. Asking a community
+             scientist for a grade is noise, and the watcher below clears these
+             when they go off screen so a hidden field cannot submit a value the
+             applicant can no longer see. -->
+        <template v-if="showSchool">
+          <h2 class="section-heading">
+            School
+            <span class="optional">optional</span>
+          </h2>
 
-        <div class="columns">
-          <div class="column is-8">
-            <b-field label="School">
-              <b-input
-                v-model.trim="form.school"
-                maxlength="120"
-                :has-counter="false"
-              />
-            </b-field>
-          </div>
-          <div class="column is-4">
-            <b-field label="Grade">
-              <b-input
-                v-model.trim="form.grade"
-                maxlength="20"
-                :has-counter="false"
-              />
-            </b-field>
-          </div>
-        </div>
-
-        <b-field label="Do you belong to BEWiSE?">
-          <b-select
-            v-model="form.bewise"
-            placeholder="Select"
-          >
-            <option value="yes">
-              Yes
-            </option>
-            <option value="no">
-              No
-            </option>
-          </b-select>
-        </b-field>
-
-        <div class="columns">
-          <div class="column">
-            <b-field
-              label="Parent phone"
-              :type="errors.parent_phone ? 'is-danger' : ''"
-              :message="errors.parent_phone"
+          <div class="columns">
+            <div :class="showStudentFields ? 'column is-8' : 'column'">
+              <b-field label="School">
+                <b-input
+                  v-model.trim="form.school"
+                  maxlength="120"
+                  :has-counter="false"
+                />
+              </b-field>
+            </div>
+            <div
+              v-if="showStudentFields"
+              class="column is-4"
             >
-              <b-input
-                v-model.trim="form.parent_phone"
-                maxlength="30"
-                :has-counter="false"
-              />
-            </b-field>
+              <b-field label="Grade">
+                <b-input
+                  v-model.trim="form.grade"
+                  maxlength="20"
+                  :has-counter="false"
+                />
+              </b-field>
+            </div>
           </div>
-          <div class="column">
-            <b-field
-              label="Parent email"
-              :type="errors.parent_email ? 'is-danger' : ''"
-              :message="errors.parent_email"
+
+          <template v-if="showStudentFields">
+            <b-field label="Do you belong to BEWiSE?">
+              <b-select
+                v-model="form.bewise"
+                placeholder="Select"
+              >
+                <option value="yes">
+                  Yes
+                </option>
+                <option value="no">
+                  No
+                </option>
+              </b-select>
+            </b-field>
+
+            <!-- Parent contact only for a student under 16. Above that the
+                 applicant can speak for themselves, and a blank age is not a
+                 claim either way, so nothing is asked until there is an age. -->
+            <div
+              v-if="showParentContact"
+              class="columns"
             >
-              <b-input
-                v-model.trim="form.parent_email"
-                type="email"
-                maxlength="120"
-                :has-counter="false"
-              />
-            </b-field>
-          </div>
-        </div>
+              <div class="column">
+                <b-field
+                  label="Parent phone"
+                  :type="errors.parent_phone ? 'is-danger' : ''"
+                  :message="errors.parent_phone"
+                >
+                  <b-input
+                    v-model.trim="form.parent_phone"
+                    maxlength="30"
+                    :has-counter="false"
+                  />
+                </b-field>
+              </div>
+              <div class="column">
+                <b-field
+                  label="Parent email"
+                  :type="errors.parent_email ? 'is-danger' : ''"
+                  :message="errors.parent_email"
+                >
+                  <b-input
+                    v-model.trim="form.parent_email"
+                    type="email"
+                    maxlength="120"
+                    :has-counter="false"
+                  />
+                </b-field>
+              </div>
+            </div>
+          </template>
+        </template>
 
         <!-- The submit failure goes here, next to the button that caused it,
              rather than at the top of a form long enough to scroll. -->
@@ -298,6 +334,15 @@ const US_STATES = [
   ['WI', 'Wisconsin'], ['WY', 'Wyoming']
 ].map(([abbr, name]) => ({ abbr, name }))
 
+/* Slugs rather than the label, so the wording on the page can be reworded
+   without changing what an application records. */
+const ROLES = [
+  { value: 'student', label: 'Student' },
+  { value: 'educator', label: 'Educator' },
+  { value: 'parent', label: 'Parent' },
+  { value: 'community_scientist', label: 'Community Scientist' }
+]
+
 /* Deliberately loose: one @, something either side, a dot in the domain. A
    stricter pattern rejects addresses that exist, and the address is confirmed
    by replying to it anyway. */
@@ -310,11 +355,13 @@ export default {
   data () {
     return {
       states: US_STATES,
+      roles: ROLES,
       sending: false,
       submitted: false,
       submitError: '',
       errors: {},
       form: {
+        role: '',
         first_name: '',
         last_name: '',
         email: '',
@@ -338,6 +385,55 @@ export default {
        every other endpoint in this app -- see store/modules/api_endpoints.js. */
     endpoint () {
       return this.$store.state.api_endpoints.applications_endpoint
+    },
+
+    /* School is asked of students and educators alike; everything else in that
+       section is a question only a student can answer. */
+    showSchool () {
+      return this.form.role === 'student' || this.form.role === 'educator'
+    },
+
+    showStudentFields () {
+      return this.form.role === 'student'
+    },
+
+    /* A student under 16. Age is optional, and an empty one says nothing about
+       how old the applicant is, so it asks for nobody. */
+    showParentContact () {
+      if (!this.showStudentFields || this.form.age === '') {
+        return false
+      }
+      const age = Number(this.form.age)
+      return Number.isFinite(age) && age < 16
+    }
+  },
+
+  /* Each of these clears the fields it has just taken off screen. A grade typed
+     as a student and then left behind by a change to Parent would otherwise be
+     submitted, with nothing on screen to show it was still there. The messages
+     go with them, or one would sit under a field that is gone. */
+  watch: {
+    showSchool (visible) {
+      if (!visible) {
+        this.form.school = ''
+      }
+    },
+
+    showStudentFields (visible) {
+      if (!visible) {
+        this.form.grade = ''
+        this.form.bewise = ''
+        this.$delete(this.errors, 'grade')
+      }
+    },
+
+    showParentContact (visible) {
+      if (!visible) {
+        this.form.parent_phone = ''
+        this.form.parent_email = ''
+        this.$delete(this.errors, 'parent_phone')
+        this.$delete(this.errors, 'parent_email')
+      }
     }
   },
 
@@ -425,6 +521,16 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* index.html puts overflow: hidden on <html>, so the document never scrolls and
+   a page taller than the window has to scroll itself. This form is well past a
+   window tall once the student fields are showing. Home.vue does the same thing
+   for the same reason; the navbar scrolls away with the content, as it does
+   there. */
+.apply {
+  height: 100vh;
+  overflow-y: auto;
+}
+
 /* Wider than the sign-in card: this one holds paired fields, and at the 30rem
    the login card uses every column would wrap to its own row. */
 .apply-card {
