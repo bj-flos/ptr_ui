@@ -5,10 +5,10 @@
       <slot>
         <div class="description-text">
           <h1 class="title">
-            Photon Ranch
+            Photon Ranch on Asterism
           </h1>
           <p>
-            PTR@LCO is a new education project designed to extend the education
+            PTR/Asterism is a new education project designed to extend the education
             programs at Las Cumbres Observatory by offering a self-paced
             laboratory based course entitled "Astronomy and the Scientific
             Method" aimed at grade levels 5-8 but accessible by learners of all
@@ -22,6 +22,12 @@
             heterogenous range of telescopes (from 200mm to 24”) and detectors
             (CMOS and spectrographs), in contrast to the homogenous
             instrumentation of LCO.
+          </p>
+          <br>
+          <p>
+            Many of the resources accessible on PTR/Asterism have been made
+            available via generous contributions of assets and/or funding from
+            members of the astronomy community.
           </p>
         </div>
       </slot>
