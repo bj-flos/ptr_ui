@@ -8,11 +8,11 @@
             Photon Ranch on Asterism
           </h1>
           <p>
-            PTR/Asterism is a new education project designed to extend the education
-            programs at Las Cumbres Observatory by offering a self-paced
-            laboratory based course entitled "Astronomy and the Scientific
-            Method" aimed at grade levels 5-8 but accessible by learners of all
-            ages.
+            PTR/Asterism is a new education project designed to complement the
+            education programs at Las Cumbres Observatory by offering a
+            self-paced laboratory based course entitled "Astronomy and the
+            Scientific Method" aimed at grade levels 5-8 but accessible by
+            learners of all ages.
           </p>
           <br>
           <p>
