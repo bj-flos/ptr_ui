@@ -1060,7 +1060,7 @@ export default {
         this.tempPlaceholderEvent.remove() // remove the placeholder event
         this.eventIdWithPlaceholder = '' // neutralize the trigger
       }
-      // Make sure the red line "now indicator" is visible above other elements.
+      // Keep the now-indicator line above the other background events.
       const n = document.getElementsByClassName('fc-now-indicator')[0]
       if (n) {
         n.parentElement.style['z-index'] = 'auto'
@@ -1774,15 +1774,17 @@ export default {
     Calendar Event Sources
     /=================================================== */
 
-    // This is an eventSource that provides the red line indicating the current time
+    /* The line marking the current time. Built the same way as the observing
+       start and end markers below -- a one-minute background event carrying
+       nothing but class names -- so the stylesheet decides how it looks. It
+       used to set its colours on the event itself, which is why the CSS could
+       not change them. */
     async getNowIndicator (info) {
       const now = [
         {
           start: moment().utc().format(),
           end: moment().utc().add('1', 'minutes').format(),
           rendering: 'background',
-          backgroundColor: '#ff0000',
-          borderColor: '#ff0000',
           id: 'fc-custom-now-indicator',
           classNames: ['fc-now-indicator', 'fc-now-indicator-line']
         }
@@ -2375,17 +2377,22 @@ $sky-darkness-z-index: 15;
   border-bottom: 20px solid $ptr-calendar-time-critical-color; /* size and color of triangle */
 }
 
-/* Styles for line showing the current time */
+/* Styles for line showing the current time.
+   Modelled on .fc-observing-start-end-time: the same 3px band and the same
+   --line-color handle, in green. Red read as a warning on a calendar whose
+   other markers are informational, and at 1px it was easy to lose against the
+   twilight shading. */
 .fc-now-indicator {
+  --line-color: #{$green};
   &.fc-now-indicator-line {
-    border-color: rgb(255, 0, 0);
+    border-color: var(--line-color);
     z-index: $now-indicator-z-index;
     opacity: 1;
-    background-color: red;
-    height: 1px !important;
+    background-color: var(--line-color);
+    height: 3px !important;
   }
   &.fc-now-indicator-arrow {
-    border-color: rgb(255, 0, 0);
+    border-color: var(--line-color);
     z-index: $now-indicator-z-index;
     opacity: 1;
   }

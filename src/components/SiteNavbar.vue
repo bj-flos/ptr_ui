@@ -77,6 +77,21 @@
         tag="div"
         class="is-flex is-align-items-center"
       >
+        <!-- UTC on top because that is the clock the observatory schedules in,
+             with the reader's own time named underneath so the two can never be
+             read as each other. Left of the greeting, where it does not shift
+             about as the name changes length, and outside the signed-in block
+             so it is there before anyone logs in. Hidden on a phone: the bar is
+             locked to 75px and has no room for two lines of it there. -->
+        <div class="navbar-clock is-hidden-mobile">
+          <p class="clock-utc">
+            {{ utcNow }}
+          </p>
+          <p class="clock-local">
+            {{ localNow }}
+          </p>
+        </div>
+
         <div
           v-if="userIsAuthenticated"
           class="navbar-item has-dropdown is-hoverable is-dark"
@@ -173,6 +188,7 @@
 import UserAvatar from '@/components/UserAvatar'
 import NavbarSiteDropdown from '@/components/NavbarSiteDropdown'
 import { mapState, mapMutations } from 'vuex'
+import moment from 'moment-timezone'
 import { user_mixin } from '@/mixins/user_mixin'
 
 export default {
@@ -181,10 +197,32 @@ export default {
     NavbarSiteDropdown,
     UserAvatar
   },
+  data () {
+    return {
+      // Re-read every second, so the bar carries a clock rather than the time
+      // the page happened to load.
+      now: new Date()
+    }
+  },
+
   mixins: [
     user_mixin
   ],
   computed: {
+    /* Seconds are shown deliberately: a clock that changes once a minute looks
+       stopped. */
+    utcNow () {
+      return moment.utc(this.now).format('YYYY-MM-DD HH:mm:ss [UTC]')
+    },
+
+    /* The same instant where the reader is. `z` prints the zone's own
+       abbreviation -- PDT, AEST -- and falls back to a UTC offset for zones
+       that do not have one. The zone has to be applied explicitly or moment
+       has none to name. */
+    localNow () {
+      return moment(this.now).tz(moment.tz.guess()).format('HH:mm:ss z')
+    },
+
     // Files in public/ are copied verbatim, so webpack never rewrites these
     // URLs. A leading slash would resolve at the host root, which is not this
     // app once it is served under a base (/ptr/), and the image 404s.
@@ -213,8 +251,15 @@ export default {
   // page that shows the navbar; it is gone, and the markers on the home page now
   // depend on that status, so the navbar has to ask for it itself.
   mounted () {
+    this.clockTimer = setInterval(() => { this.now = new Date() }, 1000)
+
     this.updateSiteStatus()
   },
+  beforeDestroy () {
+    // The navbar is on every page, so a timer left running here never stops.
+    clearInterval(this.clockTimer)
+  },
+
   methods: {
     ...mapMutations('user_data', {
       setGoogleWarningDismissed: 'googleWarningDismissed'
@@ -232,6 +277,26 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* Right-aligned so the two lines share an edge, and tabular figures so the
+   whole bar does not twitch as the seconds change. */
+.navbar-clock {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  margin-right: 1em;
+}
+
+.clock-utc {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.clock-local {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
 @import "@/style/_variables.scss";
 /* The lockup stacks three rows -- wordmark, rule, ASTERISM -- into the height
    of the bar, so it has to take nearly all of the 75px or the type inside ends
