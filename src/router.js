@@ -14,6 +14,7 @@ import ReservationInfo from './views/info/ReservationInfo.vue'
 import Login from './views/Login.vue'
 import Invite from './views/Invite.vue'
 import Apply from './views/Apply.vue'
+import Courses from './views/Courses.vue'
 import LegalPage from './views/info/LegalPage.vue'
 import ImageView from './views/ImageView.vue'
 
@@ -55,6 +56,9 @@ const router = new VueRouter({
     },
 
     { path: '/about', name: 'about', component: About },
+    // Where the navbar Courses tab lands while the material is being
+    // written. Open to anyone, like /about beside it.
+    { path: '/courses', name: 'courses', component: Courses },
     { path: '/resources', name: 'resources', component: Resources },
     { path: '/info/reservations', name: 'reservations', component: ReservationInfo },
 

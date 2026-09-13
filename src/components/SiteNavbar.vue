@@ -41,22 +41,15 @@
         About
       </b-navbar-item>
 
-      <!-- The course material lives on its own site, so this leaves the app --
-           hence tag="a" and target="_blank" rather than a router-link, and the
-           tooltip saying so. Dropped by e3dd946 along with the rest of the old
-           navbar; photonranch.org still carries it. -->
+      <!-- Points at our own /courses rather than out to ptredu.org, which no
+           longer resolves -- photonranch.org still links there and the tab is
+           simply broken. The page says the material is still being written,
+           which is at least true. -->
       <b-navbar-item
-        tag="a"
-        href="https://ptredu.org/"
-        target="_blank"
+        tag="router-link"
+        :to="{ path: '/courses' }"
       >
-        <b-tooltip
-          label="(opens a new tab)"
-          position="is-bottom"
-          type="is-black"
-        >
-          Courses
-        </b-tooltip>
+        Courses
       </b-navbar-item>
       <!-- <b-navbar-item
         tag="router-link"
