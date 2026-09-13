@@ -8,7 +8,15 @@ import axios from 'axios'
 import helpers from '../../utils/helpers'
 
 const state = {
-  test_sites: ['tst', 'tst001', 'dht', 'tbo1', 'tbo2', 'tbo'],
+  /* Sitecodes that are test or simulated rather than real observing hardware.
+     available_sites_real and available_sites_simulated split global_config on
+     this, and the map draws the "real" half.
+
+     Compared lowercased against the sitecode, so these are written lowercase
+     while the config API returns them as MRC-17 and so on. The previous entries
+     -- tst, tst001, dht, tbo1, tbo2, tbo -- matched no site the API still
+     serves, so nothing was being filtered at all. */
+  test_sites: ['mrc-17', 'mrc-24', 'aro-17', 'dpo-17', 'eco-17'],
 
   global_config: {},
   is_site_selected: false,
