@@ -229,9 +229,25 @@ export default {
         return `Someone is using it right now. It's free from ${when}.`
       }
       if (!this.isDarkThereNow) {
+        /* A simulator is not waiting on the real sun over the real site, so
+           quoting when darkness actually falls there would send someone away
+           for hours from a telescope that would have taken the booking now.
+           Only this branch changes: a slot someone else already holds is a real
+           conflict at a simulated site too. */
+        if (this.siteIsSimulated) {
+          return 'Simulated site. Observations can be scheduled at any time.'
+        }
         return `It isn't dark there yet. Observing starts ${when}.`
       }
       return `It's free from ${when}.`
+    },
+
+    /* Whether this telescope is one of the simulators. The list is the store's
+       test_sites, the same one that splits the map into real and simulated, and
+       it is held lowercased while the config API returns codes as MRC-17. */
+    siteIsSimulated () {
+      const testSites = this.$store.state.site_config.test_sites || []
+      return testSites.includes(String(this.site.site || '').toLowerCase())
     },
 
     // Is anyone -- including this reader -- booked over this moment?
