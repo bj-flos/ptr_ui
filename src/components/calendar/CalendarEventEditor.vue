@@ -598,8 +598,11 @@ export default {
           startTimes.push({
             sort: i,
             iso: startOption.format(),
-            hhmm: startOption.format('HH:mm'),
-            moment: startOption
+            hhmm: this.labelFor(startOption),
+            // A snapshot: subtract() and add() below mutate this object in
+            // place, so the same moment would otherwise be handed to every
+            // option and end up reading as the last one.
+            moment: startOption.clone()
           })
         }
         // Increment the time for the next loop.
@@ -624,8 +627,8 @@ export default {
           endTimes.push({
             sort: i,
             iso: endOption.format(),
-            hhmm: endOption.format('HH:mm'),
-            moment: endOption
+            hhmm: this.labelFor(endOption),
+            moment: endOption.clone()
           })
         }
         // Increment the time for the next loop.
@@ -640,11 +643,21 @@ export default {
         .tz(this.effectiveTimezone)
         .format()
     },
+    /* Total length, not the clock components of it.
+       duration.hours() is the hours *part* of a duration -- for 25 hours it
+       returns 1 -- so a booking that ran over a day boundary was reported here
+       as "1h, 0m". With the time pickers labelled HH:mm and nothing else, a
+       selection from 21:00 one evening to 22:00 the next read as a one-hour
+       slot in every part of this form, and was submitted as 25 hours. */
     eventDuration () {
       const start = moment.tz(this.startStr, this.effectiveTimezone)
       const end = moment.tz(this.endStr, this.effectiveTimezone)
-      const duration = moment.duration(end.diff(start))
-      return `(${duration.hours()}h, ${duration.minutes()}m)`
+      const total = moment.duration(end.diff(start))
+      const minutes = Math.round(total.asMinutes())
+      if (minutes < 0) return '(ends before it starts)'
+      const h = Math.floor(minutes / 60)
+      const m = minutes % 60
+      return `(${h}h, ${m}m)`
     },
     modifiedEvent () {
       const end_string = this.reservation_type_tabs == 'realtime' ? this.realtime_end_string : this.endStr
@@ -672,6 +685,15 @@ export default {
     }
   },
   methods: {
+    /* HH:mm on its own cannot say which day it is, which is how a selection
+       spanning midnight passed for a one-hour slot. Anything on a different
+       date to the event's start gets that date spelled out beside it. */
+    labelFor (at) {
+      const startDay = moment(this.eventDetails.startStr).tz(this.effectiveTimezone)
+      const sameDay = at.isSame(startDay, 'day')
+      return sameDay ? at.format('HH:mm') : at.format('HH:mm [on] MMM D')
+    },
+
     /* Which reservation tabs to offer. Both, unless the caller has already
        settled the question -- dragging "Manual operation" onto the grid says real
        time session and nothing else, so offering a Project Session tab beside
