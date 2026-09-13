@@ -377,6 +377,15 @@ export default {
       max_fits_header_length: 68,
 
       real_time_session_duration: 30,
+
+      /* The past-start check is armed only once the editor has finished
+         loading: mounted() assigns startStr itself, and an existing booking
+         that has already begun is legitimately in the past. Opening one to
+         read it must not argue with the reader. */
+      startGuardArmed: false,
+      // Set while putting a rejected value back, so the watcher ignores its own
+      // write instead of chasing it.
+      revertingStart: false,
       reservation_type_tabs: 'project',
 
       show_everyones_projects: false,
@@ -408,6 +417,9 @@ export default {
     this.endStr = moment(this.eventDetails.endStr).tz(this.effectiveTimezone).format()
     this.reservation_type_tabs = this.eventDetails.reservation_type
 
+    // Anything after this point is the reader changing the time themselves.
+    this.$nextTick(() => { this.startGuardArmed = true })
+
     // If an admin opens an event they didn't create, we want them to be able to see the associated project.
     // So we set 'show_everyones_projects' = true
     // Note: this significantly slows down loading times, so always keep disabled by default
@@ -424,6 +436,36 @@ export default {
   },
 
   watch: {
+
+    /* A reservation cannot begin in the past, and nothing stops one being
+       chosen: the grid scrolls back as far as anyone cares to drag, and the
+       date field will take any day at all. Say so at the point it is picked,
+       rather than letting it be submitted and refused later, and put the
+       previous value back so the form is never holding a time it has just
+       rejected. */
+    startStr (next, previous) {
+      if (!this.startGuardArmed) return
+      if (this.revertingStart) {
+        this.revertingStart = false
+        return
+      }
+      if (!this.isNewEvent) return
+      if (!previous || next === previous) return
+      if (!moment(next).isBefore(moment())) return
+
+      this.$buefy.dialog.alert({
+        title: 'That start time has passed',
+        message: 'A reservation cannot begin in the past. The start time has been left where it was.',
+        type: 'is-danger',
+        hasIcon: true,
+        icon: 'alert-circle',
+        ariaRole: 'alertdialog',
+        ariaModal: true
+      })
+
+      this.revertingStart = true
+      this.$nextTick(() => { this.startStr = previous })
+    },
 
     project_name_and_created (newVal) {
       if (this.project_name_and_created == 'none') {
