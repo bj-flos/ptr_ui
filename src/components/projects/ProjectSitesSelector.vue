@@ -73,7 +73,7 @@
         </div>
 
         <b-dropdown-item
-          v-for="site_real in available_sites_real.filter(site => site != obsId)"
+          v-for="site_real in otherObservatories"
           :key="site_real"
           class="item"
           :value="site_real"
@@ -89,7 +89,7 @@
         </div>
 
         <b-dropdown-item
-          v-for="site_sim in available_sites_simulated.filter(site => site != obsId)"
+          v-for="site_sim in otherSimulatedObservatories"
           :key="site_sim"
           class="item"
           :value="site_sim"
@@ -117,9 +117,30 @@ export default {
     ...mapGetters('site_config', [
       'available_sites_real',
       'available_sites_simulated'
-    ])
-  }
+    ]),
 
+    /* Telescopes only. Both getters return sitecodes straight out of
+       global_config, which holds the wemas alongside them, so the enclosures
+       were being offered as somewhere to run a project. A project runs on an
+       observatory; the wema is the building. */
+    otherObservatories () {
+      return this.available_sites_real
+        .filter(site => site !== this.obsId && this.isObservatory(site))
+    },
+
+    otherSimulatedObservatories () {
+      return this.available_sites_simulated
+        .filter(site => site !== this.obsId && this.isObservatory(site))
+    }
+  },
+
+  methods: {
+    // The sitecode carries no type, so the config has to be asked.
+    isObservatory (sitecode) {
+      const config = this.$store.state.site_config.global_config || {}
+      return (config[sitecode] || {}).instance_type === 'obs'
+    }
+  }
 }
 </script>
 

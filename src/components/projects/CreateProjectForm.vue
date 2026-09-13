@@ -83,6 +83,7 @@
             <b-datetimepicker
               ref="stdatetimepicker"
               v-model="start_date"
+              :datetime-formatter="formatDatetime"
               locale="en-ZA"
               expanded
               placeholder="Select a date"
@@ -113,6 +114,7 @@
             <b-datetimepicker
               ref="expdatetimepicker"
               v-model="expiry_date"
+              :datetime-formatter="formatDatetime"
               locale="en-ZA"
               expanded
               placeholder="Select a date"
@@ -1122,6 +1124,20 @@ export default {
     }
   },
   methods: {
+    /* Buefy prints the value with toLocaleString, which even under en-ZA gives
+       2026/09/13, 14:33:00 -- slashes, and seconds nobody chose.
+
+       Read with the local getters on purpose: created() shifts these Dates by
+       getTimezoneOffset() so that those getters return the UTC wall clock,
+       which is what the "(UTC)" on the labels refers to. Formatting them any
+       other way would print a different time than the one being stored. */
+    formatDatetime (date) {
+      if (!date) return ''
+      const pad = n => String(n).padStart(2, '0')
+      const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+      return `${day} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+    },
+
     ...mapActions('project_params', [
       'resetProjectForm',
       'loadProject'
