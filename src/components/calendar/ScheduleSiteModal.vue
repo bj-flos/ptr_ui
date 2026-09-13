@@ -170,6 +170,17 @@ export default {
        already dark there the first window is only the remainder of tonight and
        centring on its midpoint would be off by hours. */
     darkWindow () {
+      /* A simulator is not waiting for the sun over the real coordinates, so
+         the column is centred on now rather than on a night that does not
+         constrain it. Opening scrolled to the middle of a real night put the
+         current hour off screen at a telescope that would have taken a booking
+         immediately. Eight hours wide so the midpoint is now. */
+      if (this.siteIsSimulated) {
+        const now = Date.now()
+        const half = 4 * 60 * 60 * 1000
+        return { start: new Date(now - half), end: new Date(now + half) }
+      }
+
       const windows = darkWindows(this.site, new Date(), 36)
       if (!windows.length) return null
       return windows.reduce((a, b) => (b.end - b.start > a.end - a.start ? b : a))
