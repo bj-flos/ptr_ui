@@ -1,5 +1,8 @@
 <template>
-  <div class="calendar-container">
+  <div
+    class="calendar-container"
+    :class="{ 'token-dragging': tokenDragging }"
+  >
     <CalendarLegend />
     <!-- Drag either onto the calendar to start booking at that time. Rendered
          here rather than in the pages so both the site calendar and the home
@@ -8,6 +11,7 @@
       v-if="userIsAuthenticated"
       ref="tokenPalette"
       class="observation-tokens"
+      @pointerdown="tokenDragStarted"
     >
       <div
         class="observation-token"
@@ -652,6 +656,13 @@ export default {
          well as handed to FullCalendar, because the editor has to be able to
          refuse a booking that lands inside one. */
       inheritedMaintenance: [],
+
+      /* True while one of the tokens is being dragged. The reservations on the
+         grid stop taking the pointer for that moment -- see .token-dragging
+         below -- because FullCalendar resolves a drop against whatever lies
+         under it, and an event there means it finds no date at all. The token
+         then simply vanished, with nothing said. */
+      tokenDragging: false,
 
       fc_nowIndicator: false, // whether to draw line indicating current time in grid views.
       fc_progressiveEventRendering: true,
@@ -1414,6 +1425,32 @@ export default {
      * same editor a drag-select opens, pre-filled, so the length and the details
      * are still theirs to confirm.
      */
+    tokenDragStarted () {
+      this.tokenDragging = true
+      // Once, and on the document: the pointer is released wherever the drag
+      // ended, which is usually not the palette it started on.
+      document.addEventListener('pointerup', this.tokenDragEnded, { once: true })
+    },
+
+    tokenDragEnded () {
+      // After the drop has been delivered, not before it.
+      setTimeout(() => { this.tokenDragging = false }, 0)
+    },
+
+    /* Whatever reservation covers this stretch, if any. Background events --
+       twilight, the moon band, the forecast, the observing markers -- are
+       shading rather than bookings and do not count. */
+    reservationAt (start, end) {
+      const from = start.valueOf()
+      const to = end.valueOf()
+      const events = this.fullCalendarApi ? this.fullCalendarApi.getEvents() : []
+      return events.find(ev => {
+        if (ev.rendering === 'background') return false
+        if (!ev.start || !ev.end) return false
+        return ev.start.valueOf() < to && ev.end.valueOf() > from
+      }) || null
+    },
+
     externalTokenDropped (info) {
       if (!this.userIsAuthenticated) return
 
@@ -1426,6 +1463,29 @@ export default {
       const minutes = type === 'realtime' ? 30 : 60
       const start = moment(info.date)
       const end = start.clone().add(minutes, 'minutes')
+
+      /* Dropping onto a slot somebody already holds used to do nothing at all:
+         the token went back where it came from and no reason was given. */
+      const clash = this.reservationAt(start, end)
+      if (clash) {
+        const props = clash.extendedProps || {}
+        const held = props.reservation_type === 'maintenance'
+          ? `${props.site || 'the enclosure'} has a maintenance window then`
+          : `${this.creatorName(props)} already holds that time`
+        const from = moment(clash.start).tz(this.fc_timeZone).format('HH:mm')
+        const to = moment(clash.end).tz(this.fc_timeZone).format('HH:mm')
+
+        this.$buefy.dialog.alert({
+          title: 'That time is taken',
+          message: `${held}, from ${from} to ${to}. Drop it on a free stretch instead.`,
+          type: 'is-danger',
+          hasIcon: true,
+          icon: 'alert-circle',
+          ariaRole: 'alertdialog',
+          ariaModal: true
+        })
+        return
+      }
 
       this.activeEvent.startStr = start.utc().format()
       this.activeEvent.endStr = end.utc().format()
@@ -2454,6 +2514,13 @@ $sky-darkness-z-index: 15;
   height: 0;
   border-left: 20px solid transparent;
   border-bottom: 20px solid $ptr-calendar-time-critical-color; /* size and color of triangle */
+}
+
+/* While a token is in the air the reservations underneath must not take the
+   pointer, or FullCalendar finds an event where it needs a date and delivers
+   no drop at all. Restored the moment the pointer is released. */
+.token-dragging ::v-deep .fc-event {
+  pointer-events: none;
 }
 
 /* An enclosure closure, inherited by every telescope under it. Deliberately
