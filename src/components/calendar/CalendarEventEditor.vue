@@ -866,10 +866,13 @@ export default {
     /* HH:mm on its own cannot say which day it is, which is how a selection
        spanning midnight passed for a one-hour slot. Anything on a different
        date to the event's start gets that date spelled out beside it. */
+    /* Just the clock time. The date used to be tacked onto any option that
+       fell on another day, because HH:mm alone could not say which day it was
+       and that is how a booking over midnight passed for a one-hour one. Each
+       field now carries its own date picker, which says it plainly and in one
+       place, so repeating it inside the option only made the list wider. */
     labelFor (at) {
-      const startDay = moment(this.startStr).tz(this.effectiveTimezone)
-      const sameDay = at.isSame(startDay, 'day')
-      return sameDay ? at.format('HH:mm') : at.format('HH:mm [on] MMM D')
+      return at.format('HH:mm')
     },
 
     // The calendar day a value falls on, as a plain Date for the picker.
