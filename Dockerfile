@@ -56,10 +56,46 @@ RUN printf '%s\n' \
     '    gzip_comp_level 6;' \
     '    gzip_min_length 1024;' \
     '    gzip_types text/plain text/css application/javascript application/json image/svg+xml application/manifest+json;' \
-    '    location / { try_files $uri $uri/ /index.html; }' \
-    '    location = /config.js { try_files $uri =404; }' \
-    '    location /js/  { try_files $uri =404; }' \
-    '    location /css/ { try_files $uri =404; }' \
-    '    location /img/ { try_files $uri =404; }' \
+    '    # index.html names the hashed bundles, so a stale copy of it points a' \
+    '    # browser at assets from an older build. nginx sends only Last-Modified' \
+    '    # and ETag by default, which leaves the browser free to guess a' \
+    '    # freshness lifetime -- and it does. That is why a full page load could' \
+    '    # come back with the previous version of the app while a hard refresh' \
+    '    # showed the current one. Revalidate it every time.' \
+    '    location / {' \
+    '        try_files $uri $uri/ /index.html;' \
+    '        add_header Cache-Control "no-cache";' \
+    '    }' \
+    '    # Deployment-specific and must never be reused across deploys. The' \
+    '    # workbox exclude in vue.config.js already assumed this header existed;' \
+    '    # it did not.' \
+    '    location = /config.js {' \
+    '        try_files $uri =404;' \
+    '        add_header Cache-Control "no-store";' \
+    '    }' \
+    '    # A worker may still be registered in a browser from before the' \
+    '    # registration was commented out of main.js. Kept revalidating so such' \
+    '    # a worker picks up the current build rather than serving its own' \
+    '    # precache indefinitely.' \
+    '    location = /service-worker.js {' \
+    '        try_files $uri =404;' \
+    '        add_header Cache-Control "no-cache";' \
+    '    }' \
+    '    # Content-hashed by the build: a changed file gets a changed name, so' \
+    '    # these can be kept for as long as a browser likes.' \
+    '    location /js/  {' \
+    '        try_files $uri =404;' \
+    '        add_header Cache-Control "public, max-age=31536000, immutable";' \
+    '    }' \
+    '    location /css/ {' \
+    '        try_files $uri =404;' \
+    '        add_header Cache-Control "public, max-age=31536000, immutable";' \
+    '    }' \
+    '    # Not hashed -- these are files in public/ served under their own names' \
+    '    # -- so a day, not a year.' \
+    '    location /img/ {' \
+    '        try_files $uri =404;' \
+    '        add_header Cache-Control "public, max-age=86400";' \
+    '    }' \
     '}' > /etc/nginx/conf.d/default.conf
 EXPOSE 8082
