@@ -72,7 +72,7 @@
           horizontal
           :label="`Start Time (${tzLabel})`"
         >
-          <b-field>
+          <b-field grouped>
             <b-select v-model="startStr">
               <option
                 v-for="t in startTimeOptions"
@@ -95,7 +95,7 @@
           horizontal
           :label="`End Time (${tzLabel})`"
         >
-          <b-field>
+          <b-field grouped>
             <b-select v-model="endStr">
               <option
                 v-for="t in endTimeOptions"
@@ -214,7 +214,7 @@
           horizontal
           :label="`Start Time (${tzLabel})`"
         >
-          <b-field>
+          <b-field grouped>
             <b-select v-model="startStr">
               <option
                 v-for="t in startTimeOptions"
@@ -274,15 +274,15 @@
         value="maintenance"
       >
         <p class="maintenance-note">
-          This closes {{ site }} and every telescope it houses. Nobody will be
-          able to book time inside it.
+          This reserves {{ site }} and every telescope it houses. Nobody else
+          will be able to book time inside it.
         </p>
 
         <b-field
           horizontal
           :label="`Start Time (${tzLabel})`"
         >
-          <b-field>
+          <b-field grouped>
             <b-select v-model="startStr">
               <option
                 v-for="t in startTimeOptions"
@@ -305,7 +305,7 @@
           horizontal
           :label="`End Time (${tzLabel})`"
         >
-          <b-field>
+          <b-field grouped>
             <b-select v-model="endStr">
               <option
                 v-for="t in endTimeOptions"
@@ -335,7 +335,7 @@
           <b-input
             v-model="reservation_note"
             :maxlength="max_fits_header_length"
-            placeholder="What is being done, so the telescopes know why they are shut"
+            placeholder="What the window is for"
           />
         </b-field>
       </b-tab-item>
@@ -498,6 +498,18 @@ export default {
     this.reservation_type_tabs = this.siteIsWema
       ? 'maintenance'
       : this.eventDetails.reservation_type
+
+    /* A new window opens an hour long and named for whoever is booking it.
+       Whatever was dragged on the grid decided the reservation the calendar
+       guessed at, which was never a maintenance window -- so its length and
+       its title are not answers to this question. Both stay editable. */
+    if (this.siteIsWema && this.isNewEvent) {
+      this.endStr = moment(this.startStr)
+        .tz(this.effectiveTimezone)
+        .add(1, 'hour')
+        .format()
+      this.title = `Maintenance - ${this.creator}`
+    }
 
     // Anything after this point is the reader changing the time themselves.
     this.$nextTick(() => { this.startGuardArmed = true })
