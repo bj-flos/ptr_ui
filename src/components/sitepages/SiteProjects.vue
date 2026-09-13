@@ -13,14 +13,32 @@
         />
       </b-modal>
     </div>
-    <create-project-form
-      class="create-project-form"
-      :sitecode="sitecode"
-      :project_to_load="project_to_load"
-    />
-    <div style="height: 50px" />
+    <!-- The editable form, in a dialog rather than across half the page. The
+         tables are what someone comes here to read; making a project is what
+         they come here to do, once, and it does not need to sit open while
+         they read. -->
+    <b-modal
+      v-model="createModalActive"
+      :can-cancel="['escape', 'outside', 'x']"
+    >
+      <create-project-form
+        class="create-project-form"
+        :sitecode="sitecode"
+        :project_to_load="project_to_load"
+      />
+    </b-modal>
 
     <div class="projects-events-tables">
+      <div class="tables-head">
+        <b-button
+          type="is-primary"
+          icon-left="plus"
+          @click="openCreateModal"
+        >
+          Create New
+        </b-button>
+      </div>
+
       <user-projects-table
         class="user-projects-table"
         :user="user"
@@ -60,7 +78,8 @@ export default {
       utcTime: '-',
 
       project_to_load: {},
-      inspectModalActive: false
+      inspectModalActive: false,
+      createModalActive: false
     }
   },
   created () {
@@ -100,8 +119,23 @@ export default {
       // return the project params state back to where it was before we opened the modal
       this.$store.dispatch('project_params/reloadProjectDraft')
     },
+    /* Editing one of the listed projects opens the same dialog, already
+       holding it -- otherwise the table would hand the form a project and
+       leave it out of sight. */
     loadProjectForm (project) {
       this.project_to_load = project
+      this.createModalActive = true
+    },
+
+    /* A blank form. The form clears itself when handed an empty project, which
+       is how it tells a new project from one being edited. */
+    openCreateModal () {
+      this.project_to_load = {
+        project: '',
+        is_modifying_project: false,
+        is_cloned_project: false
+      }
+      this.createModalActive = true
     },
     refreshUserEvents () {
       this.$store.dispatch('user_data/fetchUserEvents', this.userId)
@@ -133,34 +167,26 @@ export default {
   width: calc(100% - 2em);
   margin: 2em 3em;
 
-  display: grid;
-  grid-gap: 3em;
-  grid-template-columns: 1fr;
-  grid-template-rows: repeat(3, auto);
-  grid-template-areas: 'project' 'tables';
+  /* One column now. The grid existed to stand the form beside the tables; with
+     the form in a dialog there is only one thing left to place, and a grid
+     whose other area is always empty just leaves a gap where it used to be. */
+  display: block;
 
   @include desktop {
     padding-left: 80px;
   }
+}
 
-  @include widescreen {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
-    grid-template-areas: 'project' 'tables';
-  }
-  @include fullhd {
-    grid-template-columns: 1fr auto;
-    grid-template-rows: 1fr;
-    grid-template-areas: 'quicksitepadding project tables';
-  }
+.tables-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1em;
 }
 
 .create-project-form {
-  grid-area: project;
   margin-bottom: 3em;
 }
 .projects-events-tables {
-  grid-area: tables;
   display: flex;
   flex-direction: column;
 
