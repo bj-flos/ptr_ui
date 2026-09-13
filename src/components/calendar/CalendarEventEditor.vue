@@ -264,6 +264,81 @@
           </b-field>
         </b-field>
       </b-tab-item>
+
+      <!-- Maintenance Window Tab: only ever shown for an enclosure. What is
+           scheduled here closes every telescope the wema houses, which is why
+           it is stored against the wema and not copied onto each of them. -->
+      <b-tab-item
+        v-if="showsTab('maintenance')"
+        label="Maintenance Window"
+        value="maintenance"
+      >
+        <p class="maintenance-note">
+          This closes {{ site }} and every telescope it houses. Nobody will be
+          able to book time inside it.
+        </p>
+
+        <b-field
+          horizontal
+          :label="`Start Time (${tzLabel})`"
+        >
+          <b-field>
+            <b-select v-model="startStr">
+              <option
+                v-for="t in startTimeOptions"
+                :key="t.sort"
+                :value="t.iso"
+              >
+                {{ t.hhmm }}
+              </option>
+            </b-select>
+            <b-datepicker
+              v-model="startDate"
+              class="date-field"
+              :date-formatter="formatDate"
+              position="is-bottom-right"
+            />
+          </b-field>
+        </b-field>
+
+        <b-field
+          horizontal
+          :label="`End Time (${tzLabel})`"
+        >
+          <b-field>
+            <b-select v-model="endStr">
+              <option
+                v-for="t in endTimeOptions"
+                :key="t.sort"
+                :value="t.iso"
+              >
+                {{ t.hhmm }}
+              </option>
+            </b-select>
+            <b-datepicker
+              v-model="endDate"
+              class="date-field"
+              :date-formatter="formatDate"
+              position="is-bottom-right"
+            />
+          </b-field>
+        </b-field>
+
+        <b-field horizontal>
+          {{ eventDuration }}
+        </b-field>
+
+        <b-field
+          label="Comment"
+          horizontal
+        >
+          <b-input
+            v-model="reservation_note"
+            :maxlength="max_fits_header_length"
+            placeholder="What is being done, so the telescopes know why they are shut"
+          />
+        </b-field>
+      </b-tab-item>
     </b-tabs>
 
     <hr>
@@ -367,8 +442,12 @@ export default {
     // When a reservation is started from one of the calendar's drag tokens the
     // kind is already chosen -- "Manual operation" is a real time session and
     // nothing else -- so the other tab is not an option to offer.
-    'lockedType'
+    'lockedType',
+    /* Closures on this telescope's enclosure. Read-only here: they are shown
+       so a booking cannot be made inside one, not so they can be changed. */
+    'maintenanceWindows'
   ],
+
   data () {
     return {
 
@@ -415,7 +494,10 @@ export default {
   async mounted () {
     this.startStr = moment(this.eventDetails.startStr).tz(this.effectiveTimezone).format()
     this.endStr = moment(this.eventDetails.endStr).tz(this.effectiveTimezone).format()
-    this.reservation_type_tabs = this.eventDetails.reservation_type
+    // A wema can only ever hold a maintenance window, whatever the drag said.
+    this.reservation_type_tabs = this.siteIsWema
+      ? 'maintenance'
+      : this.eventDetails.reservation_type
 
     // Anything after this point is the reader changing the time themselves.
     this.$nextTick(() => { this.startGuardArmed = true })
@@ -487,6 +569,14 @@ export default {
 
   },
   computed: {
+    /* Read from the config rather than from the event: a new event carries
+       whatever type the calendar guessed when it was dragged, which is never
+       "maintenance". */
+    siteIsWema () {
+      const config = this.$store.state.site_config.global_config || {}
+      return config[this.site]?.instance_type === 'wema'
+    },
+
     ...mapState('user_data', [
       'user_projects',
       'all_projects',
@@ -794,8 +884,27 @@ export default {
        settled the question -- dragging "Manual operation" onto the grid says real
        time session and nothing else, so offering a Project Session tab beside
        it invites picking one the drag has already ruled out. */
+    /* An enclosure has no telescope of its own to book. The only thing that
+       can be scheduled against a wema is a maintenance window, and that is the
+       only place one can be scheduled -- it applies to every telescope the
+       enclosure houses, so it cannot belong to one of them. */
     showsTab (type) {
+      if (this.siteIsWema) return type === 'maintenance'
+      if (type === 'maintenance') return false
       return !this.lockedType || this.lockedType === type
+    },
+
+    /* Whether a window overlaps the times currently chosen. Touching ends do
+       not count: a booking that starts exactly as a closure ends is fine. */
+    conflictingWindow () {
+      const start = moment(this.startStr).valueOf()
+      const end = moment(this.endStr).valueOf()
+      const windows = Array.isArray(this.maintenanceWindows) ? this.maintenanceWindows : []
+      return windows.find(w => {
+        const from = moment(w.start).valueOf()
+        const to = moment(w.end).valueOf()
+        return start < to && end > from
+      }) || null
     },
 
     resetProject () {
@@ -844,10 +953,31 @@ export default {
     },
     handleSubmit () {
       const valid_inputs = this.$refs.title_input.checkHtml5Validity()
-      if (valid_inputs) {
-        this.submitIsLoading = true
-        this.$emit('submit', this.modifiedEvent)
+      if (!valid_inputs) return
+
+      /* The enclosure is shut for maintenance over this time, and the roof
+         belongs to the wema rather than to any one telescope under it. Refused
+         here rather than accepted and quietly unusable on the night. */
+      const clash = this.conflictingWindow()
+      if (clash && !this.siteIsWema) {
+        const from = moment(clash.start).tz(this.effectiveTimezone).format('HH:mm')
+        const to = moment(clash.end).tz(this.effectiveTimezone).format('HH:mm')
+        this.$buefy.dialog.alert({
+          title: 'The enclosure is closed then',
+          message: clash.note
+            ? `${clash.wema} has a maintenance window from ${from} to ${to}: ${clash.note}. Please choose a time outside it.`
+            : `${clash.wema} has a maintenance window from ${from} to ${to}. Please choose a time outside it.`,
+          type: 'is-danger',
+          hasIcon: true,
+          icon: 'alert-circle',
+          ariaRole: 'alertdialog',
+          ariaModal: true
+        })
+        return
       }
+
+      this.submitIsLoading = true
+      this.$emit('submit', this.modifiedEvent)
     },
     handleModify () {
       const valid_inputs = this.$refs.title_input.checkHtml5Validity()
@@ -869,6 +999,12 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.maintenance-note {
+  margin-bottom: 1.25em;
+  opacity: 0.8;
+  font-size: 0.85rem;
+}
+
 /* Wide enough for "Wednesday, September 10, 2026" without wrapping, which is
    the longest shape the formatter produces. */
 .date-field {

@@ -126,6 +126,7 @@
             :event-is-loading="isLoading"
             :timezone-override="fc_timeZone"
             :locked-type="activeEventLockedType"
+            :maintenance-windows="inheritedMaintenance"
             @submit="submitButtonClicked"
             @cancel="cancelButtonClicked"
             @delete="deleteButtonClicked"
@@ -645,6 +646,13 @@ export default {
       fc_selectMirror: true, // whether to draw placeholder event while user is dragging
       fc_unselectAuto: false, // whether clicking elsewhere closes the current selection
       fc_weekends: true, // whether to show weekends in week view
+      /* Maintenance windows belonging to this telescope's enclosure. Stored
+         once against the wema and read by each telescope under it, so one
+         closure cannot drift out of step across its telescopes. Kept here as
+         well as handed to FullCalendar, because the editor has to be able to
+         refuse a booking that lands inside one. */
+      inheritedMaintenance: [],
+
       fc_nowIndicator: false, // whether to draw line indicating current time in grid views.
       fc_progressiveEventRendering: true,
       fc_editable: true, // whether events on calendar can be modified
@@ -2060,6 +2068,9 @@ export default {
 
       const resp = await axios.post(url, body, options)
 
+      // The enclosure's own closures, which apply to every telescope it houses.
+      const inherited = await this.fetchWemaMaintenance(body.start, body.end)
+
       // Format the returned items to work nicely with fullcalendar.
       const formatted_events = resp.data.map((obj) => {
         const fObj = {
@@ -2106,7 +2117,59 @@ export default {
         }
         return fObj
       })
-      return formatted_events
+      return formatted_events.concat(inherited)
+    },
+
+    /* The maintenance windows on this telescope's enclosure.
+     *
+     * A wema is not itself bookable, so anything stored against it is a
+     * closure. Returned read-only: it belongs to the enclosure, and editing it
+     * from one of its telescopes would be editing every other telescope's
+     * calendar without saying so. */
+    async fetchWemaMaintenance (start, end) {
+      const config = this.global_config?.[this.calendarSite]
+      const wema = config?.wema_name
+      if (!wema || config?.instance_type !== 'obs') {
+        this.inheritedMaintenance = []
+        return []
+      }
+
+      try {
+        const url = `${this.$store.state.api_endpoints.calendar_api}/siteevents`
+        const { data } = await axios.post(url, { site: wema, start, end },
+          { headers: { 'Content-Type': 'application/json;charset=UTF-8' } })
+
+        const windows = (Array.isArray(data) ? data : [])
+          .filter(obj => obj.reservation_type === 'maintenance')
+
+        this.inheritedMaintenance = windows.map(obj => ({
+          start: obj.start,
+          end: obj.end,
+          note: obj.reservation_note || '',
+          wema
+        }))
+
+        return windows.map(obj => ({
+          start: obj.start,
+          end: obj.end,
+          id: `wema-${obj.event_id}`,
+          title: obj.reservation_note
+            ? `${wema} maintenance — ${obj.reservation_note}`
+            : `${wema} maintenance`,
+          reservation_type: 'maintenance',
+          site: wema,
+          editable: false,
+          durationEditable: false,
+          startEditable: false,
+          className: 'maintenance-calendar-event'
+        }))
+      } catch (e) {
+        // A closure we could not read is not evidence there is none, but it is
+        // also not something to block a booking over. Left empty and logged.
+        console.warn('[calendar] could not read enclosure maintenance', e)
+        this.inheritedMaintenance = []
+        return []
+      }
     },
     // Get scheduler observations from the site-proxy
     async fetchSchedulerObservations (fetchInfo) {
@@ -2375,6 +2438,22 @@ $sky-darkness-z-index: 15;
   height: 0;
   border-left: 20px solid transparent;
   border-bottom: 20px solid $ptr-calendar-time-critical-color; /* size and color of triangle */
+}
+
+/* An enclosure closure, inherited by every telescope under it. Deliberately
+   unlike a booking: nobody owns it and nobody can drag it, so it reads as a
+   condition of the night rather than as something in the queue. */
+.maintenance-calendar-event {
+  background-color: rgba(241, 183, 14, 0.25) !important;
+  border-color: rgba(241, 183, 14, 0.8) !important;
+  color: #f1b70e !important;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(241, 183, 14, 0.25) 0,
+    rgba(241, 183, 14, 0.25) 6px,
+    rgba(241, 183, 14, 0.05) 6px,
+    rgba(241, 183, 14, 0.05) 12px
+  );
 }
 
 /* Styles for line showing the current time.
