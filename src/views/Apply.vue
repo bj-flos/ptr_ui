@@ -202,6 +202,25 @@
           </div>
         </div>
 
+        <!-- A parent is applying on behalf of someone, so the one extra thing
+             worth asking is who. Optional: an account can be set up without it
+             and chased later, and demanding a name before there is an account
+             to attach it to is a poor first impression. -->
+        <template v-if="showStudentName">
+          <h2 class="section-heading">
+            Student
+            <span class="optional">optional</span>
+          </h2>
+
+          <b-field label="Student name">
+            <b-input
+              v-model.trim="form.student_name"
+              maxlength="120"
+              :has-counter="false"
+            />
+          </b-field>
+        </template>
+
         <!-- Only what the chosen role needs: School for a student or an
              educator, and the rest for a student alone. Asking a community
              scientist for a grade is noise, and the watcher below clears these
@@ -375,6 +394,7 @@ export default {
         state: '',
         zip: '',
         age: '',
+        student_name: '',
         school: '',
         grade: '',
         bewise: '',
@@ -409,6 +429,12 @@ export default {
       }
       const age = Number(this.form.age)
       return Number.isFinite(age) && age < 16
+    },
+
+    /* Only a parent is asked who they are applying for. The student answers
+       that question by being the applicant. */
+    showStudentName () {
+      return this.form.role === 'parent'
     }
   },
 
@@ -437,6 +463,12 @@ export default {
         this.form.parent_email = ''
         this.$delete(this.errors, 'parent_phone')
         this.$delete(this.errors, 'parent_email')
+      }
+    },
+
+    showStudentName (visible) {
+      if (!visible) {
+        this.form.student_name = ''
       }
     }
   },
