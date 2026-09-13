@@ -1518,9 +1518,13 @@ export default {
       const event = mouseInfo.event
       const props = event.extendedProps || {}
 
+      /* Named by what the reservation does, so the line says something on its
+         own. "Reservation" was true of all three and told the reader nothing
+         they could not already see. */
       const types = {
-        realtime: 'Real Time Session',
-        project: 'Project Session'
+        realtime: 'Interactive Reservation',
+        project: 'Automation Reservation',
+        maintenance: 'Maintenance Reservation'
       }
       const type = props.origin === 'scheduler'
         ? 'Scheduled Observation'
@@ -1528,11 +1532,18 @@ export default {
 
       const start = moment(event.start).tz(this.fc_timeZone)
       const end = event.end ? moment(event.end).tz(this.fc_timeZone) : null
-      // The date once, the times either side of it, and the zone named -- these
-      // read differently on a site page and in the booking modal.
-      const when = end
-        ? `${start.format('ddd D MMM, HH:mm')} – ${end.format('HH:mm')} ${start.format('z')}`
-        : `${start.format('ddd D MMM, HH:mm')} ${start.format('z')}`
+      /* The date once when the reservation stays inside a day, and on both ends
+         when it does not: "22:00 – 05:00" invites the wrong day at a glance,
+         and a maintenance window is exactly the thing that runs overnight. The
+         forecast hover below already reads this way. */
+      let when
+      if (!end) {
+        when = `${start.format('ddd D MMM, HH:mm')} ${start.format('z')}`
+      } else if (start.isSame(end, 'day')) {
+        when = `${start.format('ddd D MMM, HH:mm')} – ${end.format('HH:mm')} ${start.format('z')}`
+      } else {
+        when = `${start.format('ddd D MMM, HH:mm')} – ${end.format('ddd D MMM, HH:mm')} ${start.format('z')}`
+      }
 
       this.event_hover_data = {
         title: event.title || '',
@@ -2153,11 +2164,16 @@ export default {
           start: obj.start,
           end: obj.end,
           id: `wema-${obj.event_id}`,
-          title: obj.reservation_note
-            ? `${wema} maintenance — ${obj.reservation_note}`
-            : `${wema} maintenance`,
+          title: obj.title || `${wema} maintenance`,
           reservation_type: 'maintenance',
           site: wema,
+          /* Carried through so hovering one here says who booked it and what
+             for. Dropping them left the card reading "Booked by:" and nothing,
+             which looks like a fault rather than an enclosure closure. */
+          creator: obj.creator,
+          creator_id: obj.creator_id,
+          reservation_note: obj.reservation_note || '',
+          origin: obj.origin,
           editable: false,
           durationEditable: false,
           startEditable: false,
