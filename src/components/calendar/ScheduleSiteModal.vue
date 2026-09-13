@@ -14,6 +14,21 @@
           {{ subtitle }}
         </p>
       </div>
+
+      <!-- UTC is what a booking is actually stored and submitted in, so it is
+           the line that settles any argument about when a slot is. The reader's
+           own clock sits under it, named, because that is the one they will
+           compare against -- and it is the zone this modal already draws the
+           calendar axis in. The site's own clock is not here: the calendar
+           below shows the observatory's night where it is useful. -->
+      <div class="header-clock">
+        <p class="clock-utc">
+          {{ utcNow }}
+        </p>
+        <p class="clock-local">
+          {{ localNow }}
+        </p>
+      </div>
     </header>
 
     <section class="modal-card-body">
@@ -99,6 +114,9 @@ export default {
   data () {
     return {
       ready: false,
+      // Re-read every second so the header is a clock rather than the time the
+      // modal happened to open.
+      now: new Date(),
       // Fetched here rather than through the store: the store keeps one
       // forecast, for whichever site was last opened, and this modal is for a
       // site nobody has selected. Writing to it would clobber the site page's.
@@ -108,6 +126,18 @@ export default {
 
   computed: {
     ...mapGetters('site_config', ['all_sites']),
+
+    /* Seconds included on purpose: without them a clock looks broken, because
+       nothing on screen changes for up to a minute at a time. */
+    utcNow () {
+      return moment.utc(this.now).format('YYYY-MM-DD HH:mm:ss [UTC]')
+    },
+
+    /* Same instant in the reader's zone. `z` is the zone's own abbreviation --
+       PDT, AEST -- and falls back to a UTC offset for zones that have none. */
+    localNow () {
+      return moment(this.now).tz(this.timezone).format('HH:mm:ss z')
+    },
 
     /* The reader's own zone, so the left column of the calendar is the clock
        they are actually looking at -- matching the "next free" line on the map
@@ -235,6 +265,8 @@ export default {
   },
 
   async mounted () {
+    this.clockTimer = setInterval(() => { this.now = new Date() }, 1000)
+
     this.fetchForecast()
 
     // One frame after the modal's open transition, so FullCalendar measures a
@@ -250,6 +282,8 @@ export default {
 
   beforeDestroy () {
     clearTimeout(this.readyTimer)
+    // Left running, this goes on waking the component after the modal is gone.
+    clearInterval(this.clockTimer)
   },
 
   methods: {
@@ -301,6 +335,32 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* Bulma lays the head out from the left, so the clock needs the header to push
+   its two children apart. align-items keeps the clock level with the title
+   rather than centred against a two-line block. */
+.modal-card-head {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.header-clock {
+  text-align: right;
+  white-space: nowrap;
+  /* Tabular figures, or the whole line jitters as the seconds change. */
+  font-variant-numeric: tabular-nums;
+  padding-left: 1em;
+}
+
+.clock-utc {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.clock-local {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
 .schedule-modal {
   width: 90vw;
   max-width: 1200px;
