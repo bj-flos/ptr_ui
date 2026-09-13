@@ -12,7 +12,10 @@
             education programs at Las Cumbres Observatory by offering a
             self-paced laboratory based course entitled "Astronomy and the
             Scientific Method" aimed at grade levels 5-8 but accessible by
-            learners of all ages.
+            learners of all ages. Work on the original Photon Ranch capability
+            was completed by the staff at LCO under the direction of Wayne
+            Rosing. The capability is now being supported by the staff of First
+            Light Observatory Systems, LLC.
           </p>
           <br>
           <p>
