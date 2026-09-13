@@ -119,6 +119,16 @@
 </template>
 
 <script>
+/**
+ * The Courses tab.
+ *
+ * Deliberately open to anyone: no beforeEnter on the route, no v-if on the
+ * navbar item, no auth check here. Someone deciding whether this is worth
+ * signing up for has to be able to read what it is first.
+ *
+ * When the material lands, that split holds: the course description stays
+ * readable signed out, and only enrolling is gated on having a login.
+ */
 import SiteNavbar from '@/components/SiteNavbar'
 
 export default {
