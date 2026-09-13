@@ -256,10 +256,12 @@
             </div>
           </div>
 
-          <!-- Asked of both, because the answer differs rather than repeats: a
-               student names who teaches them, an educator names whoever is
-               running the class if it is not them. -->
-          <b-field label="Instructor/Teacher name">
+          <!-- A student names who teaches them. An educator is the instructor,
+               so asking them is just asking for their own name again. -->
+          <b-field
+            v-if="showStudentFields"
+            label="Instructor/Teacher name"
+          >
             <b-input
               v-model.trim="form.instructor_name"
               maxlength="120"
@@ -458,7 +460,6 @@ export default {
     showSchool (visible) {
       if (!visible) {
         this.form.school = ''
-        this.form.instructor_name = ''
       }
     },
 
@@ -466,6 +467,7 @@ export default {
       if (!visible) {
         this.form.grade = ''
         this.form.bewise = ''
+        this.form.instructor_name = ''
         this.$delete(this.errors, 'grade')
       }
     },
