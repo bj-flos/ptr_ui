@@ -1349,6 +1349,17 @@ export default {
       if (site == 'common pool') {
         return []
       }
+
+      /* An enclosure has no filter wheel -- the telescopes under it do -- so
+         the lookup below always throws for one, and it was raising a red
+         "Failed to fetch specific filters" every time a wema id was clicked.
+         Nothing has failed: there is simply nothing to ask it for. The error
+         still stands for a telescope, where an unreadable filter wheel is a
+         real fault worth seeing. */
+      if (this.global_config[site]?.instance_type === 'wema') {
+        return [['none', 'none']]
+      }
+
       try {
         const site_cfg = this.global_config[site]
         const default_filter_wheel_name = site_cfg.defaults?.filter_wheel
