@@ -256,6 +256,17 @@
             </div>
           </div>
 
+          <!-- Asked of both, because the answer differs rather than repeats: a
+               student names who teaches them, an educator names whoever is
+               running the class if it is not them. -->
+          <b-field label="Instructor/Teacher name">
+            <b-input
+              v-model.trim="form.instructor_name"
+              maxlength="120"
+              :has-counter="false"
+            />
+          </b-field>
+
           <template v-if="showStudentFields">
             <b-field label="Do you belong to BEWiSE?">
               <b-select
@@ -396,6 +407,7 @@ export default {
         age: '',
         student_name: '',
         school: '',
+        instructor_name: '',
         grade: '',
         bewise: '',
         parent_phone: '',
@@ -446,6 +458,7 @@ export default {
     showSchool (visible) {
       if (!visible) {
         this.form.school = ''
+        this.form.instructor_name = ''
       }
     },
 
