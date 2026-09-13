@@ -55,15 +55,26 @@ function subtractBusy (window, busy) {
 /**
  * The next window in which this telescope could be used.
  *
+ * `alwaysObservable` drops the darkness requirement, for sites that simulate
+ * their sky and can therefore be driven at any hour.
+ *
  * Returns one of:
  *   { status: 'now' }                  usable this instant
  *   { status: 'later', start: Date }   free from `start`
  *   { status: 'unknown' }              not enough information to say
  */
-export function computeNextAvailable ({ site, events, userId, now = new Date() }) {
+export function computeNextAvailable ({ site, events, userId, now = new Date(), alwaysObservable = false }) {
   if (!site || !Array.isArray(events)) return { status: 'unknown' }
 
-  const dark = darkWindows(site, now, UPCOMING_WINDOW_HOURS)
+  /* A simulator is not waiting for the sun to go down over the real site, so
+     the calendar is the only thing that decides whether it is free. Real
+     telescopes are still bounded by their own darkness. */
+  const dark = alwaysObservable
+    ? [{
+        start: now,
+        end: new Date(now.getTime() + UPCOMING_WINDOW_HOURS * 60 * 60 * 1000)
+      }]
+    : darkWindows(site, now, UPCOMING_WINDOW_HOURS)
   if (!dark.length) return { status: 'unknown' }
 
   // A reservation this user made is not an obstacle to this user.
