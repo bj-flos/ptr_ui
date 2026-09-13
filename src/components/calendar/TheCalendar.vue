@@ -1497,7 +1497,10 @@ export default {
       this.activeEvent.site = this.calendarSite
       this.activeEvent.resourceId = this.calendarSite
       this.activeEvent.creator_id = this.userId
-      this.activeEvent.project_id = 'none'
+      /* A project dragged from the panel beside the calendar arrives carrying
+         its own id, so the editor opens with that project already chosen
+         rather than making the reader find it again in the list. */
+      this.activeEvent.project_id = info.draggedEl?.dataset?.projectId || 'none'
       this.activeEvent.reservation_note = ''
       this.activeEvent.origin = 'ptr'
 

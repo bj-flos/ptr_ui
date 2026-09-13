@@ -20,21 +20,47 @@
         <p class="menu-label">
           Your Projects
         </p>
-        <p style="text-decoration: line-through;">
-          Drag projects to the calendar to schedule them
+        <p
+          v-if="!userIsAuthenticated"
+          class="projects-hint"
+        >
+          Sign in to see your projects.
         </p>
-        <p>under construction</p>
-        <div class="projects-container">
-          <!-- <b-tag
-            v-for="(p, index) in user_projects"
-            :key="index"
-            class="draggable-project-tag"
-            type="is-info"
-            rounded
+        <p
+          v-else-if="user_projects_is_loading"
+          class="projects-hint"
+        >
+          Loading your projects…
+        </p>
+        <p
+          v-else-if="!user_projects.length"
+          class="projects-hint"
+        >
+          You have no projects yet. Make one on a telescope's Projects tab and
+          it will appear here.
+        </p>
+        <template v-else>
+          <p class="projects-hint">
+            Drag a project onto the calendar to schedule it.
+          </p>
+          <div
+            ref="projectPalette"
+            class="projects-container"
           >
-            {{ p.project_name }}
-          </b-tag> -->
-        </div>
+            <!-- The dataset is what the calendar's drop handler reads: the kind
+                 of reservation to open, and which project to put in it. -->
+            <span
+              v-for="p in user_projects"
+              :key="projectId(p)"
+              class="draggable-project-tag tag is-rounded"
+              data-reservation-type="project"
+              :data-project-id="projectId(p)"
+              :title="p.project_name"
+            >
+              {{ p.project_name }}
+            </span>
+          </div>
+        </template>
       </div>
 
       <div class="fc-settings-box">
@@ -68,6 +94,7 @@
 import TheCalendar from '@/components/calendar/TheCalendar'
 import SiteReservationStatus from '@/components/calendar/SiteReservationStatus'
 import { mapGetters, mapState } from 'vuex'
+import { Draggable } from '@fullcalendar/interaction'
 import moment from 'moment'
 
 export default {
@@ -83,6 +110,8 @@ export default {
       siteTime: '-',
       utcTime: '-',
 
+      projectDraggable: null,
+
       showMoonEvents: true,
       showWeatherForecast: true
     }
@@ -96,11 +125,49 @@ export default {
     if (this.userIsAuthenticated) {
       this.$store.dispatch('user_data/fetchUserProjects', this.userId)
     }
+    this.refreshProjectDraggable()
+  },
+
+  watch: {
+    /* The palette only exists once there is something in it, and it is a fresh
+       element each time the list changes, so the draggable is rebuilt with it
+       rather than left pointing at a node that has been replaced. */
+    user_projects () {
+      this.refreshProjectDraggable()
+    }
   },
   destroyed () {
     clearInterval(this.timeInterval)
+    if (this.projectDraggable) {
+      this.projectDraggable.destroy()
+      this.projectDraggable = null
+    }
   },
   methods: {
+    /* The form of id the rest of the app uses for a project: its name and when
+       it was made, because a name on its own is not unique. */
+    projectId (project) {
+      return `${project.project_name}#${project.created_at}`
+    },
+
+    /* create:false, exactly as the two tokens above the calendar do it:
+       FullCalendar drops nothing of its own, and the drop handler opens the
+       editor so that nothing is booked until it is saved. */
+    refreshProjectDraggable () {
+      if (this.projectDraggable) {
+        this.projectDraggable.destroy()
+        this.projectDraggable = null
+      }
+      this.$nextTick(() => {
+        const palette = this.$refs.projectPalette
+        if (!palette) return
+        this.projectDraggable = new Draggable(palette, {
+          itemSelector: '.draggable-project-tag',
+          eventData: { create: false }
+        })
+      })
+    },
+
     displayUtcTime (time) {
       return moment(time).utc().format('MMM D, kk:mm')
     },
@@ -126,7 +193,8 @@ export default {
       'userIsAdmin',
       'userId',
       'userName',
-      'user_projects'
+      'user_projects',
+      'user_projects_is_loading'
     ]),
 
     // Calendar Resources (Observatories) to feed into the calendar component
@@ -233,7 +301,14 @@ $calendar-height: calc(#{$content-view-height} - #{$content-padding * 2});
   }
 }
 
+.projects-hint {
+  opacity: 0.75;
+  font-size: 0.85rem;
+  margin-bottom: 0.75em;
+}
+
 .draggable-project-tag {
+  cursor: grab;
   background-color: $ptr-calendar-project-color !important;
 }
 
