@@ -64,42 +64,54 @@
         label="Project Session"
         value="project"
       >
-        <b-field
-          horizontal
-          label="Night of"
-        >
-          <p class="is-family-primary">
-            {{ nightOf }}
-          </p>
-        </b-field>
+        <!-- The date sits beside the time rather than above both as a single
+             "Night of", which could not show a booking whose end fell on the
+             following day -- and that is exactly how a 25-hour reservation once
+             passed for a one-hour one. -->
         <b-field
           horizontal
           :label="`Start Time (${tzLabel})`"
         >
-          <b-select v-model="startStr">
-            <option
-              v-for="t in startTimeOptions"
-              :key="t.sort"
-              :value="t.iso"
-            >
-              {{ t.hhmm }}
-            </option>
-          </b-select>
+          <b-field>
+            <b-select v-model="startStr">
+              <option
+                v-for="t in startTimeOptions"
+                :key="t.sort"
+                :value="t.iso"
+              >
+                {{ t.hhmm }}
+              </option>
+            </b-select>
+            <b-datepicker
+              v-model="startDate"
+              class="date-field"
+              :date-formatter="formatDate"
+              position="is-bottom-right"
+            />
+          </b-field>
         </b-field>
 
         <b-field
           horizontal
           :label="`End Time (${tzLabel})`"
         >
-          <b-select v-model="endStr">
-            <option
-              v-for="t in endTimeOptions"
-              :key="t.sort"
-              :value="t.iso"
-            >
-              {{ t.hhmm }}
-            </option>
-          </b-select>
+          <b-field>
+            <b-select v-model="endStr">
+              <option
+                v-for="t in endTimeOptions"
+                :key="t.sort"
+                :value="t.iso"
+              >
+                {{ t.hhmm }}
+              </option>
+            </b-select>
+            <b-datepicker
+              v-model="endDate"
+              class="date-field"
+              :date-formatter="formatDate"
+              position="is-bottom-right"
+            />
+          </b-field>
         </b-field>
 
         <b-field horizontal>
@@ -200,25 +212,25 @@
       >
         <b-field
           horizontal
-          label="Night of"
-        >
-          <p class="is-family-primary">
-            {{ nightOf }}
-          </p>
-        </b-field>
-        <b-field
-          horizontal
           :label="`Start Time (${tzLabel})`"
         >
-          <b-select v-model="startStr">
-            <option
-              v-for="t in startTimeOptions"
-              :key="t.sort"
-              :value="t.iso"
-            >
-              {{ t.hhmm }}
-            </option>
-          </b-select>
+          <b-field>
+            <b-select v-model="startStr">
+              <option
+                v-for="t in startTimeOptions"
+                :key="t.sort"
+                :value="t.iso"
+              >
+                {{ t.hhmm }}
+              </option>
+            </b-select>
+            <b-datepicker
+              v-model="startDate"
+              class="date-field"
+              :date-formatter="formatDate"
+              position="is-bottom-right"
+            />
+          </b-field>
         </b-field>
         <b-field
           horizontal
@@ -240,6 +252,14 @@
               :native-value="45"
             >
               45 min
+            </b-radio-button>
+            <b-radio-button
+              v-model="real_time_session_duration"
+              type="is-primary is-outlined"
+              :focused="false"
+              :native-value="60"
+            >
+              60 min
             </b-radio-button>
           </b-field>
         </b-field>
@@ -578,8 +598,18 @@ export default {
       return filtered
     },
 
-    nightOf () {
-      return moment(this.eventDetails.startStr).tz(this.effectiveTimezone).format('dddd, MMMM D, YYYY')
+    /* The date halves of the two fields. b-datepicker works in plain Dates
+       while the values carry a zone, so these translate between the two:
+       reading gives the calendar day the value falls on in the event's zone,
+       writing moves the day and leaves the time alone. */
+    startDate: {
+      get () { return this.dateOf(this.startStr) },
+      set (date) { this.startStr = this.withDate(this.startStr, date) }
+    },
+
+    endDate: {
+      get () { return this.dateOf(this.endStr) },
+      set (date) { this.endStr = this.withDate(this.endStr, date) }
     },
     startTimeOptions () {
       const startTimes = []
@@ -588,7 +618,10 @@ export default {
       const range = 2 // hours
 
       // The value in the middle of our array
-      const middleTime = moment(this.eventDetails.startStr).tz(this.effectiveTimezone)
+      /* Anchored on the time currently chosen, not on the original selection:
+         moving the date field moves startStr, and options built around the old
+         selection would no longer contain it -- leaving the time select blank. */
+      const middleTime = moment(this.startStr).tz(this.effectiveTimezone)
       // The first time in the array.
       const startOption = middleTime.subtract(range, 'h')
 
@@ -617,7 +650,8 @@ export default {
       const range = 2 // hours
 
       // The value in the middle of our array
-      const middleTime = moment(this.eventDetails.endStr).tz(this.effectiveTimezone)
+      // Anchored on the chosen end, for the reason above.
+      const middleTime = moment(this.endStr).tz(this.effectiveTimezone)
       // The first time in the array.
       const endOption = middleTime.subtract(range, 'h')
 
@@ -689,9 +723,29 @@ export default {
        spanning midnight passed for a one-hour slot. Anything on a different
        date to the event's start gets that date spelled out beside it. */
     labelFor (at) {
-      const startDay = moment(this.eventDetails.startStr).tz(this.effectiveTimezone)
+      const startDay = moment(this.startStr).tz(this.effectiveTimezone)
       const sameDay = at.isSame(startDay, 'day')
       return sameDay ? at.format('HH:mm') : at.format('HH:mm [on] MMM D')
+    },
+
+    // The calendar day a value falls on, as a plain Date for the picker.
+    dateOf (iso) {
+      const at = moment(iso).tz(this.effectiveTimezone)
+      return new Date(at.year(), at.month(), at.date())
+    },
+
+    // Same clock time, different day.
+    withDate (iso, date) {
+      if (!date) return iso
+      return moment(iso).tz(this.effectiveTimezone)
+        .year(date.getFullYear())
+        .month(date.getMonth())
+        .date(date.getDate())
+        .format()
+    },
+
+    formatDate (date) {
+      return date ? moment(date).format('dddd, MMMM D, YYYY') : ''
     },
 
     /* Which reservation tabs to offer. Both, unless the caller has already
@@ -773,6 +827,12 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* Wide enough for "Wednesday, September 10, 2026" without wrapping, which is
+   the longest shape the formatter produces. */
+.date-field {
+  min-width: 16rem;
+}
+
 @import "@/style/buefy-styles.scss";
 .r-margin {
     margin-right: 1em;
