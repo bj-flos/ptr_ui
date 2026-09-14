@@ -29,11 +29,16 @@
           :key="wema.id"
           :class="[site_online_class(wema.id), 'wema-and-obs']"
         >
-          <!-- The wema heading is a link in its own right. It has its own site
-               page -- Site.vue branches on site_is_wema -- and an admin looking
-               at weather or an enclosure wants that page, not one of the
-               telescopes underneath it. -->
+          <!-- The wema heading is a link in its own right, but only for an
+               admin. It has its own site page -- Site.vue branches on
+               site_is_wema -- and that page is weather and the enclosure
+               rather than a telescope, which is an admin concern. For everyone
+               else the heading stays what it reads as: a label grouping the
+               observatories beneath it, which are theirs to click. Rendered as
+               a plain element rather than a dead link, so there is no
+               affordance to disappoint. -->
           <router-link
+            v-if="userIsAdmin"
             tag="div"
             :class="[{'selected': dropdown_active_site==wema.id}, 'site-row', 'wema']"
             :to="{ path: '/site/' + wema.id + '/' + active_subpage }"
@@ -44,6 +49,14 @@
               {{ wema.id.toUpperCase() }} - {{ wema.name }}
             </div>
           </router-link>
+          <div
+            v-else
+            class="site-row wema is-heading"
+          >
+            <div class="wema-name-expanded">
+              {{ wema.id.toUpperCase() }} - {{ wema.name }}
+            </div>
+          </div>
           <ul class="obs-all">
             <li
               v-for="(obs, obs_index) in wema.observatories"
@@ -97,6 +110,7 @@ export default {
     ...mapGetters('site_config', ['all_sites', 'all_sites_real', 'all_sites_simulated']),
     ...mapState('sitestatus', ['site_open_status', 'stale_age_ms']),
     ...mapGetters('sitestatus', ['all_sites_status_color']),
+    ...mapState('user_data', ['userIsAdmin']),
 
     // dropdownSitesData is keyed by wema id rather than being a list, so it
     // has no length to test.
@@ -308,6 +322,10 @@ export default {
 }
 .site-row.wema {
   cursor: pointer;
+}
+// Not a link for a non-admin, so it must not claim to be one.
+.site-row.wema.is-heading {
+  cursor: default;
 }
 
 .site-row {

@@ -63,11 +63,15 @@
               Affiliates
             </b-navbar-item-->
 
-      <!-- Admins only. The dropdown lists every wema and observatory, including
-           ones a student has no business steering; the map is the way in for
-           everyone else. -->
+      <!-- Everyone, admin or not. This was admin-only from 340ca60, on the
+           reasoning that the map is the way in for the grade-school audience
+           and the dropdown names sites a student has no business steering.
+           The map left anyone who already knew where they were going without
+           a direct route there, so the dropdown is back for all -- and the
+           part that was really admin-only is now gated where it belongs:
+           inside the dropdown, the wema headings link for admins alone, while
+           the observatories under them are clickable for everyone. -->
       <NavbarSiteDropdown
-        v-if="userIsAdmin"
         label="Sites"
       />
     </template>
