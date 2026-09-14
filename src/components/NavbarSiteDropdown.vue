@@ -350,6 +350,12 @@ export default {
       cursor: pointer;
       background-color: darken($body-background-color, 3);
     }
+    // The wema heading is a link for an admin, so it answers a hover the way
+    // an observatory row does. For everyone else it is a plain heading and
+    // must not look clickable.
+    &.wema:not(.is-heading) {
+      background-color: darken($body-background-color, 3);
+    }
     &.placeholder {
       cursor:disabled;
     }
