@@ -86,6 +86,10 @@
             :class="{ 'is-mine': bar.mine }"
             :style="{ left: bar.left + '%', width: bar.width + '%' }"
             :title="bar.tooltip"
+            role="button"
+            tabindex="0"
+            @click="selected = bar.event"
+            @keyup.enter="selected = bar.event"
           >
             <span class="bar-label">{{ bar.label }}</span>
           </div>
@@ -106,6 +110,34 @@
     >
       {{ error }}
     </p>
+
+    <!-- Everything the calendar holds about one booking. The grid can only
+         show a title in a few pixels, and a bar narrow enough to be a sliver
+         is exactly the one worth asking about. -->
+    <b-modal :active.sync="detailsOpen">
+      <div class="card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">
+            {{ selectedTitle }}
+          </p>
+          <button
+            type="button"
+            class="delete"
+            @click="selected = null"
+          />
+        </header>
+        <section class="modal-card-body">
+          <div
+            v-for="row in selectedRows"
+            :key="row.label"
+            class="detail-row"
+          >
+            <span class="detail-label">{{ row.label }}</span>
+            <span class="detail-value">{{ row.value }}</span>
+          </div>
+        </section>
+      </div>
+    </b-modal>
   </div>
 </template>
 
@@ -137,6 +169,9 @@ export default {
       offsetHours: 0,
       // Keyed by sitecode; each an array of {start, end, title, creator_id, id}.
       events: {},
+      // The booking whose details are open, or null. The modal follows it
+      // rather than carrying its own flag, so there is one source of truth.
+      selected: null,
       loading: false,
       error: '',
       now: new Date(),
@@ -154,6 +189,44 @@ export default {
       return Object.keys(config)
         .filter(code => config[code]?.instance_type === 'obs')
         .sort()
+    },
+
+    /* b-modal wants a boolean it can set both ways -- Esc and the backdrop
+       close it without going through the button -- so closing clears the
+       selection and the two cannot disagree. */
+    detailsOpen: {
+      get () { return this.selected !== null },
+      set (open) { if (!open) this.selected = null }
+    },
+
+    selectedTitle () {
+      const event = this.selected
+      if (!event) return ''
+      return event.title || event.creator || 'Reservation'
+    },
+
+    selectedRows () {
+      const event = this.selected
+      if (!event) return []
+      // An empty string is what the calendar stores for "not filled in", and
+      // a blank row reads as a rendering fault rather than an empty field.
+      const orDash = value => (value === '' || value === null || value === undefined ? '—' : value)
+      return [
+        { label: 'Telescope', value: orDash(event.site || event.resourceId) },
+        { label: 'Booked by', value: orDash(event.creator) },
+        { label: 'When', value: this.spanLabel(event) },
+        { label: 'Type', value: orDash(event.reservation_type) },
+        { label: 'Priority', value: orDash(event.project_priority) },
+        { label: 'Origin', value: orDash(event.origin) },
+        { label: 'Project', value: orDash(event.project_id) },
+        { label: 'Note', value: orDash(event.reservation_note) },
+        {
+          label: 'Last modified',
+          value: event.last_modified
+            ? `${moment.utc(event.last_modified).format('D MMM HH:mm:ss')} UTC`
+            : '—'
+        }
+      ]
     },
 
     windowStart () {
@@ -219,6 +292,20 @@ export default {
       this.offsetHours += direction * STEP_HOURS
     },
 
+    /* The booking's extent in words: UTC like the rest of this view, with the
+       duration spelled out because start and end alone make the reader do
+       arithmetic to answer the question they actually have. */
+    spanLabel (event) {
+      const from = moment.utc(event.start)
+      const to = moment.utc(event.end)
+      const minutes = Math.max(0, to.diff(from, 'minutes'))
+      const hours = Math.floor(minutes / 60)
+      const duration = hours ? `${hours}h ${minutes % 60}m` : `${minutes}m`
+      return from.isSame(to, 'day')
+        ? `${from.format('ddd D MMM')} · ${from.format('HH:mm')}–${to.format('HH:mm')} UTC (${duration})`
+        : `${from.format('ddd D MMM HH:mm')} – ${to.format('ddd D MMM HH:mm')} UTC (${duration})`
+    },
+
     /* Where a moment falls across the window, 0 at the left edge and 1 at the
        right. Outside the window it goes negative or past 1, which is what the
        clamping below is for. */
@@ -278,7 +365,10 @@ export default {
           width: (to - from) * 100,
           mine: event.creator_id === this.userId,
           label: event.title || who || 'reserved',
-          tooltip: [event.title, who, when].filter(Boolean).join(' — ')
+          tooltip: [event.title, who, when].filter(Boolean).join(' — '),
+          // The whole thing, for the details modal: the bar shows what fits,
+          // the modal shows what there is.
+          event
         }
       }).filter(Boolean)
     }
@@ -372,6 +462,40 @@ export default {
   align-items: center;
   padding: 0 0.35em;
   z-index: 1;
+  cursor: pointer;
+}
+
+/* Keyboard focus has to be visible on its own: the bars sit on a dark track
+   and the default outline disappears into the border. */
+.bar:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 1px;
+}
+
+.detail-row {
+  display: flex;
+  gap: 1em;
+  padding: 0.35em 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  flex: none;
+  width: 8.5rem;
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+/* project_id is an id, not prose: it has no spaces to break at and would push
+   the modal wider than the viewport on a narrow window. */
+.detail-value {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 /* The reader's own bookings, so an admin can pick their own out of a busy
