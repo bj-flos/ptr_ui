@@ -105,7 +105,7 @@ export default {
     },
 
     displayUtcTime (time) {
-      return moment(time).utc().format('MMM D, kk:mm')
+      return moment(time).utc().format('MMM D HH:mm')
     },
 
     displayEventDuration (event) {

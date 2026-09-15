@@ -23,6 +23,7 @@
         v-slot="props"
         field="event name"
         label="event name"
+        width="220"
       >
         {{ props.row.title }}
       </b-table-column>
@@ -34,24 +35,6 @@
         sortable
       >
         {{ eventTypeLabel(props.row.reservation_type) }}
-      </b-table-column>
-
-      <b-table-column
-        v-slot="props"
-        field="duration"
-        label="duration (h:m)"
-        sortable
-      >
-        {{ displayEventDuration(props.row) }}
-      </b-table-column>
-
-      <b-table-column
-        v-slot="props"
-        field="timeUntilStart"
-        label="time until start (h:m)"
-        sortable
-      >
-        {{ displayTimeUntilStart(props.row) }}
       </b-table-column>
 
       <b-table-column
@@ -68,6 +51,15 @@
         label="end"
       >
         {{ displayUtcTime(props.row.end) }}
+      </b-table-column>
+
+      <b-table-column
+        v-slot="props"
+        field="duration"
+        label="duration (h:m)"
+        sortable
+      >
+        {{ displayEventDuration(props.row) }}
       </b-table-column>
 
       <b-table-column
@@ -198,21 +190,13 @@ export default {
       })
     },
     displayUtcTime (time) {
-      return moment(time).utc().format('MMM D, kk:mm')
+      return moment(time).utc().format('MMM D HH:mm')
     },
     displayEventDuration (event) {
       const start = moment(event.start)
       const end = moment(event.end)
 
       const ms = end.diff(start)
-      const d = moment.duration(ms)
-      const s = Math.floor(d.asHours()) + moment.utc(ms).format(':mm')
-      return s
-    },
-    displayTimeUntilStart (event) {
-      const start = moment(event.start).utc()
-      const now = moment().utc()
-      const ms = start.diff(now)
       const d = moment.duration(ms)
       const s = Math.floor(d.asHours()) + moment.utc(ms).format(':mm')
       return s
