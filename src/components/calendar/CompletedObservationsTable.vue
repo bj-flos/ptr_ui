@@ -35,15 +35,6 @@
 
       <b-table-column
         v-slot="props"
-        field="duration"
-        label="duration (h:m)"
-        sortable
-      >
-        {{ displayEventDuration(props.row) }}
-      </b-table-column>
-
-      <b-table-column
-        v-slot="props"
         field="start"
         label="start"
         sortable
@@ -58,6 +49,15 @@
         sortable
       >
         {{ displayUtcTime(props.row.end) }}
+      </b-table-column>
+
+      <b-table-column
+        v-slot="props"
+        field="duration"
+        label="duration (h:m)"
+        sortable
+      >
+        {{ displayEventDuration(props.row) }}
       </b-table-column>
 
       <b-table-column
