@@ -121,7 +121,7 @@ import axios from 'axios'
 import moment from 'moment-timezone'
 import { mapState } from 'vuex'
 
-const WINDOW_HOURS = 4
+const WINDOW_HOURS = 12
 const REFRESH_MS = 60000
 
 export default {
