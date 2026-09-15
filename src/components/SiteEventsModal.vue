@@ -33,8 +33,8 @@ import { zone_label, browser_zone_label } from '@/utils/timezones'
  *
  * Anything not listed sorts after what is, alphabetically among itself. */
 const TIED_EVENT_ORDER = [
-  'cool down, open',
-  'operational window start'
+  'operational window start',
+  'cool down, open'
 ]
 
 function tie_rank (key) {
