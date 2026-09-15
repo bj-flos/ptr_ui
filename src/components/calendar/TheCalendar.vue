@@ -517,6 +517,14 @@ export default {
       return this.scrollTimeOverride || this.fc_scrollTime
     },
 
+    /* Where the grid cuts one observing day from the next, in hours past
+       midnight in the site's zone. Read off the value the grid itself is
+       given, so the two cannot drift apart if the window is overridden. */
+    dayStartHours () {
+      const [hours, minutes] = String(this.effectiveMinTime || '00:00:00').split(':')
+      return (Number(hours) || 0) + (Number(minutes) || 0) / 60
+    },
+
     effectiveLatitude () {
       return this.siteLatitudeOverride != null && isFinite(this.siteLatitudeOverride)
         ? this.siteLatitudeOverride
@@ -796,9 +804,18 @@ export default {
        in, as YYYY-MM-DD. Days are compared as labels rather than instants
        throughout: the site's midnight and the browser's are different moments,
        and diffing them directly leaves a fractional day behind. */
+    /* The COLUMN an instant belongs to, which is not its calendar date.
+
+       fc_minTime starts each column at noon site time and fc_maxTime runs it
+       to noon the next day, so a column is an observing night and anything
+       before noon belongs to the one that began the previous afternoon.
+       Taking the date alone put the view a column late for the whole morning
+       -- and that is exactly when a reservation running right now sat off the
+       left edge, fetched and rendered nowhere. */
     dayInCalendarZone (ms) {
       const zone = this.fc_timeZone
-      return (zone ? moment(ms).tz(zone) : moment(ms)).format('YYYY-MM-DD')
+      const at = zone ? moment(ms).tz(zone) : moment(ms)
+      return at.subtract(this.dayStartHours, 'hours').format('YYYY-MM-DD')
     },
 
     todayInCalendarZone () {
