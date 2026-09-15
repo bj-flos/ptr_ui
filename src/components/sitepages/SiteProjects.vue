@@ -52,12 +52,20 @@
         </h1>
         <user-events-table :user="user" />
       </div>
+
+      <div class="user-events-table">
+        <h1 class="subtitle">
+          Completed Observations
+        </h1>
+        <completed-observations-table />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import UserEventsTable from '@/components/calendar/UserEventsTable'
+import CompletedObservationsTable from '@/components/calendar/CompletedObservationsTable'
 import UserProjectsTable from '@/components/projects/UserProjectsTable'
 import CreateProjectForm from '@/components/projects/CreateProjectForm'
 import { mapState, mapGetters } from 'vuex'
@@ -68,6 +76,7 @@ export default {
   props: ['sitecode'],
   components: {
     UserEventsTable,
+    CompletedObservationsTable,
     UserProjectsTable,
     CreateProjectForm
   },
@@ -139,6 +148,7 @@ export default {
     },
     refreshUserEvents () {
       this.$store.dispatch('user_data/fetchUserEvents', this.userId)
+      this.$store.dispatch('user_data/fetchUserPastEvents', this.userId)
     },
     refreshUserProjects () {
       this.$store.dispatch('user_data/refreshProjectsTableData', this.userId)

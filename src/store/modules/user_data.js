@@ -45,6 +45,11 @@ const state = {
 
   user_events: [],
   user_events_is_loading: false,
+  // Events that have already ended, newest first. Kept apart from user_events
+  // rather than derived from it: that list is everything ending after now, and
+  // several screens read it expecting exactly that.
+  user_past_events: [],
+  user_past_events_is_loading: false,
 
   user_projects: [],
   user_projects_is_loading: false,
@@ -105,6 +110,8 @@ const mutations = {
 
   user_events (state, val) { state.user_events = val },
   user_events_is_loading (state, val) { state.user_events_is_loading = val },
+  user_past_events (state, val) { state.user_past_events = val },
+  user_past_events_is_loading (state, val) { state.user_past_events_is_loading = val },
 
   user_projects (state, val) { state.user_projects = val },
   user_projects_is_loading (state, val) { state.user_projects_is_loading = val },
@@ -149,6 +156,7 @@ const actions = {
 
     dispatch('fetchUserProjects', state.userId)
     dispatch('fetchUserEvents', state.userId)
+    dispatch('fetchUserPastEvents', state.userId)
   },
 
   logoutUser ({ commit }) {
@@ -168,6 +176,7 @@ const actions = {
     commit('profileUrl', '')
     commit('user_projects', [])
     commit('user_events', [])
+    commit('user_past_events', [])
   },
 
   // refreshProjectsTableData automatically chooses whether to run fetchUserProjects or fetchAllProjects
@@ -213,6 +222,44 @@ const actions = {
     }).catch(err => {
       commit('all_projects_is_loading', false)
       console.warn('error fetching user projects: ', err)
+    })
+  },
+
+  /* The user's finished events.
+   *
+   * There is no "ending before" endpoint, so this asks the same index for
+   * everything ending after a floor and keeps what has since finished. The
+   * floor is a year, which bounds the query rather than expressing a rule --
+   * nothing expires at twelve months.
+   *
+   * "Completed" here means the booking's end time has passed. The calendar
+   * records no outcome, so this cannot and does not claim the observation ran.
+   */
+  fetchUserPastEvents ({ state, commit, rootState }, userId) {
+    if (!state.userIsAuthenticated) return
+
+    commit('user_past_events_is_loading', true)
+
+    const url = rootState.api_endpoints.calendar_api + '/user-events-ending-after-time'
+    const header = {
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8'
+      }
+    }
+    const body = {
+      time: moment().utc().subtract(1, 'year').format(),
+      user_id: userId
+    }
+    axios.post(url, body, header).then(response => {
+      const now = moment().utc()
+      const finished = (response.data || [])
+        .filter(event => moment(event.end).utc().isBefore(now))
+        .sort((a, b) => moment(b.end).valueOf() - moment(a.end).valueOf())
+      commit('user_past_events_is_loading', false)
+      commit('user_past_events', finished)
+    }).catch(err => {
+      commit('user_past_events_is_loading', false)
+      console.warn('error fetching user past events: ', err)
     })
   },
 
@@ -322,6 +369,7 @@ const actions = {
     axios.post(url, body, header).then(async response => {
       const user = await getInstance().user.sub
       dispatch('fetchUserEvents', user)
+      dispatch('fetchUserPastEvents', user)
     }).catch(err => {
       console.warn('error fetching user events: ', err)
     })

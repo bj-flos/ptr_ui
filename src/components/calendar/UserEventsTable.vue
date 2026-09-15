@@ -29,6 +29,15 @@
 
       <b-table-column
         v-slot="props"
+        field="reservation_type"
+        label="event type"
+        sortable
+      >
+        {{ eventTypeLabel(props.row.reservation_type) }}
+      </b-table-column>
+
+      <b-table-column
+        v-slot="props"
         field="duration"
         label="duration (h:m)"
         sortable
@@ -141,6 +150,7 @@
 <script>
 import { mapState } from 'vuex'
 import moment from 'moment'
+import { event_type_label } from '@/utils/reservations'
 
 export default {
   name: 'UserEventsTable',
@@ -170,6 +180,9 @@ export default {
     window.moment = moment // use moment lib in browser devtools
   },
   methods: {
+    eventTypeLabel (reservation_type) {
+      return event_type_label(reservation_type)
+    },
     setActiveEvent (row) {
       this.activeEvent = row
     },
