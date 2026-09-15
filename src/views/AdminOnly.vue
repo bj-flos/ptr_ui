@@ -17,7 +17,9 @@
           <!-- Mounted with the tab rather than kept alive behind it: both tabs
                poll, and the one nobody is looking at has no business asking the
                status and calendar APIs every half minute. -->
-          <AdminSiteStatus v-if="activeTab === 'status'" />
+          <div class="readable-width">
+            <AdminSiteStatus v-if="activeTab === 'status'" />
+          </div>
         </b-tab-item>
 
         <b-tab-item
@@ -61,6 +63,14 @@ export default {
 .admin-content {
   margin-top: 30px;
   padding: 0 1em 3em;
+}
+
+/* The measure belongs to the tab, not to the page. Site Status is rows of
+   text, which get hard to track across a wide monitor, so it keeps the 70rem
+   the whole page used to carry. Reservations is a timeline whose resolution IS
+   its width -- twelve hours in 70rem put every booking in a few pixels -- so it
+   is left to fill the window. */
+.readable-width {
   max-width: 70rem;
 }
 </style>
