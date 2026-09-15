@@ -11,9 +11,18 @@
   >
     <template v-if="site">
       <div class="card-header">
-        <p class="card-name">
-          {{ site.name }}
-        </p>
+        <div class="card-identity">
+          <p class="card-name">
+            {{ site.name }}
+          </p>
+          <!-- So nobody reads a simulator's status as a real sky. -->
+          <p
+            v-if="siteIsSimulated"
+            class="card-simulated"
+          >
+            simulated
+          </p>
+        </div>
         <p class="card-code">
           site code: {{ site.site }}
         </p>
@@ -108,6 +117,13 @@ export default {
     ...mapState('calendar', ['upcoming_events']),
     ...mapGetters('calendar', ['nextAvailable']),
 
+    /* Whether this telescope is a simulator, per its own config -- the same
+       site_is_simulated the observatory reads to disregard its shutter. */
+    siteIsSimulated () {
+      if (!this.site) { return false }
+      return this.$store.getters['site_config/site_is_simulated'](this.site.site)
+    },
+
     readiness () {
       return siteReadiness(this.site, this.site_open_status)
     },
@@ -167,11 +183,29 @@ export default {
   border-bottom: 1px solid black;
 }
 
+/* .card-header is Bulma's class name as well as ours, and Bulma lays it out
+   as a flex row. The name and the simulated note are wrapped together so they
+   stack as one item, rather than the note becoming a third column beside the
+   site code. min-width: 0 lets a long name wrap instead of forcing the row
+   wider than the card. */
+.card-identity {
+  min-width: 0;
+}
+
 .card-name {
   color: black;
   font-size: 1.25rem;
   font-weight: 600;
   line-height: 1.2;
+}
+
+/* Stated dark enough to carry on the InfoWindow's white, which is fixed by
+   Google and is not the app's dark theme. */
+.card-simulated {
+  color: #c92a2a;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .card-code {
