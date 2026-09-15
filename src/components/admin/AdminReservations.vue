@@ -25,7 +25,7 @@
         v-if="offsetHours !== 0"
         size="is-small"
         type="is-text"
-        @click="shift(-offsetHours)"
+        @click="offsetHours = 0"
       >
         Now
       </b-button>
@@ -122,6 +122,10 @@ import moment from 'moment-timezone'
 import { mapState } from 'vuex'
 
 const WINDOW_HOURS = 12
+// How far Earlier/Later move. A third of the window, so three presses replace
+// the view and consecutive pages overlap enough to follow a booking across the
+// seam.
+const STEP_HOURS = 4
 const REFRESH_MS = 60000
 
 export default {
@@ -129,7 +133,7 @@ export default {
 
   data () {
     return {
-      // Hours away from the current hour. Moved by the Earlier/Later buttons.
+      // Hours away from the current hour, in STEP_HOURS jumps off the arrows.
       offsetHours: 0,
       // Keyed by sitecode; each an array of {start, end, title, creator_id, id}.
       events: {},
@@ -209,8 +213,10 @@ export default {
   },
 
   methods: {
-    shift (hours) {
-      this.offsetHours += hours
+    /* Takes a direction, -1 or 1, not a number of hours: the buttons say
+       Earlier and Later, and how far that is belongs to STEP_HOURS. */
+    shift (direction) {
+      this.offsetHours += direction * STEP_HOURS
     },
 
     /* Where a moment falls across the window, 0 at the left edge and 1 at the
