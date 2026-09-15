@@ -101,10 +101,17 @@ export default {
     $route (to, from) {
       this.site = to.params.sitecode
       this.phase_status = [default_phase_status]
-      this.websocket.send(JSON.stringify({
-        action: 'updatesubscribersite',
-        site: this.site
-      }))
+      // The same socket beforeDestroy already guards: mounted() returns early
+      // when no datastream is configured, so there is nothing to tell about
+      // the new site. Unguarded, this threw on EVERY route change within a
+      // site -- and a watcher that throws takes the rest of the flush with it,
+      // which is what left navigation to a subpage landing somewhere else.
+      if (this.websocket) {
+        this.websocket.send(JSON.stringify({
+          action: 'updatesubscribersite',
+          site: this.site
+        }))
+      }
       this.get_recent_phase_status()
     }
   },
