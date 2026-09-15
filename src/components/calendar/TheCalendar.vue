@@ -1280,6 +1280,34 @@ export default {
           }
         })
       }
+
+      /* The all-day row.
+       *
+       * FullCalendar writes "all-day" into that row's axis cell, and the axis
+       * is the hour column -- so the one cell in it that is not a time sat
+       * directly under the zone heading, reading as a value of it.
+       *
+       * The row stays: it is where the moon-phase icons are drawn. Only the
+       * label goes, and the row gains the same two trailing cells the hour
+       * rows have, so it lines up under UTC and SID instead of stopping short.
+       */
+      const allDayRow = document.querySelector('.fc-day-grid .fc-bg table.table-bordered tbody tr')
+      if (allDayRow) {
+        const allDayAxis = allDayRow.querySelector('td.fc-axis')
+        if (allDayAxis) {
+          const allDayLabel = allDayAxis.querySelector('span')
+          if (allDayLabel) {
+            allDayLabel.textContent = ''
+          }
+          // This runs on every day render, so clear the previous pass's cells
+          // before adding this one's.
+          allDayRow.querySelectorAll('td.fc-axis:not(:first-child)')
+            .forEach(cell => cell.remove())
+          // cloneNode(false): the cell's width and classes, none of its span.
+          allDayRow.appendChild(allDayAxis.cloneNode(false))
+          allDayRow.appendChild(allDayAxis.cloneNode(false))
+        }
+      }
     },
 
     async updateNowIndicator () {
