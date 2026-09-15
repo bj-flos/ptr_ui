@@ -113,7 +113,7 @@ export default {
   },
 
   watch: {
-    all_sites_real () {
+    all_sites () {
       this.redrawMapSites()
     },
     darkOnly () {
@@ -307,7 +307,7 @@ export default {
     // bookable fan-out can ask about all of them rather than only the ones that
     // happen to survive the filter it is about to feed.
     candidateSites () {
-      const all = this.all_sites_real
+      const all = this.all_sites
       const wemas_with_obs = new Set(
         all.filter(s => s.instance_type !== 'wema').map(s => s.wema_name))
 
@@ -539,8 +539,7 @@ export default {
   },
 
   computed: {
-    ...mapState('site_config', ['test_sites']),
-    ...mapGetters('site_config', ['all_sites_real']),
+    ...mapGetters('site_config', ['all_sites']),
     ...mapState('sitestatus', ['site_open_status']),
     ...mapGetters('sitestatus', ['all_sites_status_color']),
     ...mapGetters('calendar', ['isBookableNow'])

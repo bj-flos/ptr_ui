@@ -253,12 +253,9 @@ export default {
       return `It's free from ${when}.`
     },
 
-    /* Whether this telescope is one of the simulators. The list is the store's
-       test_sites, the same one that splits the map into real and simulated, and
-       it is held lowercased while the config API returns codes as MRC-17. */
+    /* Whether this telescope is one of the simulators, per its own config. */
     siteIsSimulated () {
-      const testSites = this.$store.state.site_config.test_sites || []
-      return testSites.includes(String(this.site.site || '').toLowerCase())
+      return this.$store.getters['site_config/site_is_simulated'](this.site.site)
     },
 
     // Is anyone -- including this reader -- booked over this moment?

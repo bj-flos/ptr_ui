@@ -253,7 +253,6 @@ function createFullStateSnapshot (store) {
 
   // Finally, remove any specific values we don't want to sync
   const doNotSyncTheseKeys = [
-    'site_config/test_sites',
     'site_config/global_config',
     'site_config/is_site_selected',
     'site_config/did_config_load_yet',

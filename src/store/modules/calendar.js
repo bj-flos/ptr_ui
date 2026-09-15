@@ -70,17 +70,16 @@ const getters = {
    * fetched yet or the fetch failed -- callers show that as "we couldn't check"
    * and let the student through rather than blocking on our own uncertainty.
    */
-  nextAvailable: (state, getters, rootState) => site => {
+  nextAvailable: (state, getters, rootState, rootGetters) => site => {
     const cached = site ? state.upcoming_events[site.site] : null
     if (!cached || cached.failed) return { status: 'unknown' }
 
     /* Simulated sites are free whenever the calendar says so. Waiting for real
        darkness over the real coordinates would have the card promise a
-       telescope "tonight at 8:14 PM" that would have taken the booking now. The
-       list is the store's test_sites, the same one that splits the map into
-       real and simulated. */
-    const testSites = rootState.site_config.test_sites || []
-    const simulated = testSites.includes(String(site.site || '').toLowerCase())
+       telescope "tonight at 8:14 PM" that would have taken the booking now.
+       The answer comes from the site's own config, the same key the
+       observatory reads. */
+    const simulated = rootGetters['site_config/site_is_simulated'](site.site)
 
     return computeNextAvailable({
       site,

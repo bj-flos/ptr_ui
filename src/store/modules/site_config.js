@@ -8,16 +8,6 @@ import axios from 'axios'
 import helpers from '../../utils/helpers'
 
 const state = {
-  /* Sitecodes that are test or simulated rather than real observing hardware.
-     available_sites_real and available_sites_simulated split global_config on
-     this, and the map draws the "real" half.
-
-     Compared lowercased against the sitecode, so these are written lowercase
-     while the config API returns them as MRC-17 and so on. The previous entries
-     -- tst, tst001, dht, tbo1, tbo2, tbo -- matched no site the API still
-     serves, so nothing was being filtered at all. */
-  test_sites: ['mrc-17', 'mrc-24', 'aro-17', 'dpo-17', 'eco-17'],
-
   global_config: {},
   is_site_selected: false,
   did_config_load_yet: false,
@@ -139,13 +129,39 @@ const getters = {
     return Object.keys(state.global_config)
   },
 
+  /* Which sites are simulators, asked of the config rather than listed here.
+   *
+   * This was a hardcoded array of five sitecodes. It had to be edited by hand
+   * whenever a simulated site was added, nothing failed loudly when it was
+   * not, and it was wrong in a way that was invisible until it was chased
+   * from the other end: because it named the OBSERVATORIES, every bookable
+   * site fell out of all_sites_real, the map drew their wemas instead, and
+   * "Schedule Time" on a wema opened a calendar for a sitecode the calendar
+   * API has no events under -- a wema is not bookable.
+   *
+   * site_is_simulated comes from the obs config, which is where the fact
+   * already lives: it is the same key the observatory reads to disregard its
+   * shutter and the observing window. */
+  simulated_sitecodes: state => {
+    return new Set(
+      Object.keys(state.global_config)
+        .filter(s => state.global_config[s]?.site_is_simulated)
+        .map(s => s.toLowerCase())
+    )
+  },
+
+  // Is this sitecode a simulator? Takes a code in whatever case the caller has.
+  site_is_simulated: (state, getters) => sitecode => {
+    return getters.simulated_sitecodes.has(String(sitecode || '').toLowerCase())
+  },
+
   // Array of sitecodes for real observatory sites
-  available_sites_real: state => {
-    return Object.keys(state.global_config).filter(s => state.test_sites.indexOf(s.toLowerCase()) == -1)
+  available_sites_real: (state, getters) => {
+    return Object.keys(state.global_config).filter(s => !getters.site_is_simulated(s))
   },
   // Array of sitecodes for simulated/test observatory sites
-  available_sites_simulated: state => {
-    return Object.keys(state.global_config).filter(s => state.test_sites.indexOf(s.toLowerCase()) != -1)
+  available_sites_simulated: (state, getters) => {
+    return Object.keys(state.global_config).filter(s => getters.site_is_simulated(s))
   },
 
   all_sites: state => {
@@ -191,14 +207,14 @@ const getters = {
     return sites
   },
   all_sites_real: (state, getters) => {
-    let sites = getters.all_sites.filter(s => !state.test_sites.includes(s.site.toLowerCase()))
+    let sites = getters.all_sites.filter(s => !getters.site_is_simulated(s.site))
 
     // sort by longitude
     sites = sites.sort((a, b) => a.longitude - b.longitude)
     return sites
   },
   all_sites_simulated: (state, getters) => {
-    let sites = getters.all_sites.filter(s => state.test_sites.includes(s.site.toLowerCase()))
+    let sites = getters.all_sites.filter(s => getters.site_is_simulated(s.site))
 
     // sort by longitude
     sites = sites.sort((a, b) => a.longitude - b.longitude)
