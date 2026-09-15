@@ -99,13 +99,14 @@ export default {
       return zone_label(this.timezone, this.$store.getters['site_config/site_config']?.timezone)
     },
 
-    /* Names the night the report covers. Falls back to the bare title when the
-     * site is still sending the older format, which carries no evening. */
+    /* Names the operational window the report covers. Falls back to the bare
+     * title when the site is still sending the older format, which carries no
+     * date. */
     reportHeading () {
       const evening = this.report.local_evening
       if (!evening) { return 'OpenWeatherMap Report' }
       const zone = this.siteZoneLabel
-      return `OpenWeatherMap Report for Evening of ${evening}${zone ? ' ' + zone : ''}`
+      return `OpenWeatherMap Report for Operational Window starting ${evening}${zone ? ' ' + zone : ''}`
     },
 
     /* The structured payload, or an empty object when this site is still
