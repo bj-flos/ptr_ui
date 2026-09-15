@@ -1096,11 +1096,18 @@ export default {
         this.tempPlaceholderEvent.remove() // remove the placeholder event
         this.eventIdWithPlaceholder = '' // neutralize the trigger
       }
-      // Keep the now-indicator line above the other background events.
-      const n = document.getElementsByClassName('fc-now-indicator')[0]
-      if (n) {
-        n.parentElement.style['z-index'] = 'auto'
-      }
+      /* The now-indicator needs no help here, and the help it was given cost
+         the column it lives in.
+
+         It shares .fc-bgevent-container with the forecast bars and the moon
+         bands, and $now-indicator-z-index (19) already beats $forecast-z-index
+         (16) and $moon-z-index (15) among them. What this did instead was
+         clear the CONTAINER's z-index, and that container's z-index of 2 is
+         the stacking context keeping every background event under
+         .fc-event-container (4). Removing it let the forecast's 16 escape and
+         outrank real events -- in exactly one column, the one holding the
+         indicator, which is why a booking during the current day was the only
+         one with a weather bar drawn across its left edge. */
     },
 
     // Save events to the database when they have been resized by dragging
