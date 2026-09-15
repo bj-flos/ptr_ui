@@ -296,8 +296,15 @@ export default {
     // so co-located telescopes stack on one point; that is what the spiderfier
     // is for, and clicking the '+' fans them out.
     //
-    // A wema with no observatory of its own would vanish here, so it is kept:
-    // it is the only marker that site would ever get.
+    // A wema is never drawn, including one that hosts no observatory. It is an
+    // enclosure, not a telescope: it cannot be booked, and every button on the
+    // marker's window is about booking. A wema standing in for a site with no
+    // telescope of its own was worse than that site being absent -- Schedule
+    // Time on it opened a calendar for a sitecode the calendar API holds no
+    // events under, because bookings belong to observatories.
+    //
+    // Simulated telescopes are drawn alongside real ones; see
+    // site_config/site_is_simulated for what makes a site one.
     //
     // Sites absent from /allopenstatus are no longer filtered out -- a
     // telescope we have no status for is still a telescope, drawn grey and
@@ -307,12 +314,7 @@ export default {
     // bookable fan-out can ask about all of them rather than only the ones that
     // happen to survive the filter it is about to feed.
     candidateSites () {
-      const all = this.all_sites
-      const wemas_with_obs = new Set(
-        all.filter(s => s.instance_type !== 'wema').map(s => s.wema_name))
-
-      return all.filter(s =>
-        s.instance_type !== 'wema' || !wemas_with_obs.has(s.site))
+      return this.all_sites.filter(s => s.instance_type !== 'wema')
     },
 
     mapSites () {
