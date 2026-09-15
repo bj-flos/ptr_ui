@@ -105,8 +105,10 @@ export default {
     reportHeading () {
       const evening = this.report.local_evening
       if (!evening) { return 'OpenWeatherMap Report' }
-      const zone = this.siteZoneLabel
-      return `OpenWeatherMap Report for Operational Window starting ${evening}${zone ? ' ' + zone : ''}`
+      // No zone here: the table gives every hour in both the site's zone and
+      // UTC, so naming one in the heading only raises the question of which
+      // the date is in.
+      return `OpenWeatherMap Report for Operational Window starting ${evening}`
     },
 
     /* The structured payload, or an empty object when this site is still
