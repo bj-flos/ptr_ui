@@ -36,6 +36,7 @@
         v-slot="props"
         field="project_creator.username"
         label="user"
+        width="160"
         sortable
       >
         {{ props.row.project_creator ? props.row.project_creator.username : '' }}
@@ -63,6 +64,7 @@
         v-slot="props"
         field="object.ra"
         label="ra"
+        width="105"
         sortable
         searchable
       >
@@ -73,6 +75,7 @@
         v-slot="props"
         field="object.dec"
         label="dec"
+        width="105"
         searchable
       >
         <dec-display :dec_deg_decimal="parseFloat(props.row.project_targets[0].dec)" />
@@ -82,36 +85,67 @@
         v-slot="props"
         field="edit"
         label=""
-        width="200px"
+        width="150"
       >
-        <button
-          class="button is-info is-small mr-3"
-          @click="inspectProject(props.row.project_name, props.row.created_at)"
-        >
-          inspect
-        </button>
-        <button
-          class="button is-info is-small mr-3"
-          @click="cloneProject(props.row.project_name, props.row.created_at)"
-        >
-          clone
-        </button>
-        <button
-          v-if="userIsAdmin || userId == props.row.project_creator.user_id"
-          class="button is-info is-small mr-3"
-          @click="getProject(props.row.project_name, props.row.created_at)"
-        >
-          modify
-        </button>
-        <button
-          v-if="userIsAdmin || userId == props.row.project_creator.user_id"
-          class="button is-danger is-small delete-button"
-          @click="$store.dispatch('user_data/deleteProject', {'project_name': props.row.project_name, 'created_at': props.row.created_at, 'project_creator': props.row.project_creator})"
-        >
-          <span class="icon is-small ">
-            <i class="mdi mdi-delete mdi-24px" />
-          </span>
-        </button>
+        <!-- Icons rather than words, so all four sit on one line. Each keeps
+             its name on hover and in aria-label: an icon alone is a guess, and
+             delete is not a thing to guess at. -->
+        <div class="action-buttons">
+          <b-tooltip
+            label="Inspect"
+            position="is-left"
+          >
+            <button
+              class="button is-info is-small"
+              aria-label="Inspect"
+              @click="inspectProject(props.row.project_name, props.row.created_at)"
+            >
+              <span class="icon is-small"><i class="mdi mdi-magnify" /></span>
+            </button>
+          </b-tooltip>
+
+          <b-tooltip
+            label="Clone"
+            position="is-left"
+          >
+            <button
+              class="button is-info is-small"
+              aria-label="Clone"
+              @click="cloneProject(props.row.project_name, props.row.created_at)"
+            >
+              <span class="icon is-small"><i class="mdi mdi-content-copy" /></span>
+            </button>
+          </b-tooltip>
+
+          <b-tooltip
+            v-if="userIsAdmin || userId == props.row.project_creator.user_id"
+            label="Modify"
+            position="is-left"
+          >
+            <button
+              class="button is-info is-small"
+              aria-label="Modify"
+              @click="getProject(props.row.project_name, props.row.created_at)"
+            >
+              <span class="icon is-small"><i class="mdi mdi-pencil" /></span>
+            </button>
+          </b-tooltip>
+
+          <b-tooltip
+            v-if="userIsAdmin || userId == props.row.project_creator.user_id"
+            label="Delete"
+            position="is-left"
+            type="is-danger"
+          >
+            <button
+              class="button is-danger is-small"
+              aria-label="Delete"
+              @click="$store.dispatch('user_data/deleteProject', {'project_name': props.row.project_name, 'created_at': props.row.created_at, 'project_creator': props.row.project_creator})"
+            >
+              <span class="icon is-small"><i class="mdi mdi-delete" /></span>
+            </button>
+          </b-tooltip>
+        </div>
       </b-table-column>
 
       <template slot="bottom-left">
@@ -184,16 +218,7 @@ export default {
   },
   methods: {
     formatCreatedAtDate (utcTimestamp) {
-      const date = new Date(utcTimestamp)
-      const year = date.getUTCFullYear()
-      let month = date.getUTCMonth() + 1 // months from 1-12
-      let day = date.getUTCDate()
-
-      // pad month and day with leading zeros if necessary
-      month = (month < 10 ? '0' : '') + month
-      day = (day < 10 ? '0' : '') + day
-
-      return `${year}/${month}/${day}`
+      return moment.utc(utcTimestamp).format('YYYY-MM-DD')
     },
     displayEventDuration (event) {
       const start = moment(event.start)
@@ -307,8 +332,10 @@ export default {
     justify-content: space-between;
 }
 
-.delete-button {
-  margin-left: 18%;
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .search-bar {
