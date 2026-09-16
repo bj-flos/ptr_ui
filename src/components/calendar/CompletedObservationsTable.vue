@@ -111,7 +111,8 @@ export default {
     displayEventDuration (event) {
       const ms = moment(event.end).diff(moment(event.start))
       const hours = Math.floor(moment.duration(ms).asHours())
-      return String(hours).padStart(2, '0') + moment.utc(ms).format(':mm')
+      // Hours as they come, minutes always two digits -- ':mm' pads them.
+      return hours + moment.utc(ms).format(':mm')
     }
   },
 
