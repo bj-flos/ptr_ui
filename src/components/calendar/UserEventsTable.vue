@@ -56,7 +56,7 @@
       <b-table-column
         v-slot="props"
         field="duration"
-        label="duration (hh:mm)"
+        label="duration (h:mm)"
         sortable
       >
         {{ displayEventDuration(props.row) }}
