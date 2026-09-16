@@ -116,6 +116,13 @@
         </b-dropdown>
       </b-table-column>
 
+      <!-- Buefy's default for an empty table is "Nothing here." -->
+      <template #empty>
+        <p class="empty-note">
+          None
+        </p>
+      </template>
+
       <template slot="bottom-left">
         <button
           class="button is-text"
@@ -218,4 +225,9 @@ export default {
 </script>
 
 <style scoped>
+.empty-note {
+  opacity: 0.7;
+  font-style: italic;
+  padding: 0.75em 0;
+}
 </style>

@@ -1015,13 +1015,25 @@ export default {
       return !dropLocation.allDay
     },
 
+    /* Has this booking already finished?
+     *
+     * A completed observation is a record of what a telescope did, so dragging
+     * one cannot mean "do it at a different time" -- the time it ran is the
+     * one true thing about it. Repeating the observation is the only sensible
+     * reading, so it copies and the original stays put.
+     */
+    eventHasEnded (event) {
+      return !!(event && event.end && event.end < new Date())
+    },
+
     // This method is run whenever a calendar event is dragged
     eventDragStart (e) {
       // reset this in case there is a stale value lingering
       this.eventDuplicateStarted = false
       // Dragging an event with shift means we need to preserve the original, and make a copy
-      // wherever the event is dropped.
-      if (e.jsEvent.shiftKey) {
+      // wherever the event is dropped. A finished observation does the same
+      // without the key: see eventHasEnded.
+      if (e.jsEvent.shiftKey || this.eventHasEnded(e.event)) {
         this.eventDuplicateStarted = true
         // remove the original event so the placeholder we add in its place doesn't render as an overlap
         e.event.remove()
