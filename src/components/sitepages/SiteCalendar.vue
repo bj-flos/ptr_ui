@@ -49,19 +49,35 @@
           >
             <!-- The dataset is what the calendar's drop handler reads: the kind
                  of reservation to open, and which project to put in it. -->
+            <!-- Right-click inspects. Left-drag is already taken by the
+                 calendar: these tags exist to be dragged onto it, so opening a
+                 dialog on click would fight the gesture the palette is for. -->
             <span
               v-for="p in user_projects"
               :key="projectId(p)"
               class="draggable-project-tag tag is-rounded"
               data-reservation-type="project"
               :data-project-id="projectId(p)"
-              :title="p.project_name"
+              :title="`${p.project_name} — right-click to inspect`"
+              @contextmenu.prevent="inspectProject(p)"
             >
               {{ p.project_name }}
             </span>
           </div>
         </template>
       </div>
+
+      <b-modal
+        v-model="inspectModalActive"
+        @close="closeInspectModal"
+      >
+        <create-project-form
+          class="create-project-form"
+          :sitecode="sitecode"
+          :project_to_load="project_to_load"
+          :read_only="true"
+        />
+      </b-modal>
 
       <div class="fc-settings-box">
         <div>
@@ -91,6 +107,8 @@
 </template>
 
 <script>
+import axios from 'axios'
+import CreateProjectForm from '@/components/projects/CreateProjectForm'
 import TheCalendar from '@/components/calendar/TheCalendar'
 import SiteReservationStatus from '@/components/calendar/SiteReservationStatus'
 import { mapGetters, mapState } from 'vuex'
@@ -102,13 +120,16 @@ export default {
   props: ['sitecode'],
   components: {
     TheCalendar,
-    SiteReservationStatus
+    SiteReservationStatus,
+    CreateProjectForm
   },
   data () {
     return {
       localTime: '-',
       siteTime: '-',
       utcTime: '-',
+      inspectModalActive: false,
+      project_to_load: {},
 
       projectDraggable: null,
 
@@ -148,6 +169,33 @@ export default {
        it was made, because a name on its own is not unique. */
     projectId (project) {
       return `${project.project_name}#${project.created_at}`
+    },
+
+    /* Open one of the palette's projects, read-only.
+     *
+     * The palette carries a project's name and creation time, not the project,
+     * so the whole thing is fetched the same way the Projects tab's inspect
+     * button fetches it. The draft is saved first and reloaded on close: the
+     * form is shared with the editor, and inspecting a project should not cost
+     * someone the one they were part-way through writing.
+     */
+    inspectProject (project) {
+      const project_endpoint = this.$store.state.api_endpoints.projects_endpoint + '/get-project'
+      axios.post(project_endpoint, {
+        project_name: project.project_name,
+        created_at: project.created_at
+      }).then(response => {
+        this.$store.dispatch('project_params/saveProjectDraft')
+        this.project_to_load = { project: response.data }
+        this.inspectModalActive = true
+      }).catch(err => {
+        console.warn('could not load project for inspection: ', err)
+      })
+    },
+
+    closeInspectModal () {
+      this.inspectModalActive = false
+      this.$store.dispatch('project_params/reloadProjectDraft')
     },
 
     /* create:false, exactly as the two tokens above the calendar do it:
