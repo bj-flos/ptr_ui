@@ -96,20 +96,42 @@ const getters = {
 
     // A single word cannot say which subsystem stopped reporting or why, so
     // carry the evidence alongside it for the UI to reveal on demand.
-    const age = s => (Number.isFinite(s) ? Math.round(s) + 's ago' : 'never')
+    /* A timestamp of 0 is clearStatus saying nothing has arrived yet, not a
+       reading that aged out. Left alone it computed an age from the epoch --
+       about 57 years -- which read as "stale" and printed as a ten digit
+       number of seconds. */
+    const reported = ts => !!ts
+    const age = (s, ts) => (reported(ts) && Number.isFinite(s) ? Math.round(s) + 's ago' : 'never')
     const enclosure_message = (() => {
       let m = getters.enclosure_state?.enclosure_message
       while (m && typeof m === 'object') { m = m.val }
       return m && m !== '-' ? m : null
     })()
     const details = [
-      { label: 'device status', value: age(getters.device_status_age), stale: !device_not_stale },
-      { label: 'enclosure status', value: age(getters.enclosure_status_age), stale: !enclosure_not_stale },
-      { label: 'weather status', value: age(getters.weather_status_age), stale: !weather_not_stale },
+      { label: 'device status', value: age(getters.device_status_age, state.device_timestamp), stale: !device_not_stale },
+      { label: 'enclosure status', value: age(getters.enclosure_status_age, state.enclosure_timestamp), stale: !enclosure_not_stale },
+      { label: 'weather status', value: age(getters.weather_status_age, state.weather_timestamp), stale: !weather_not_stale },
       { label: 'considered stale after', value: Math.round(stale_age_s) + 's', stale: false }
     ]
     if (enclosure_message) {
       details.push({ label: 'enclosure reported', value: enclosure_message, stale: true })
+    }
+
+    /* Nothing has been received yet.
+     *
+     * This is the state on page load and immediately after a site change,
+     * because clearStatus zeroes the timestamps -- and "offline" is a claim
+     * about the telescope, made here before anyone has asked it anything. A
+     * site reporting perfectly well read as offline until the first poll
+     * landed. */
+    if (!reported(state.device_timestamp) &&
+        !reported(state.enclosure_timestamp) &&
+        !reported(state.weather_timestamp)) {
+      return {
+        text: 'waiting for status',
+        colorClass: 'is-grey',
+        details
+      }
     }
 
     // First handle WEMA sites

@@ -7,9 +7,14 @@
         <p class="menu-label site-not-reserved-notice">
           no active reservations
         </p>
-        <p>Next in: 0h 0m</p>
-        <p style="color: #555">
-          (timer not implemented)
+        <p v-if="nextReservationStart">
+          Next in: {{ timeUntilNextReservation }}
+        </p>
+        <p
+          v-else
+          style="color: #555"
+        >
+          none scheduled
         </p>
         <div style="height: 5px" />
       </div>
@@ -53,7 +58,8 @@ export default {
   data () {
     return {
       current_time_millis: moment().valueOf(),
-      current_time_millis_updater: '' // setInterval object
+      current_time_millis_updater: '', // setInterval object
+      upcoming_events_updater: '' // setInterval object
     }
   },
   created () {
@@ -61,18 +67,36 @@ export default {
     this.current_time_millis_updater = setInterval(() => {
       this.current_time_millis = moment().valueOf()
     }, 1000)
+
+    /* What is booked next, for the countdown when nothing is running.
+     *
+     * fetchUpcomingEvents caches per site for UPCOMING_TTL_MS, which is a
+     * minute, so refreshing on that period costs one request and picks up a
+     * booking made while this page is open. */
+    this.refreshUpcomingEvents()
+    this.upcoming_events_updater = setInterval(this.refreshUpcomingEvents, 60000)
   },
   beforeDestroy () {
-    clearTimeout(this.current_time_millis)
+    // These cleared the wrong things: current_time_millis is a number, not the
+    // interval handle beside it, so the ticker outlived the component.
+    clearInterval(this.current_time_millis_updater)
+    clearInterval(this.upcoming_events_updater)
   },
   watch: {
     sitecode: function () {
       // Refresh the active reservations list for the new site.
       this.$store.dispatch('calendar/fetchActiveReservations', this.sitecode)
+      this.refreshUpcomingEvents()
+    }
+  },
+  methods: {
+    refreshUpcomingEvents () {
+      if (!this.sitecode) { return }
+      this.$store.dispatch('calendar/fetchUpcomingEvents', this.sitecode)
     }
   },
   computed: {
-    ...mapState('calendar', ['active_reservations']),
+    ...mapState('calendar', ['active_reservations', 'upcoming_events']),
     ...mapGetters('calendar', [
       'hasActiveReservation',
       'usersWithActiveReservation',
@@ -84,6 +108,29 @@ export default {
       'userId',
       'userIsAuthenticated'
     ]),
+    /* The soonest booking that has not started yet, or null.
+     *
+     * The store holds what fetchUpcomingEvents last saw for this site --
+     * everything in the next UPCOMING_WINDOW_HOURS -- so anything already
+     * running is filtered out here; that case is the "Remaining" panel. */
+    nextReservationStart () {
+      const cached = this.upcoming_events[this.sitecode]
+      if (!cached || cached.failed || !cached.events.length) { return null }
+      const now = this.current_time_millis
+      const starts = cached.events
+        .map(event => moment(event.start).valueOf())
+        .filter(start => start > now)
+      return starts.length ? Math.min(...starts) : null
+    },
+
+    timeUntilNextReservation () {
+      const delta = this.nextReservationStart - this.current_time_millis
+      if (!(delta > 0)) { return '0h 0m' }
+      const hours = Math.floor(delta / (3600 * 1000))
+      const minutes = Math.floor((delta - hours * 3600 * 1000) / (60 * 1000))
+      return `${hours}h ${minutes}m`
+    },
+
     userHasActiveReservation () {
       if (this.userIsAuthenticated) {
         return this.userIDsWithActiveReservation.includes(this.userId)
