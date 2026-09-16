@@ -19,7 +19,7 @@
       <b-table-column
         v-slot="props"
         field="event name"
-        label="event name"
+        label="observation name"
       >
         {{ props.row.title }}
       </b-table-column>
@@ -27,7 +27,7 @@
       <b-table-column
         v-slot="props"
         field="reservation_type"
-        label="event type"
+        label="type"
         sortable
       >
         {{ eventTypeLabel(props.row.reservation_type) }}
@@ -36,7 +36,7 @@
       <b-table-column
         v-slot="props"
         field="start"
-        label="start"
+        label="start (UTC)"
         sortable
       >
         {{ displayUtcTime(props.row.start) }}
@@ -45,7 +45,7 @@
       <b-table-column
         v-slot="props"
         field="end"
-        label="end"
+        label="end (UTC)"
         sortable
       >
         {{ displayUtcTime(props.row.end) }}

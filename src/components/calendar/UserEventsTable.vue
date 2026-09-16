@@ -40,7 +40,7 @@
       <b-table-column
         v-slot="props"
         field="start"
-        label="start"
+        label="start (UTC)"
       >
         {{ displayUtcTime(props.row.start) }}
       </b-table-column>
@@ -48,7 +48,7 @@
       <b-table-column
         v-slot="props"
         field="end"
-        label="end"
+        label="end (UTC)"
       >
         {{ displayUtcTime(props.row.end) }}
       </b-table-column>
