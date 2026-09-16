@@ -188,8 +188,22 @@ const getters = {
       }
     }
 
-    // if all status reporting and enclosure is open: Operational
-    const enclosure_is_open = getters.enclosure_open_status.val.toLowerCase() == 'open'
+    /* If all status reporting and enclosure is open: Operational.
+     *
+     * A simulated site publishes "Sim. Open", which is the obs telling us it
+     * is disregarding the shutter -- see site_is_simulated. Compared exactly
+     * against 'open' that read as closed, so a telescope observing happily
+     * reported "enclosure closed" while the footer beside it showed Enc.
+     * Status: Sim. Open. obs.py writes the value and sequencer.py tests for
+     * both spellings; only here was it tested for one.
+     *
+     * The prefix is stripped rather than matching a substring, so "Opening"
+     * stays distinct from "Open" -- a roof in transit is not yet open.
+     */
+    const shutter_status = getters.enclosure_open_status.val
+      .toLowerCase()
+      .replace(/^sim\.\s*/, '')
+    const enclosure_is_open = shutter_status == 'open'
     if (device_not_stale && enclosure_not_stale) {
       if (enclosure_is_open) {
         return {
