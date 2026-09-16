@@ -54,7 +54,7 @@
       <b-table-column
         v-slot="props"
         field="duration"
-        label="duration (h:m)"
+        label="duration (hh:mm)"
         sortable
       >
         {{ displayEventDuration(props.row) }}
@@ -110,7 +110,8 @@ export default {
 
     displayEventDuration (event) {
       const ms = moment(event.end).diff(moment(event.start))
-      return Math.floor(moment.duration(ms).asHours()) + moment.utc(ms).format(':mm')
+      const hours = Math.floor(moment.duration(ms).asHours())
+      return String(hours).padStart(2, '0') + moment.utc(ms).format(':mm')
     }
   },
 

@@ -22,7 +22,7 @@
       <b-table-column
         v-slot="props"
         field="event name"
-        label="event name"
+        label="reservation name"
         width="220"
       >
         {{ props.row.title }}
@@ -31,7 +31,7 @@
       <b-table-column
         v-slot="props"
         field="reservation_type"
-        label="event type"
+        label="type"
         sortable
       >
         {{ eventTypeLabel(props.row.reservation_type) }}
@@ -56,7 +56,7 @@
       <b-table-column
         v-slot="props"
         field="duration"
-        label="duration (h:m)"
+        label="duration (hh:mm)"
         sortable
       >
         {{ displayEventDuration(props.row) }}
@@ -197,9 +197,8 @@ export default {
       const end = moment(event.end)
 
       const ms = end.diff(start)
-      const d = moment.duration(ms)
-      const s = Math.floor(d.asHours()) + moment.utc(ms).format(':mm')
-      return s
+      const hours = Math.floor(moment.duration(ms).asHours())
+      return String(hours).padStart(2, '0') + moment.utc(ms).format(':mm')
     }
   },
   computed: {
