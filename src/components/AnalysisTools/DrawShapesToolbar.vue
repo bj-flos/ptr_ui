@@ -67,6 +67,25 @@
         icon-right="delete"
         @click='$store.dispatch("drawshapes/deleteSelectedShape")'>
       </b-button-->
+      <!-- Drawing a region is easy and undrawing it was not: the only way to
+           be rid of one was to select it and know that delete removes it, and
+           the button for that has been commented out above since before this
+           file was touched. -->
+      <b-field
+        label="region"
+        class="ml-5"
+        :horizontal="horizontal"
+      >
+        <b-button
+          :size="size"
+          :disabled="!anyShapesDrawn"
+          title="Remove every shape drawn on this image"
+          @click="clearShapes"
+        >
+          clear
+        </b-button>
+      </b-field>
+
       <b-field
         label="crosshairs"
         class="ml-5"
@@ -140,6 +159,20 @@ export default {
     crosshairsVisible: {
       get () { return this.$store.getters['drawshapes/crosshairsVisible'] },
       set (val) { this.$store.commit('drawshapes/crosshairsVisible', val) }
+    },
+
+    // Starmarkers are excluded: they are not drawn by the user and clearing
+    // does not remove them, so counting them would leave the button
+    // permanently enabled with nothing for it to do.
+    anyShapesDrawn () {
+      return this.points.length > 0 || this.lines.length > 0 ||
+        this.rects.length > 0 || this.circles.length > 0
+    }
+  },
+
+  methods: {
+    clearShapes () {
+      this.$store.dispatch('drawshapes/deleteAllShapes')
     }
   }
 }

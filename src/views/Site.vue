@@ -180,6 +180,8 @@ export default {
 
     this.$store.commit('site_config/remove_selected_site')
     this.$store.dispatch('images/display_placeholder_image')
+    // Leaving the site pages entirely, not just moving between them.
+    this.$store.dispatch('drawshapes/deleteAllShapes')
     this.datastreamer.close()
     clearInterval(this.refreshForecastInterval)
   },
@@ -222,6 +224,11 @@ export default {
 
       // get initial data/values for images, status, calendar
       this.$store.dispatch('images/display_placeholder_image')
+      // Shapes are drawn on one image at one observatory and mean nothing on
+      // the next one, but the store is global and kept them on screen across
+      // the switch -- measuring a region of a frame the user was no longer
+      // looking at.
+      this.$store.dispatch('drawshapes/deleteAllShapes')
       this.$store.dispatch('images/load_latest_images')
       this.$store.dispatch('images/load_latest_info_images')
       this.$store.dispatch('sitestatus/clearStatus')
