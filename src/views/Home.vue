@@ -21,8 +21,11 @@
       />
       <!--leaflet-map name="leafmap"></leaflet-map-->
 
+      <!-- Every telescope, which is what the map above draws. all_sites_real
+           excludes simulated ones, and with five of the six observatories
+           simulated the row under the map showed a single card. -->
       <sites-overview-cards
-        :sites="all_sites_real"
+        :sites="all_sites"
         class="sites-overview-cards"
       />
     </div>
@@ -58,7 +61,7 @@ export default {
   },
 
   computed: {
-    ...mapGetters('site_config', ['all_sites_real']),
+    ...mapGetters('site_config', ['all_sites']),
     ...mapState('sitestatus', ['site_open_status']),
     ...mapGetters('calendar', ['nextAvailable'])
   },

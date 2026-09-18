@@ -25,6 +25,14 @@
         <div class="sitecode-overlay">
           {{ s.site }}
         </div>
+        <!-- So nobody reads a simulator's preview as a real sky, the same way
+             the map's info card says it. -->
+        <p
+          v-if="isSimulated(s.site)"
+          class="card-simulated"
+        >
+          simulated
+        </p>
       </div>
     </template>
   </div>
@@ -67,6 +75,10 @@ export default {
     }
   },
   methods: {
+    /* Per the site's own config -- the same site_is_simulated the map reads. */
+    isSimulated (site) {
+      return this.$store.getters['site_config/site_is_simulated'](site)
+    },
     getImageUrl (site) {
       if (site in this.siteImages) {
         return this.siteImages[site]
@@ -158,6 +170,16 @@ export default {
   line-height: 1.25;
   width: 100%;
   margin-bottom: 0 !important;
+}
+
+.card-simulated {
+  position: absolute;
+  left: 1rem;
+  bottom: 3.5rem;
+  color: #c92a2a;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .sitecode-overlay {
