@@ -1600,6 +1600,24 @@ export default {
       // switched between them, so neither tab is withheld here.
       this.activeEventLockedType = null
 
+      /* Asterism owns its own bookings.
+         These are pushed onto the calendar so a PTR user can see the telescope
+         is spoken for; they are not PTR reservations and carry no project or
+         creator to edit here. Opening the editor on one gave an empty overlay,
+         which reads as a broken page rather than as a deliberate refusal. */
+      if (event.extendedProps.origin === 'asterism') {
+        this.$buefy.dialog.alert({
+          title: 'Scheduled by Asterism',
+          message: 'Asterism observations cannot be modified from Photon Ranch.',
+          type: 'is-info',
+          hasIcon: true,
+          icon: 'information',
+          ariaRole: 'alertdialog',
+          ariaModal: true
+        })
+        return
+      }
+
       // Check if this is a scheduler observation
       if (event.extendedProps.origin === 'scheduler' && event.extendedProps.observationData) {
         this.isSchedulerObservation = true
