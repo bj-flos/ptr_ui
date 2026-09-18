@@ -30,11 +30,9 @@
         ref="image"
         rel="preload"
         alt="no jpg available"
-        onerror1="this.onerror=null;this.src='https://via.placeholder.com/768?text=no+jpg+preview+available'"
-        onerror="this.onerror=null;this.src='@/assets/README_screenshot.png'"
         :src="current_image.jpg_url"
+        @error="show_preview_placeholder"
       >
-
     </div>
   </div>
 </template>
@@ -50,6 +48,7 @@ import BackgroundElement from '@/components/svg/BackgroundElement'
 import SvgContextMenu from '@/components/svg/SvgContextMenu'
 
 import { Point, Line, Rect, Circle, Starmarker } from '@/utils/drawshapes'
+import { PREVIEW_PLACEHOLDER, show_placeholder } from '@/utils/placeholder_image'
 
 export default {
   name: 'ImageView',
@@ -143,6 +142,9 @@ export default {
   },
 
   methods: {
+    show_preview_placeholder (event) {
+      show_placeholder(event, PREVIEW_PLACEHOLDER)
+    },
 
     init () {
       this.svg = d3.select('#image_svg')

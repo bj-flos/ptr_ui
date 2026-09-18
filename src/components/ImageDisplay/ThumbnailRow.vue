@@ -4,17 +4,18 @@
       v-for="(item, index) in images"
       :key="index"
       :src="thumbnailWithFallback(item)"
-      onerror="this.onerror=null;this.src='https://via.placeholder.com/60/FF0000/FFFFFF?text=jpg'"
       :title="item.base_filename"
       :class="{'selected_thumbnail' : item.image_id == selected_image}"
       loading="lazy"
       class="recent-image"
+      @error="show_thumbnail_placeholder"
       @click="setActiveImage(item)"
     >
   </div>
 </template>
 
 <script>
+import { THUMBNAIL_PLACEHOLDER, show_placeholder } from '@/utils/placeholder_image'
 
 export default {
   name: 'ThumbnailRow',
@@ -29,6 +30,9 @@ export default {
     }
   },
   methods: {
+    show_thumbnail_placeholder (event) {
+      show_placeholder(event, THUMBNAIL_PLACEHOLDER)
+    },
     setActiveImage (item) {
       this.$emit('thumbnailClicked', item)
     },
