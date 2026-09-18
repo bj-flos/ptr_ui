@@ -162,6 +162,9 @@
         {{ event_hover_data.title }}
       </p>
       <p>{{ event_hover_data.type }}</p>
+      <p v-if="event_hover_data.project">
+        Project: &ensp;{{ event_hover_data.project }}
+      </p>
       <p>Booked by: &ensp;{{ event_hover_data.creator }}</p>
       <p>{{ event_hover_data.when }}</p>
       <p
@@ -721,6 +724,7 @@ export default {
       event_hover_data: {
         title: '',
         type: '',
+        project: '',
         creator: '',
         when: '',
         note: ''
@@ -1690,9 +1694,20 @@ export default {
         when = `${start.format('ddd D MMM, HH:mm')} – ${end.format('ddd D MMM, HH:mm')} ${start.format('z')}`
       }
 
+      /* The title is the booker's name, so without this the hover said who and
+         when but never what would actually run. project_id is
+         "<name>#<created_at>" and the rest of the interface reads the name as
+         the first segment; "none" is the stored value for a reservation with
+         no project attached, and renders as no line rather than as the word. */
+      const project_id = props.project_id || ''
+      const project = project_id && project_id !== 'none'
+        ? String(project_id).split('#')[0]
+        : ''
+
       this.event_hover_data = {
         title: event.title || '',
         type,
+        project,
         creator: this.creatorName(props),
         when,
         note: props.reservation_note || ''
