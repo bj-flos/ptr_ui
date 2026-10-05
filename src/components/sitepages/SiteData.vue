@@ -568,9 +568,9 @@ export default {
       if (this.controlsEnabled) return ''
       if (this.rtsHeldNow === null) return 'Checking the calendar…'
       if (!this.userIsAuthenticated) {
-        return 'Sign in and book an Interactive reservation to take manual control.'
+        return 'Sign in and book a Manual Control reservation to take control.'
       }
-      return 'Manual control needs an Interactive reservation for this telescope ' +
+      return 'This needs a Manual Control reservation for this telescope ' +
         'covering right now. Book one on the Calendar tab.'
     },
 

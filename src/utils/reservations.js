@@ -12,17 +12,22 @@
  * fault in the table rather than a gap in this list.
  */
 const EVENT_TYPE_LABELS = {
-  realtime: 'Interactive Session',
+  realtime: 'Manual Control',
   project: 'Project Observation',
   maintenance: 'Maintenance'
 }
 
 /* The stored value for a booking the user drives by hand -- an RTS window.
  * Named here rather than written as 'realtime' at each call site, because the
- * interface calls the same thing four different things already ("Interactive
- * Session" above, "Realtime Session" in the legend, "Real Time Session" in the
- * editor tab, "Manual control" on the calendar token) and the one thing that
- * must not drift is the value compared against the API.
+ * value and the label have to be free to differ: this one is spelled
+ * 'realtime' in the database and "Manual Control" on screen, and the thing
+ * that must never drift is the value compared against the API.
+ *
+ * It was called five different things until 2026-10-05 -- "Interactive
+ * Session" here, "Realtime Session" in the legend, "Real Time Session" in the
+ * editor tab, "Interactive Reservation" in the event hover and "Manual
+ * control" on the calendar token. If a sixth name is ever wanted, change the
+ * label in this file and let it propagate.
  */
 export const INTERACTIVE_RESERVATION = 'realtime'
 

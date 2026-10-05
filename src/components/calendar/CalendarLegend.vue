@@ -44,8 +44,8 @@
         <div class="legend-item">
           <div class="reservation-visual realtime" />
           <div>
-            <b>Realtime Session</b>
-            <p>Blue events are used to reserve time for manual observing via the "Observe" tab.</p>
+            <b>Manual Control</b>
+            <p>Blue events are used to reserve time for manual observing via the "Operate" tab.</p>
             <p>You can schedule time in a 30 or 45 minute block.</p>
           </div>
         </div>

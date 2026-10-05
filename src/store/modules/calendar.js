@@ -111,8 +111,10 @@ const getters = {
   },
 
   /**
-   * Whether THIS user holds an Interactive reservation covering now, at this
-   * site -- an RTS window, which is what manual control requires.
+   * Whether THIS user holds a Manual Control reservation covering now, at
+   * this site -- an RTS window, which is what manual control requires. The
+   * stored reservation_type is 'realtime'; "Manual Control" is only what the
+   * interface calls it (see utils/reservations.js).
    *
    * Returns true, false, or null for "not known yet": the schedule has not
    * been fetched, or the fetch failed. Callers need the three-way answer,

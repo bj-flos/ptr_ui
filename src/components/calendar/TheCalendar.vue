@@ -19,7 +19,7 @@
         title="Drag onto the calendar to book time you drive yourself"
       >
         <EyeThroughTelescopeIcon :size="30" />
-        <span>Manual control</span>
+        <span>Manual Control</span>
       </div>
       <div
         class="observation-token"
@@ -1477,7 +1477,7 @@ export default {
      * says which kind of booking it is rather than repeating the owner's name
      * twice over. It read "RTS" until 2026-10-05; the abbreviation meant
      * nothing to anyone who had not been told, and the token that creates
-     * these is labelled "Manual control".
+     * these is labelled "Manual Control".
      * The name is the person's, not their login: the title is visible to
      * everyone who can see the calendar, and a nickname here is usually an
      * email address.
@@ -1674,7 +1674,7 @@ export default {
          own. "Reservation" was true of all three and told the reader nothing
          they could not already see. */
       const types = {
-        realtime: 'Interactive Reservation',
+        realtime: 'Manual Control Reservation',
         project: 'Automation Reservation',
         maintenance: 'Maintenance Reservation'
       }
