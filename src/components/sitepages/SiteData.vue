@@ -36,10 +36,20 @@
       <!-- Collapsible panels on the right of the image -->
       <div class="image-tools-area">
         <NightLog :site="sitecode" />
+        <!-- Why manual control is unavailable, so a greyed tab is not a
+             mystery. Shown above the bar because a disabled tab cannot be
+             opened to read anything inside it. -->
+        <p
+          v-if="!controlsEnabled"
+          class="has-text-grey is-size-7 mb-2 controls-locked-note"
+        >
+          {{ controlsLockedReason }}
+        </p>
         <b-tabs v-model="active_image_tools_tab">
           <b-tab-item
             label="controls"
             :value="'controls'"
+            :disabled="!controlsEnabled"
           >
             <command-tabs-accordion class="command-tab-accordion is-hidden-desktop" />
             <command-tabs-wide class="command-tabs-wide is-hidden-touch" />
@@ -460,7 +470,31 @@ export default {
       activeDevTab: 'site config', // default tab in 'dev tools'
 
       region_stats_loading: false,
-      image_stats_loading: false
+      image_stats_loading: false,
+
+      /* Manual control is gated on the clock, so the clock has to tick: a
+         Vuex getter is cached against state and time is not state. See
+         calendar/interactiveReservationNow. */
+      now_ms: Date.now(),
+      rts_timer: null
+    }
+  },
+
+  created () {
+    /* The gate needs this site's bookings. The action is TTL-cached, so
+       calling it on every tick costs nothing most of the time and picks up a
+       reservation booked in another tab within a minute. */
+    this.refreshRtsWindow()
+    this.rts_timer = setInterval(() => {
+      this.now_ms = Date.now()
+      this.refreshRtsWindow()
+    }, 30000)
+  },
+
+  beforeDestroy () {
+    if (this.rts_timer) {
+      clearInterval(this.rts_timer)
+      this.rts_timer = null
     }
   },
 
@@ -469,17 +503,76 @@ export default {
     // in the main view.
     setActiveImage (image) {
       this.$store.dispatch('images/set_current_image', image)
+    },
+
+    refreshRtsWindow () {
+      this.$store.dispatch('calendar/fetchUpcomingEvents', this.sitecode)
     }
 
   },
   watch: {
     show_user_data_only () {
       this.$store.dispatch('images/load_latest_images')
+    },
+
+    sitecode () {
+      this.refreshRtsWindow()
+    },
+
+    /* Do not leave the user sitting on a tab they cannot use. Only a definite
+       `false` moves them: `null` means the schedule has not been read yet, and
+       flipping away on that would bounce them off the tab on every page load
+       before the answer arrived. immediate, because the stored default for
+       this tab IS 'controls', so there is no change event to wait for. */
+    rtsHeldNow: {
+      immediate: true,
+      handler (held) {
+        if (held === false && !this.userIsAdmin &&
+            this.active_image_tools_tab === 'controls') {
+          this.active_image_tools_tab = 'analysis'
+        }
+      }
     }
 
   },
 
   computed: {
+
+    /* Whether this user holds an Interactive ("realtime") reservation covering
+       now, at this site. true / false / null for not-yet-known. */
+    rtsHeldNow () {
+      return this.$store.getters['calendar/interactiveReservationNow'](
+        this.sitecode, this.now_ms)
+    },
+
+    /* Manual control needs an RTS window. The tab is disabled rather than
+       hidden: a tab that vanishes reads as a missing feature, one that is
+       greyed reads as "not yet".
+
+       Admins are exempt, matching photonranch-jobs, which lets an admin
+       command through someone else's reservation -- blocking them here would
+       only disagree with a server that was going to accept it.
+
+       Not-known counts as locked, and that is deliberately the opposite of
+       nextAvailable and isBookableNow in the same store, which fail OPEN on an
+       unreadable schedule because hiding a telescope is worse than showing a
+       busy one. Here a wrong answer hands out manual control instead, so this
+       one fails CLOSED. Either way the server is the real gate: jobs checks
+       the reservation itself, against the authorizer's identity. */
+    controlsEnabled () {
+      if (this.userIsAdmin) return true
+      return this.rtsHeldNow === true
+    },
+
+    controlsLockedReason () {
+      if (this.controlsEnabled) return ''
+      if (this.rtsHeldNow === null) return 'Checking the calendar…'
+      if (!this.userIsAuthenticated) {
+        return 'Sign in and book an Interactive reservation to take manual control.'
+      }
+      return 'Manual control needs an Interactive reservation for this telescope ' +
+        'covering right now. Book one on the Calendar tab.'
+    },
 
     ...mapState('images', [
       'recent_images',

@@ -17,6 +17,19 @@ const EVENT_TYPE_LABELS = {
   maintenance: 'Maintenance'
 }
 
+/* The stored value for a booking the user drives by hand -- an RTS window.
+ * Named here rather than written as 'realtime' at each call site, because the
+ * interface calls the same thing four different things already ("Interactive
+ * Session" above, "Realtime Session" in the legend, "Real Time Session" in the
+ * editor tab, "Manual control" on the calendar token) and the one thing that
+ * must not drift is the value compared against the API.
+ */
+export const INTERACTIVE_RESERVATION = 'realtime'
+
+export function is_interactive_reservation (reservation_type) {
+  return reservation_type === INTERACTIVE_RESERVATION
+}
+
 export function event_type_label (reservation_type) {
   if (!reservation_type) { return '—' }
   return EVENT_TYPE_LABELS[reservation_type] || reservation_type

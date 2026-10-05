@@ -1,6 +1,7 @@
 import moment from 'moment'
 import axios from 'axios'
 import { computeNextAvailable, UPCOMING_WINDOW_HOURS } from '@/utils/site_schedule'
+import { is_interactive_reservation } from '@/utils/reservations'
 
 // This is a 'global' timeout to refresh the reservation list when the
 // earliest one expires. It is cleared and recreated whenever
@@ -105,6 +106,42 @@ const getters = {
     const user_id = rootState.user_data.userId
     return !cached.events.some(event =>
       event.creator_id !== user_id &&
+      now.isSameOrAfter(moment(event.start)) &&
+      now.isBefore(moment(event.end)))
+  },
+
+  /**
+   * Whether THIS user holds an Interactive reservation covering now, at this
+   * site -- an RTS window, which is what manual control requires.
+   *
+   * Returns true, false, or null for "not known yet": the schedule has not
+   * been fetched, or the fetch failed. Callers need the three-way answer,
+   * because "we have not looked" and "you have no booking" deserve different
+   * words on screen.
+   *
+   * Takes `now_ms` rather than reading the clock itself. A getter is cached
+   * against state, and time is not state, so a getter that called moment()
+   * internally would keep returning its first answer until some unrelated
+   * commit happened to invalidate it -- the tab would stay enabled after the
+   * session ended. Passing the instant in makes the caller's ticking clock the
+   * dependency.
+   *
+   * Scope note: /siteevents is queried as end BETWEEN now AND now+window, so a
+   * session already under way is included (its end is still ahead). One
+   * running longer than UPCOMING_WINDOW_HOURS would be missed, which no
+   * interactive booking should be.
+   */
+  interactiveReservationNow: (state, getters, rootState) => (sitecode, now_ms) => {
+    const cached = sitecode ? state.upcoming_events[sitecode] : null
+    if (!cached || cached.failed) return null
+
+    const user_id = rootState.user_data.userId
+    if (!user_id) return false
+
+    const now = moment(now_ms || Date.now())
+    return cached.events.some(event =>
+      is_interactive_reservation(event.reservation_type) &&
+      event.creator_id === user_id &&
       now.isSameOrAfter(moment(event.start)) &&
       now.isBefore(moment(event.end)))
   }

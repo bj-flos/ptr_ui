@@ -26,7 +26,7 @@
             class="button"
             :class="{'selected': subpage == 'observe'}"
           >
-            Observe
+            Operate
           </button>
         </router-link>
         <router-link :to="'/site/' + sitecode + '/calendar'">

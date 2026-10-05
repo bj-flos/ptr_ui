@@ -19,7 +19,7 @@
         title="Drag onto the calendar to book time you drive yourself"
       >
         <EyeThroughTelescopeIcon :size="30" />
-        <span>Manual operation</span>
+        <span>Manual control</span>
       </div>
       <div
         class="observation-token"
@@ -1473,15 +1473,18 @@ export default {
     /**
      * What a new reservation is called before the student renames it.
      *
-     * "RTS" for a real time session, so a glance at the calendar says which
-     * kind of booking it is rather than repeating the owner's name twice over.
+     * "Manual Control" for a real time session, so a glance at the calendar
+     * says which kind of booking it is rather than repeating the owner's name
+     * twice over. It read "RTS" until 2026-10-05; the abbreviation meant
+     * nothing to anyone who had not been told, and the token that creates
+     * these is labelled "Manual control".
      * The name is the person's, not their login: the title is visible to
      * everyone who can see the calendar, and a nickname here is usually an
      * email address.
      */
     defaultEventTitle (reservationType) {
       const who = this.userFullName
-      return reservationType === 'realtime' ? `RTS - ${who}` : who
+      return reservationType === 'realtime' ? `Manual Control - ${who}` : who
     },
 
     /**
