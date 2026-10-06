@@ -48,7 +48,9 @@
           with markers representing the location of telescopes. Hovering over
           the icon will allow the user to request time on the selected
           telescope. Clicking on the map and then dragging will scroll the map
-          in the direction of the drag.
+          in the direction of the drag. The Sun icon marks where the sun is
+          currently overhead, and the shaded bands either side of it are Civil,
+          Nautical and Astronomical Twilight, with Full Night beyond them.
         </GuestCallout>
       </div>
 

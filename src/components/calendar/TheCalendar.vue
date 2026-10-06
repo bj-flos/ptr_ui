@@ -1243,7 +1243,14 @@ export default {
         }
       })
 
-      // Handle table headers
+      /* The axis headings: the zone name, UTC and SID.
+       *
+       * Two rows match. The one in the time grid has an axis cell with no
+       * span, so it only collects the two trailing cells and stays blank. The
+       * one that carries the headings is the ALL-DAY row -- FullCalendar puts
+       * "all-day" in that cell, and overwriting it is how that text goes
+       * away. Do not add a separate pass to blank it; that is what deleted
+       * these headings before. */
       const tableBorderedRows = root.querySelectorAll('.fc-bg table.table-bordered tbody tr')
       tableBorderedRows.forEach(e => {
         // Clear existing extra headers
@@ -1321,33 +1328,24 @@ export default {
         })
       }
 
-      /* The all-day row.
+      /* There is deliberately nothing here for the all-day row.
        *
-       * FullCalendar writes "all-day" into that row's axis cell, and the axis
-       * is the hour column -- so the one cell in it that is not a time sat
-       * directly under the zone heading, reading as a value of it.
+       * An earlier version blanked that row's axis label and replaced its
+       * trailing cells with empty clones, to get rid of FullCalendar's
+       * "all-day" text. That assumed the heading row and the all-day row were
+       * two different rows. In timeGridWeek they are one: the .fc-bg row the
+       * loop above writes the headings into is the all-day row, the same row
+       * the moon icons are drawn in, and the only .fc-bg row whose axis cell
+       * holds a span at all.
        *
-       * The row stays: it is where the moon-phase icons are drawn. Only the
-       * label goes, and the row gains the same two trailing cells the hour
-       * rows have, so it lines up under UTC and SID instead of stopping short.
+       * So the block ran immediately after the headings were written and
+       * deleted them -- blanking "OBS Local" and removing the UTC and SID
+       * cells as though they were a previous pass's leftovers. The column
+       * showed only the zone div, and the UTC column had no label.
+       *
+       * Removing "all-day" needs no code: the loop above overwrites that span
+       * with localAxisLabel, which is what the text becomes.
        */
-      const allDayRow = root.querySelector('.fc-day-grid .fc-bg table.table-bordered tbody tr')
-      if (allDayRow) {
-        const allDayAxis = allDayRow.querySelector('td.fc-axis')
-        if (allDayAxis) {
-          const allDayLabel = allDayAxis.querySelector('span')
-          if (allDayLabel) {
-            allDayLabel.textContent = ''
-          }
-          // This runs on every day render, so clear the previous pass's cells
-          // before adding this one's.
-          allDayRow.querySelectorAll('td.fc-axis:not(:first-child)')
-            .forEach(cell => cell.remove())
-          // cloneNode(false): the cell's width and classes, none of its span.
-          allDayRow.appendChild(allDayAxis.cloneNode(false))
-          allDayRow.appendChild(allDayAxis.cloneNode(false))
-        }
-      }
     },
 
     async updateNowIndicator () {
