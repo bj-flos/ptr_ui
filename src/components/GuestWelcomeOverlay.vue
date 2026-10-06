@@ -35,6 +35,10 @@
           You are browsing as a guest: you can look around, but booking time
           and operating a telescope need an account.
         </p>
+        <p>
+          You can request an observing account for Photon Ranch by clicking the
+          &lsquo;Apply for Account&rsquo; button below.
+        </p>
       </div>
 
       <div class="guest-welcome-actions">
@@ -132,8 +136,15 @@ export default {
 }
 
 /* Bulma colours anchors from its own palette, which is tuned for a light
-   background, so links need saying too rather than inheriting the card. */
-.guest-welcome-card a {
+   background, so links need saying too rather than inheriting the card.
+ *
+ * Scoped to the PROSE, not the card. The Apply button is tag="router-link",
+ * which Buefy renders as an <a>, so a card-wide rule here repainted its label
+ * blue on the turquoise primary background and made it unreadable. Anything
+ * that is a button gets its colour from Bulma's own invert, which is what it
+ * is for. */
+.guest-welcome-body a,
+.guest-welcome-more a {
   color: $blue;
 
   &:hover {
