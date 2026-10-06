@@ -3,23 +3,38 @@
     <div class="page-content">
       <SiteNavbar />
 
-      <MapToolbar
-        :dark-only.sync="darkOnly"
-        :bookable-only.sync="bookableOnly"
-        :loading="schedulesLoading"
-        class="map-toolbar"
-      />
+      <!-- Wrapper exists so the overlay can be positioned over the map and
+           the blur applied to the map alone: the navbar above stays sharp and
+           usable, because it carries apply and Log in. -->
+      <div class="map-region">
+        <div
+          class="map-layer"
+          :class="{ 'map-blurred': showGuestWelcome }"
+        >
+          <MapToolbar
+            :dark-only.sync="darkOnly"
+            :bookable-only.sync="bookableOnly"
+            :loading="schedulesLoading"
+            class="map-toolbar"
+          />
 
-      <the-world-map
-        name="google"
-        :dark-only="darkOnly"
-        :bookable-only="bookableOnly"
-        class="map-display"
-        @use-telescope="onUseTelescope"
-        @schedule-later="onScheduleLater"
-        @loading="schedulesLoading = $event"
-      />
-      <!--leaflet-map name="leafmap"></leaflet-map-->
+          <the-world-map
+            name="google"
+            :dark-only="darkOnly"
+            :bookable-only="bookableOnly"
+            class="map-display"
+            @use-telescope="onUseTelescope"
+            @schedule-later="onScheduleLater"
+            @loading="schedulesLoading = $event"
+          />
+          <!--leaflet-map name="leafmap"></leaflet-map-->
+        </div>
+
+        <GuestWelcomeOverlay
+          v-if="showGuestWelcome"
+          @dismiss="dismissGuestWelcome"
+        />
+      </div>
 
       <!-- Every telescope, which is what the map above draws. all_sites_real
            excludes simulated ones, and with five of the six observatories
@@ -37,6 +52,7 @@ import TheWorldMap from '@/components/maps/TheWorldMap'
 import MapToolbar from '@/components/maps/MapToolbar'
 import SiteNavbar from '@/components/SiteNavbar'
 import SitesOverviewCards from '@/components/SitesOverviewCards'
+import GuestWelcomeOverlay from '@/components/GuestWelcomeOverlay'
 import ScheduleSiteModal from '@/components/calendar/ScheduleSiteModal'
 import { mapGetters, mapState } from 'vuex'
 import { user_mixin } from '@/mixins/user_mixin'
@@ -48,7 +64,8 @@ export default {
     TheWorldMap,
     MapToolbar,
     SiteNavbar,
-    SitesOverviewCards
+    SitesOverviewCards,
+    GuestWelcomeOverlay
   },
   mixins: [user_mixin],
 
@@ -61,12 +78,29 @@ export default {
   },
 
   computed: {
+    ...mapState('user_data', ['isGuest', 'guestWelcomeDismissed']),
+
+    /* Only for a guest who has not dismissed it, and never for someone signed
+       in -- a real user who once browsed as a guest should not meet this
+       again. isGuest is cleared on sign-in anyway; this is the belt to that
+       brace, because the cost of getting it wrong is a logged-in user staring
+       at a blurred map. */
+    showGuestWelcome () {
+      return this.isGuest &&
+        !this.guestWelcomeDismissed &&
+        !this.userIsAuthenticated
+    },
+
     ...mapGetters('site_config', ['all_sites']),
     ...mapState('sitestatus', ['site_open_status']),
     ...mapGetters('calendar', ['nextAvailable'])
   },
 
   methods: {
+    dismissGuestWelcome () {
+      this.$store.commit('user_data/guestWelcomeDismissed', true)
+    },
+
     /**
      * What the card's main button does. Its label says which of these it is.
      *
@@ -198,6 +232,36 @@ export default {
   max-width: 90vw;
   flex: 0 0 auto;
 }
+/* Both wrappers are layout pass-throughs: MapToolbar and the map were direct
+   flex children of .page-content, and anything that broke that chain left the
+   map at its min-height instead of filling the page. min-height: 0 is the
+   usual flex-child fix -- without it the map cannot shrink below its content
+   and overflows instead. */
+.map-region {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.map-layer {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.map-blurred {
+  filter: blur(6px);
+  /* Not only cosmetic: without this a guest can pan and click a map they
+     cannot read, and tab into its controls behind the card. */
+  pointer-events: none;
+  user-select: none;
+}
+
 .map-display {
   margin: 0 auto;
   flex: 1 1 auto;

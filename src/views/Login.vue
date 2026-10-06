@@ -7,19 +7,36 @@
           Sign in to Photon Ranch
         </h1>
         <p class="login-lead">
-          Observing accounts are held with our identity provider. You will be
-          taken there to sign in, then returned here.
+          Observing accounts are held with our identity provider. Choosing
+          <strong>Use Credentials</strong> takes you there to sign in, then
+          returns you here. Guests can look around without an account, but
+          cannot book time or operate a telescope.
         </p>
 
-        <b-button
-          type="is-primary"
-          size="is-medium"
-          :loading="starting"
-          class="login-button"
-          @click="signIn"
-        >
-          Continue to sign in
-        </b-button>
+        <div class="login-choices">
+          <b-button
+            type="is-primary"
+            size="is-medium"
+            :loading="starting"
+            expanded
+            class="login-button"
+            @click="signIn"
+          >
+            Use Credentials
+          </b-button>
+
+          <!-- No account needed, and nothing is granted by it: see
+               user_data's isGuest. Second, because an account is the path
+               that actually leads anywhere. -->
+          <b-button
+            size="is-medium"
+            expanded
+            class="login-button"
+            @click="continueAsGuest"
+          >
+            Login as Guest
+          </b-button>
+        </div>
 
         <p
           v-if="error"
@@ -78,6 +95,17 @@ export default {
       return stored && stored !== '/login' ? stored : '/'
     },
 
+    /* A guest is not signed in and gains nothing -- the flag only changes
+       what the home page shows. Home is the destination rather than the
+       stored redirect: the welcome belongs over the map, and a guest sent
+       straight to the page they were bounced from would be sent back again
+       by the same guard. */
+    continueAsGuest () {
+      this.$store.commit('user_data/isGuest', true)
+      this.$store.commit('user_data/guestWelcomeDismissed', false)
+      this.$router.push('/')
+    },
+
     async signIn () {
       this.starting = true
       this.error = ''
@@ -112,8 +140,20 @@ export default {
   opacity: 0.85;
 }
 
+/* Stacked rather than side by side: the two are not equal choices, and a row
+   would read as though they were. Credentials first, in the reading path. */
+.login-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
 .login-button {
   min-width: 14rem;
+  /* expanded on the buttons makes them fill this, so cap it rather than let
+     them stretch to the card. */
+  max-width: 18rem;
 }
 
 .login-error {

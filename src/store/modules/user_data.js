@@ -43,6 +43,21 @@ const state = {
   isGoogleFederatedAccount: false,
   googleWarningDismissed: false,
 
+  /* Browsing without an account. Read straight out of localStorage rather
+     than restored by an action, because this one matters BEFORE anything
+     authenticates -- googleWarningDismissed can wait for authenticateUser,
+     and a guest cannot.
+
+     isGuest deliberately does NOT touch userIsAuthenticated. The router's
+     authGuard, the admin checks and userRoles all stay exactly as they are
+     for a signed-out visitor, so guest mode cannot widen what anyone can do:
+     it only decides what the home page says. The server is unaffected either
+     way -- it never sees a token for a guest, because there isn't one. */
+  isGuest: typeof window !== 'undefined' &&
+    window.localStorage.getItem('ptr_guest_session') === 'true',
+  guestWelcomeDismissed: typeof window !== 'undefined' &&
+    window.localStorage.getItem('ptr_guest_welcome_dismissed') === 'true',
+
   user_events: [],
   user_events_is_loading: false,
   // Events that have already ended, newest first. Kept apart from user_events
@@ -108,6 +123,30 @@ const mutations = {
     }
   },
 
+  /* Persisted, so a reload does not drop someone back to a page that asks
+     them to choose again. Cleared on sign-in and on sign-out, below. */
+  isGuest (state, val) {
+    state.isGuest = val
+    if (typeof window !== 'undefined') {
+      if (val) {
+        localStorage.setItem('ptr_guest_session', 'true')
+      } else {
+        localStorage.removeItem('ptr_guest_session')
+      }
+    }
+  },
+
+  guestWelcomeDismissed (state, val) {
+    state.guestWelcomeDismissed = val
+    if (typeof window !== 'undefined') {
+      if (val) {
+        localStorage.setItem('ptr_guest_welcome_dismissed', 'true')
+      } else {
+        localStorage.removeItem('ptr_guest_welcome_dismissed')
+      }
+    }
+  },
+
   user_events (state, val) { state.user_events = val },
   user_events_is_loading (state, val) { state.user_events_is_loading = val },
   user_past_events (state, val) { state.user_past_events = val },
@@ -141,6 +180,11 @@ const actions = {
 
     commit('userIsAuthenticated', true)
     commit('userIsAdmin', userIsAdmin)
+    /* Signing in ends the guest session, and resets the welcome so that
+       signing out later lands on the same first-visit experience rather than
+       a home page that silently behaves differently. */
+    commit('isGuest', false)
+    commit('guestWelcomeDismissed', false)
     commit('isGoogleFederatedAccount', isGoogle)
     if (isGoogle && typeof window !== 'undefined') {
       const dismissed = localStorage.getItem('googleWarningDismissed') === 'true'
@@ -162,6 +206,8 @@ const actions = {
   logoutUser ({ commit }) {
     commit('userIsAuthenticated', false)
     commit('userIsAdmin', false)
+    commit('isGuest', false)
+    commit('guestWelcomeDismissed', false)
     commit('isGoogleFederatedAccount', false)
     commit('googleWarningDismissed', false)
     if (typeof window !== 'undefined') {
