@@ -390,6 +390,20 @@
       </b-field>
     </b-field>
 
+    <!-- The booking is allowed to go ahead -- somebody may be fixing the
+         project next, or booking the time deliberately -- but it should not be
+         a surprise on the night. -->
+    <b-field horizontal>
+      <p
+        v-if="missingFiltersAtSite.length"
+        class="filter-warning"
+      >
+        {{ missingFiltersMessage }} Those exposures will not be observed until
+        the project uses filters this telescope has.
+      </p>
+      <div />
+    </b-field>
+
     <b-field horizontal>
       <p
         v-if="!userIsAuthenticated"
@@ -427,6 +441,7 @@ import axios from 'axios'
 import moment from 'moment'
 import { mapState, mapGetters } from 'vuex'
 import TrashCheckIcon from '@/components/projects/TrashCheckIcon'
+import { siteFilterNames, unavailableProjectFilters } from '@/utils/filters'
 
 export default {
   name: 'CalendarEventEditor',
@@ -587,6 +602,38 @@ export default {
     siteIsWema () {
       const config = this.$store.state.site_config.global_config || {}
       return config[this.site]?.instance_type === 'wema'
+    },
+
+    /* Filters this project asks for that the site being booked cannot take.
+     *
+     * Read straight from global_config by site code rather than through the
+     * site_config getter, which follows the SELECTED site -- and nothing is
+     * selected when this editor is opened from the home page's booking modal.
+     * Same reason siteIsWema above does it this way.
+     *
+     * Only meaningful for a project booking: Manual Control takes no
+     * exposures, so there is nothing to check. */
+    missingFiltersAtSite () {
+      if (this.reservation_type_tabs !== 'project') return []
+      const config = this.$store.state.site_config.global_config || {}
+      return unavailableProjectFilters(this.selected_project, config[this.site])
+    },
+
+    /* The sentence both the inline note and the confirm dialog use, so the two
+       cannot drift apart. */
+    missingFiltersMessage () {
+      const missing = this.missingFiltersAtSite
+      if (missing.length === 0) return ''
+      const config = this.$store.state.site_config.global_config || {}
+      // siteFilterNames, not config.filters: a site may describe its wheel
+      // only through filter_data, and naming what it DOES carry is the half
+      // of the message that tells somebody what to change the project to.
+      const carried = siteFilterNames(config[this.site])
+      const what = missing.length === 1
+        ? `the ${missing[0]} filter`
+        : `the ${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]} filters`
+      const has = carried.length ? ` It carries ${carried.join(', ')}.` : ''
+      return `${this.site} does not have ${what}.${has}`
     },
 
     ...mapState('user_data', [
@@ -991,18 +1038,51 @@ export default {
         return
       }
 
-      this.submitIsLoading = true
-      this.$emit('submit', this.modifiedEvent)
+      this.confirmFilters(() => {
+        this.submitIsLoading = true
+        this.$emit('submit', this.modifiedEvent)
+      })
     },
+
+    /* Ask before booking a project the site cannot fully observe, then run the
+     * save. A confirm rather than a refusal: the maintenance clash above is a
+     * hard no because the roof will be shut, but a filter mismatch is the
+     * user's to make -- they may be about to edit the project, or want the
+     * time held anyway. Refusing would be us deciding that for them.
+     *
+     * Calls through immediately when there is nothing to warn about, so both
+     * handlers can use it unconditionally. */
+    confirmFilters (proceed) {
+      if (this.missingFiltersAtSite.length === 0) {
+        proceed()
+        return
+      }
+      this.$buefy.dialog.confirm({
+        title: 'This telescope cannot take those filters',
+        message: `${this.missingFiltersMessage} Those exposures will not be `
+          + 'observed. Book it anyway?',
+        confirmText: 'Book anyway',
+        cancelText: 'Go back',
+        type: 'is-warning',
+        hasIcon: true,
+        icon: 'alert-circle',
+        ariaRole: 'alertdialog',
+        ariaModal: true,
+        onConfirm: () => proceed()
+      })
+    },
+
     handleModify () {
       const valid_inputs = this.$refs.title_input.checkHtml5Validity()
       if (valid_inputs) {
-        this.modifyIsLoading = true
-        const body = {
-          modifiedEvent: this.modifiedEvent,
-          initialEvent: this.eventDetails
-        }
-        this.$emit('modify', body)
+        this.confirmFilters(() => {
+          this.modifyIsLoading = true
+          const body = {
+            modifiedEvent: this.modifiedEvent,
+            initialEvent: this.eventDetails
+          }
+          this.$emit('modify', body)
+        })
       }
     },
     handleDelete () {
@@ -1035,6 +1115,11 @@ export default {
     padding-bottom: 1em;
 }
 .login-warning {
+    color: #f1b70e;
+}
+/* Same amber as the login note: this is a "read this before you commit",
+   not an error -- the booking is still allowed. */
+.filter-warning {
     color: #f1b70e;
 }
 .low-priority-message {
