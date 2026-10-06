@@ -58,6 +58,24 @@ const state = {
   guestWelcomeDismissed: typeof window !== 'undefined' &&
     window.localStorage.getItem('ptr_guest_welcome_dismissed') === 'true',
 
+  /* Which guided callouts this guest has read, keyed by id. An object rather
+     than one flag per callout so adding a third needed no store change -- and
+     a fourth will not either.
+
+     Defensive parse: localStorage can hold anything, including a half-written
+     value from a previous version, and this runs before the app mounts, where
+     a throw blanks the page rather than logging. */
+  guestCalloutsDismissed: (() => {
+    if (typeof window === 'undefined') { return {} }
+    try {
+      const raw = window.localStorage.getItem('ptr_guest_callouts_dismissed')
+      const parsed = raw ? JSON.parse(raw) : {}
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+    } catch (e) {
+      return {}
+    }
+  })(),
+
   user_events: [],
   user_events_is_loading: false,
   // Events that have already ended, newest first. Kept apart from user_events
@@ -78,6 +96,17 @@ const state = {
 
 // getters
 const getters = {
+
+  /* Whether one guided callout should be on screen.
+   *
+   * Four conditions: a guest, not someone signed in, past the welcome card,
+   * and not already read. The caller adds anything route-specific -- the store
+   * has no business knowing which page is open. */
+  guestCalloutVisible: state => id =>
+    state.isGuest &&
+    state.guestWelcomeDismissed &&
+    !state.userIsAuthenticated &&
+    !state.guestCalloutsDismissed[id],
   api: state => state.active_api,
 
   /* The user's actual name, for anywhere a person is shown to other people.
@@ -147,6 +176,25 @@ const mutations = {
     }
   },
 
+  /* Replaces the object rather than mutating it: Vue 2 does not track keys
+     added to an existing object, so a mutated map would dismiss the callout
+     in localStorage and leave it on screen. */
+  guestCalloutDismissed (state, id) {
+    state.guestCalloutsDismissed = { ...state.guestCalloutsDismissed, [id]: true }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        'ptr_guest_callouts_dismissed',
+        JSON.stringify(state.guestCalloutsDismissed))
+    }
+  },
+
+  guestCalloutsReset (state) {
+    state.guestCalloutsDismissed = {}
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ptr_guest_callouts_dismissed')
+    }
+  },
+
   user_events (state, val) { state.user_events = val },
   user_events_is_loading (state, val) { state.user_events_is_loading = val },
   user_past_events (state, val) { state.user_past_events = val },
@@ -185,6 +233,7 @@ const actions = {
        a home page that silently behaves differently. */
     commit('isGuest', false)
     commit('guestWelcomeDismissed', false)
+    commit('guestCalloutsReset')
     commit('isGoogleFederatedAccount', isGoogle)
     if (isGoogle && typeof window !== 'undefined') {
       const dismissed = localStorage.getItem('googleWarningDismissed') === 'true'
@@ -208,6 +257,7 @@ const actions = {
     commit('userIsAdmin', false)
     commit('isGuest', false)
     commit('guestWelcomeDismissed', false)
+    commit('guestCalloutsReset')
     commit('isGoogleFederatedAccount', false)
     commit('googleWarningDismissed', false)
     if (typeof window !== 'undefined') {

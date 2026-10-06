@@ -34,6 +34,21 @@
           v-if="showGuestWelcome"
           @dismiss="dismissGuestWelcome"
         />
+
+        <!-- Lower left of the map, arrow up into it. Inside .map-region so it
+             is positioned against the map rather than the page, and after the
+             welcome so it cannot sit on top of it. -->
+        <GuestCallout
+          v-if="!showGuestWelcome && guestCalloutVisible('map')"
+          direction="up"
+          class="guest-callout-map"
+          @dismiss="dismissCallout('map')"
+        >
+          A Web Mercator projection is used to illustrate a map of the world
+          with markers representing the location of telescopes. Hovering over
+          the icon will allow the user to request time on the selected
+          telescope.
+        </GuestCallout>
       </div>
 
       <!-- Every telescope, which is what the map above draws. all_sites_real
@@ -53,6 +68,7 @@ import MapToolbar from '@/components/maps/MapToolbar'
 import SiteNavbar from '@/components/SiteNavbar'
 import SitesOverviewCards from '@/components/SitesOverviewCards'
 import GuestWelcomeOverlay from '@/components/GuestWelcomeOverlay'
+import GuestCallout from '@/components/GuestCallout'
 import ScheduleSiteModal from '@/components/calendar/ScheduleSiteModal'
 import { mapGetters, mapState } from 'vuex'
 import { user_mixin } from '@/mixins/user_mixin'
@@ -65,7 +81,8 @@ export default {
     MapToolbar,
     SiteNavbar,
     SitesOverviewCards,
-    GuestWelcomeOverlay
+    GuestWelcomeOverlay,
+    GuestCallout
   },
   mixins: [user_mixin],
 
@@ -79,6 +96,7 @@ export default {
 
   computed: {
     ...mapState('user_data', ['isGuest', 'guestWelcomeDismissed']),
+    ...mapGetters('user_data', ['guestCalloutVisible']),
 
     /* Only for a guest who has not dismissed it, and never for someone signed
        in -- a real user who once browsed as a guest should not meet this
@@ -99,6 +117,10 @@ export default {
   methods: {
     dismissGuestWelcome () {
       this.$store.commit('user_data/guestWelcomeDismissed', true)
+    },
+
+    dismissCallout (id) {
+      this.$store.commit('user_data/guestCalloutDismissed', id)
     },
 
     /**
@@ -252,6 +274,15 @@ export default {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
+}
+
+.guest-callout-map {
+  position: absolute;
+  /* Clear of the map's own bottom-left furniture -- Google puts its logo and
+     terms link there. */
+  left: 1rem;
+  bottom: 3.5rem;
+  z-index: 15;
 }
 
 .map-blurred {

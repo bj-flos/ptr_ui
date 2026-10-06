@@ -12,6 +12,14 @@
       aria-hidden="true"
     />
     <div class="guest-callout-body">
+      <button
+        type="button"
+        class="guest-callout-close"
+        aria-label="Dismiss"
+        @click="$emit('dismiss')"
+      >
+        &times;
+      </button>
       <slot />
     </div>
   </div>
@@ -31,6 +39,8 @@
  */
 export default {
   name: 'GuestCallout',
+  /* Emits `dismiss`. Whether that sticks is the caller's business: this
+     component does not know which callout it is, and the store does. */
   props: {
     direction: {
       type: String,
@@ -61,10 +71,33 @@ export default {
   color: $white-ter;
   border: 1px solid $ptr-yellow;
   border-radius: 6px;
-  padding: 0.6rem 0.8rem;
+  position: relative;
+  /* Right padding leaves room for the close button rather than letting text
+     run under it. */
+  padding: 0.6rem 1.9rem 0.6rem 0.8rem;
   font-size: 0.82rem;
   line-height: 1.35;
   box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.55);
+}
+
+.guest-callout-close {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.3rem;
+  /* A bare button: Bulma styles .button, and this is a dismiss affordance
+     rather than an action worth a button's weight. */
+  background: none;
+  border: 0;
+  padding: 0 0.25rem;
+  line-height: 1;
+  font-size: 1.15rem;
+  cursor: pointer;
+  color: $grey-lighter;
+
+  &:hover,
+  &:focus {
+    color: $ptr-yellow;
+  }
 }
 
 /* The arrow is a CSS triangle rather than an icon so it inherits the border

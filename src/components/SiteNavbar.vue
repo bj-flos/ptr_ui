@@ -37,9 +37,10 @@
            absolutely positioned so it cannot push the bar taller: the bar is
            locked to 75px. -->
       <GuestCallout
-        v-if="showGuestCallouts"
+        v-if="showGuestCallouts && guestCalloutVisible('logo')"
         direction="up"
         class="guest-callout-logo"
+        @dismiss="dismissCallout('logo')"
       >
         <img
           class="guest-callout-logo-img"
@@ -111,9 +112,10 @@
         <div class="navbar-clock-anchor">
           <!-- Left of the clock, arrow pointing right at it. -->
           <GuestCallout
-            v-if="showGuestCallouts"
+            v-if="showGuestCallouts && guestCalloutVisible('clock')"
             direction="right"
             class="guest-callout-clock"
+            @dismiss="dismissCallout('clock')"
           >
             Coordinated Universal Time (UTC) is the default time standard used
             by astronomers world wide. Below the UTC value will be displayed
@@ -226,7 +228,7 @@
 import UserAvatar from '@/components/UserAvatar'
 import GuestCallout from '@/components/GuestCallout'
 import NavbarSiteDropdown from '@/components/NavbarSiteDropdown'
-import { mapState, mapMutations } from 'vuex'
+import { mapState, mapMutations, mapGetters } from 'vuex'
 import moment from 'moment-timezone'
 import { user_mixin } from '@/mixins/user_mixin'
 
@@ -250,6 +252,7 @@ export default {
   ],
   computed: {
     ...mapState('user_data', ['isGuest', 'guestWelcomeDismissed']),
+    ...mapGetters('user_data', ['guestCalloutVisible']),
 
     /* The guided callouts, for a guest who has got past the welcome card.
      *
@@ -319,6 +322,12 @@ export default {
     ...mapMutations('user_data', {
       setGoogleWarningDismissed: 'googleWarningDismissed'
     }),
+
+    /* Remembered per callout, so reading one does not silence the others and
+       a reload does not bring back something already read. */
+    dismissCallout (id) {
+      this.$store.commit('user_data/guestCalloutDismissed', id)
+    },
 
     updateSiteStatus () {
       this.$store.dispatch('sitestatus/getSiteOpenStatus')
