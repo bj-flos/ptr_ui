@@ -901,6 +901,22 @@ export default {
       const previousViewType = this.renderedViewType
       const dayAligned = t => t === 'timeGridDay' || t === 'timeGridWeek'
 
+      /* The axis columns, once the whole range is in the DOM.
+         dayRender fires per date cell while the view is still being built, so
+         the earliest calls can run before the slats and the all-day row exist
+         and find nothing to decorate. This hook fires after, and once, which
+         is what whole-grid DOM surgery wants. Kept in dayRender as well: that
+         one also repaints the moon icons, and a date cell re-rendering on its
+         own needs its trailing cells back. */
+      if (dayAligned(viewType)) {
+        /* Next tick, for two reasons. FullCalendar calls this from the wrapper
+           component's mounted(), and a child's mounted can run during the
+           parent's patch -- before this.$el exists to scope the query to. It
+           also puts the pass after the grid is completely written rather than
+           part way through. */
+        this.$nextTick(this.addExtraTimeColumns)
+      }
+
       if (viewType !== previousViewType) {
         this.renderedViewType = viewType
         if (dayAligned(viewType) && dayAligned(previousViewType) && this.rememberedDay) {
@@ -1153,8 +1169,16 @@ export default {
     // This method does some manual DOM manipulation to add the right-side UTC and Sidereal column to the calendar.
     // It's pretty hacky and will likely break if we update fullCalendar beyond v4
     addExtraTimeColumns () {
+      /* Scoped to this component's own element, not `document`.
+         The home page mounts this calendar twice -- the site view and the
+         booking modal -- each with its own fc_timeZone and longitude. Rooted
+         at document, whichever rendered last relabelled the other's axis and
+         filled it with sidereal times for the wrong meridian. */
+      const root = this.$el
+      if (!root) return
+
       // Get all rows that need time columns
-      const rows = document.querySelectorAll('.fc-slats > table.table-bordered tbody > tr')
+      const rows = root.querySelectorAll('.fc-slats > table.table-bordered tbody > tr')
       const longitude = this.effectiveLongitude
 
       rows.forEach(r => {
@@ -1204,7 +1228,7 @@ export default {
       })
 
       // Handle the skeleton table
-      const skeleton = document.querySelectorAll('.fc-content-skeleton > table > tbody > tr')
+      const skeleton = root.querySelectorAll('.fc-content-skeleton > table > tbody > tr')
       skeleton.forEach(e => {
         // Clear existing extra axes
         const existingExtraAxes = e.querySelectorAll('td.fc-axis:not(:first-child)')
@@ -1220,7 +1244,7 @@ export default {
       })
 
       // Handle table headers
-      const tableBorderedRows = document.querySelectorAll('.fc-bg table.table-bordered tbody tr')
+      const tableBorderedRows = root.querySelectorAll('.fc-bg table.table-bordered tbody tr')
       tableBorderedRows.forEach(e => {
         // Clear existing extra headers
         const existingExtraHeaders = e.querySelectorAll('.fc-axis:not(:first-child)')
@@ -1281,7 +1305,7 @@ export default {
       })
 
       // Handle additional table headers
-      const tableBorderedRows2 = document.querySelectorAll('.fc-head-container table.table-bordered tr')
+      const tableBorderedRows2 = root.querySelectorAll('.fc-head-container table.table-bordered tr')
       if (tableBorderedRows2.length > 0) {
         tableBorderedRows2.forEach(e => {
           // Clear existing extra cells
@@ -1307,7 +1331,7 @@ export default {
        * label goes, and the row gains the same two trailing cells the hour
        * rows have, so it lines up under UTC and SID instead of stopping short.
        */
-      const allDayRow = document.querySelector('.fc-day-grid .fc-bg table.table-bordered tbody tr')
+      const allDayRow = root.querySelector('.fc-day-grid .fc-bg table.table-bordered tbody tr')
       if (allDayRow) {
         const allDayAxis = allDayRow.querySelector('td.fc-axis')
         if (allDayAxis) {
@@ -1332,7 +1356,16 @@ export default {
     },
 
     dayRender (dayRenderInfo) {
-      if (['timeGridWeek', 'timeGridDay'].includes(this.fullCalendarApi?.view?.type)) {
+      /* dayRenderInfo.view, not this.fullCalendarApi.view.
+         The api field is assigned in this component's mounted() hook, and Vue
+         mounts children before parents -- so the FullCalendar wrapper has
+         already rendered, and fired this for all seven days, while the field
+         is still its '' default. The optional chain then made the gate false
+         on every day of the first paint, and the columns were never added. */
+      if (['timeGridWeek', 'timeGridDay'].includes(dayRenderInfo?.view?.type)) {
+        // Best-effort top-up for a single date cell re-rendering. The pass
+        // that is guaranteed to run is in fc_datesRender; this one no-ops
+        // while $el is still unassigned, which is fine.
         this.addExtraTimeColumns()
       }
       try {
