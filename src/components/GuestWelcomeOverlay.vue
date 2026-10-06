@@ -88,6 +88,11 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* Scoped styles do not see the theme unless they ask: vue.config.js has the
+   global sass data line commented out, so every component that needs a
+   variable imports it, as CommandTabsWide and ImageFilter do. */
+@import "@/style/_variables.scss";
+
 .guest-welcome {
   position: absolute;
   inset: 0;
@@ -99,7 +104,9 @@ export default {
   padding: 1rem;
   /* The card is the thing to read; a slight scrim stops the blurred map
      competing with it without hiding that there is a map there at all. */
-  background: rgba(0, 0, 0, 0.35);
+  /* Lighter than it was: the card is dark now and carries its own contrast,
+     so a heavy scrim just hid that there is a map behind it at all. */
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .guest-welcome-card {
@@ -109,9 +116,29 @@ export default {
   overflow-y: auto;
   padding: 1.75rem 2rem;
   border-radius: 6px;
-  background: #fff;
-  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.4);
+  /* $dark is the surface CalendarLegend uses for a raised panel, so this reads
+     as part of the app rather than a white sheet dropped on it.
+
+     The colour is set EXPLICITLY alongside it. This card was white with no
+     colour of its own, which inherited $body-color -- light text, on white.
+     Any component that sets one of these two without the other inherits the
+     theme for the other half, and dark-on-dark or light-on-light is the
+     result. */
+  background-color: $dark;
+  color: $white-ter;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.6);
   text-align: center;
+}
+
+/* Bulma colours anchors from its own palette, which is tuned for a light
+   background, so links need saying too rather than inheriting the card. */
+.guest-welcome-card a {
+  color: $blue;
+
+  &:hover {
+    color: lighten($blue, 12%);
+  }
 }
 
 .guest-welcome-title {
@@ -121,6 +148,8 @@ export default {
   line-height: 1.15;
   font-weight: 700;
   margin-bottom: 1rem;
+  /* Bulma gives headings $title-color, which is tuned for a light page. */
+  color: $white-ter;
 }
 
 .guest-welcome-body {
