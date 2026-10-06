@@ -2700,6 +2700,10 @@ $sky-darkness-z-index: 15;
   display: block;
   white-space: normal;
   line-height: 1.15;
+  /* FullCalendar core sets text-align: right on .fc-axis, for the hour values.
+     The three headings read as column titles rather than values, so they line
+     up with the left edge of their columns instead. */
+  text-align: left;
 }
 /* Smaller and dimmer, so the pair still reads as one heading.
    FullCalendar positions the axis spans absolutely and outranks a plain
@@ -2710,6 +2714,10 @@ $sky-darkness-z-index: 15;
   top: 1.25em;
   left: 4px;
   right: 4px;
+  /* Stretched between left and right, so unlike the shrink-wrapped heading
+     span this one really does need telling: inherited from .fc-axis it was
+     right-aligned, sitting under the left-aligned label it belongs to. */
+  text-align: left;
   font-size: 0.8em;
   opacity: 0.7;
   font-weight: normal;
