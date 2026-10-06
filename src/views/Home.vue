@@ -47,7 +47,8 @@
           A Web Mercator projection is used to illustrate a map of the world
           with markers representing the location of telescopes. Hovering over
           the icon will allow the user to request time on the selected
-          telescope.
+          telescope. Clicking on the map and then dragging will scroll the map
+          in the direction of the drag.
         </GuestCallout>
       </div>
 

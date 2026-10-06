@@ -110,10 +110,10 @@
         <!-- Wrapper so the callout can sit against the clock. The clock
              itself keeps its own classes and layout untouched. -->
         <div class="navbar-clock-anchor">
-          <!-- Left of the clock, arrow pointing right at it. -->
+          <!-- Below the clock, arrow pointing up at it. -->
           <GuestCallout
             v-if="showGuestCallouts && guestCalloutVisible('clock')"
-            direction="right"
+            direction="up"
             class="guest-callout-clock"
             @dismiss="dismissCallout('clock')"
           >
@@ -382,11 +382,27 @@ export default {
 
 .guest-callout-clock {
   position: absolute;
-  /* Right edge of the bubble one arrow-width left of the clock. */
-  right: calc(100% + 1rem);
-  top: 50%;
-  transform: translateY(-50%);
+  /* Under the two time values, hanging below the bar, right-aligned with them.
+     Beside the clock it had nowhere to go: this anchor is only as wide as the
+     clock itself, and an absolutely positioned box with no width set shrinks
+     to whatever its containing block offers -- which collapsed the bubble into
+     a column one word wide. */
+  top: calc(100% + 0.9rem);
+  right: 0;
+  /* Explicit, for the same reason: the width cannot come from the anchor. */
+  width: 19rem;
   z-index: 35;
+
+  /* The arrow belongs under the clock, and the bubble extends LEFT from it,
+     so the default 1.5rem from the left edge would point at empty bar. */
+  /* &.is-up, not a bare ::v-deep: without the extra class this selector ties
+     with the component own .guest-callout.is-up .guest-callout-arrow rule, and
+     a tie is settled by the order the two components styles happen to land in
+     the bundle. */
+  &.is-up ::v-deep .guest-callout-arrow {
+    left: auto;
+    right: 1.5rem;
+  }
 }
 
 /* Phones: the clock is hidden there (is-hidden-mobile) so its callout would
