@@ -31,6 +31,25 @@
           class="subtitle site-hint"
         >>&nbsp;{{ selected_site.toUpperCase() }}</span>
       </b-navbar-item>
+
+      <!-- Hangs below the brand, arrow up at the logo it describes. Inside the
+           brand slot so it tracks the logo rather than a guessed offset, and
+           absolutely positioned so it cannot push the bar taller: the bar is
+           locked to 75px. -->
+      <GuestCallout
+        v-if="showGuestCallouts"
+        direction="up"
+        class="guest-callout-logo"
+      >
+        <img
+          class="guest-callout-logo-img"
+          :src="`${publicPath}img/logos/PTR-lambda.png`"
+          alt=""
+        >
+        <span>
+          Clicking this logo returns you to this home page view at any time.
+        </span>
+      </GuestCallout>
     </template>
 
     <template slot="start">
@@ -87,13 +106,28 @@
              about as the name changes length, and outside the signed-in block
              so it is there before anyone logs in. Hidden on a phone: the bar is
              locked to 75px and has no room for two lines of it there. -->
-        <div class="navbar-clock is-hidden-mobile">
-          <p class="clock-utc">
-            {{ utcNow }}
-          </p>
-          <p class="clock-local">
-            {{ localNow }}
-          </p>
+        <!-- Wrapper so the callout can sit against the clock. The clock
+             itself keeps its own classes and layout untouched. -->
+        <div class="navbar-clock-anchor">
+          <!-- Left of the clock, arrow pointing right at it. -->
+          <GuestCallout
+            v-if="showGuestCallouts"
+            direction="right"
+            class="guest-callout-clock"
+          >
+            Coordinated Universal Time (UTC) is the default time standard used
+            by astronomers world wide. Below the UTC value will be displayed
+            the local time and timezone of the user who is logged in.
+          </GuestCallout>
+
+          <div class="navbar-clock is-hidden-mobile">
+            <p class="clock-utc">
+              {{ utcNow }}
+            </p>
+            <p class="clock-local">
+              {{ localNow }}
+            </p>
+          </div>
         </div>
 
         <div
@@ -190,6 +224,7 @@
 
 <script>
 import UserAvatar from '@/components/UserAvatar'
+import GuestCallout from '@/components/GuestCallout'
 import NavbarSiteDropdown from '@/components/NavbarSiteDropdown'
 import { mapState, mapMutations } from 'vuex'
 import moment from 'moment-timezone'
@@ -199,7 +234,8 @@ export default {
   name: 'SiteNavbar',
   components: {
     NavbarSiteDropdown,
-    UserAvatar
+    UserAvatar,
+    GuestCallout
   },
   data () {
     return {
@@ -213,6 +249,21 @@ export default {
     user_mixin
   ],
   computed: {
+    ...mapState('user_data', ['isGuest', 'guestWelcomeDismissed']),
+
+    /* The guided callouts, for a guest who has got past the welcome card.
+     *
+     * Three conditions, each earning its place: a guest (not someone signed
+     * in, who does not need telling what the logo does), past the welcome
+     * (which is already explaining itself, on top of the map), and on the home
+     * page (an arrow captioned "this home page view" has to be on it). */
+    showGuestCallouts () {
+      return this.isGuest &&
+        this.guestWelcomeDismissed &&
+        !this.userIsAuthenticated &&
+        this.$route.name === 'home'
+    },
+
     /* Seconds are shown deliberately: a clock that changes once a minute looks
        stopped. */
     utcNow () {
@@ -283,6 +334,61 @@ export default {
 <style lang="scss" scoped>
 /* Right-aligned so the two lines share an edge, and tabular figures so the
    whole bar does not twitch as the seconds change. */
+/* ---- guest callouts -------------------------------------------------------
+ *
+ * Both are absolutely positioned and both sit OUTSIDE the bar's flow. The bar
+ * is locked to 75px, so a bubble in the flow would either stretch it or be
+ * clipped by it; taking them out of flow means the bar is unchanged whether a
+ * guest is looking at it or not.
+ *
+ * overflow is not hidden on b-navbar, so a child can hang below it. If that
+ * ever changes these will be clipped, and the fix is a portal rather than a
+ * larger bar. */
+
+.guest-callout-logo {
+  position: absolute;
+  /* Below the bar, indented so the arrow lands under the lockup rather than
+     under the window edge. */
+  top: 4.6rem;
+  left: 1rem;
+  z-index: 35;
+}
+
+.guest-callout-logo-img {
+  /* The logo repeated inside the bubble, so the sentence has its subject
+     beside it rather than asking the reader to look away and back. */
+  height: 1.6rem;
+  width: auto;
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+/* The clock keeps its own box; this only gives the callout something to be
+   positioned against. */
+.navbar-clock-anchor {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.guest-callout-clock {
+  position: absolute;
+  /* Right edge of the bubble one arrow-width left of the clock. */
+  right: calc(100% + 1rem);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 35;
+}
+
+/* Phones: the clock is hidden there (is-hidden-mobile) so its callout would
+   point at nothing, and there is no width for the other one either. */
+@media screen and (max-width: 48rem) {
+  .guest-callout-logo,
+  .guest-callout-clock {
+    display: none;
+  }
+}
+
 .navbar-clock {
   text-align: right;
   white-space: nowrap;
