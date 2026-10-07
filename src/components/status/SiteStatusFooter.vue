@@ -636,10 +636,20 @@ $log-stale: grey;
 .log-timestamp-group {
   display: flex;
   justify-content: space-between;
+
+  /* Scoped styles cannot reach Buefy's trigger element without this. */
+  ::v-deep .b-tooltip,
+  ::v-deep .tooltip-trigger {
+    cursor: help;
+  }
 }
 .log-timestamp {
   color: #bbb;
   animation: blinkonce 1s;
+  /* It sits inside a tooltip trigger, which styles itself as interactive, so
+     the timestamp advertised a click that does nothing. It reveals how long
+     ago the line arrived, on hover, and that is all it does. */
+  cursor: help;
   grid-column-start: 1;
   padding-top: 2pt;
   padding-right: 15px;

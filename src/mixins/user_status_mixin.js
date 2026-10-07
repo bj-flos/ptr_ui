@@ -116,11 +116,16 @@ export const user_status_mixin = {
     // Add the log level in front of the message if it is a warning, error,
     // or critical level.
     format_log_message_text (log) {
-      // Handle case of no message
-      if (!('message' in log)) {
+      /* obs sends the text as `log_message`; this read `message`, so the OBSY
+         LOG line in the site footer showed a timestamp and nothing after it.
+
+         `message` is kept as a fallback rather than replaced. Nothing in this
+         repo produces it, but this is the consumer, and a consumer that takes
+         both spellings cannot be broken by whichever one a transport picks. */
+      let message = log.log_message != null ? log.log_message : log.message
+      if (message == null || message === '') {
         return ''
       }
-      let message = log.message
 
       // Mark stale messages by prefixing (stale) in front of the message
       if (this.log_is_stale(log.timestamp)) {
