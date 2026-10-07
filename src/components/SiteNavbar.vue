@@ -399,7 +399,7 @@ export default {
      with the component own .guest-callout.is-up .guest-callout-arrow rule, and
      a tie is settled by the order the two components styles happen to land in
      the bundle. */
-  &.is-up ::v-deep .guest-callout-arrow {
+  &.guest-callout.is-up ::v-deep .guest-callout-arrow {
     left: auto;
     right: 1.5rem;
   }

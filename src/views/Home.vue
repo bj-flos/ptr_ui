@@ -48,7 +48,21 @@
           with markers representing the location of telescopes. Hovering over
           the icon will allow the user to request time on the selected
           telescope. Clicking on the map and then dragging will scroll the map
-          in the direction of the drag. The Sun icon marks where the sun is
+          in the direction of the drag.
+        </GuestCallout>
+
+        <!-- Bottom centre, arrow up into the middle of the projection, which
+             is where the night it describes is drawn. Its own callout and its
+             own dismissal: this one is about what is ON the map, where the
+             one to its left is about how to work it. -->
+        <GuestCallout
+          v-if="!showGuestWelcome && guestCalloutVisible('twilight')"
+          direction="up"
+          class="guest-callout-twilight"
+          @dismiss="dismissCallout('twilight')"
+        >
+          The projection is initially drawn with the center of Full Night at
+          the center of the display. A Sun icon marks where the sun is
           currently overhead, and the shaded bands either side of it are Civil,
           Nautical and Astronomical Twilight, with Full Night beyond them.
         </GuestCallout>
@@ -296,6 +310,35 @@ export default {
   left: 1rem;
   bottom: 3.5rem;
   z-index: 15;
+}
+
+.guest-callout-twilight {
+  position: absolute;
+  /* Centred on the projection, high enough to clear Google's own bottom strip
+     -- the keyboard-shortcuts and attribution line runs along there. */
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 3.5rem;
+  z-index: 15;
+
+  /* The arrow goes to the middle rather than the default 1.5rem from the left
+     edge: this bubble is centred under the middle of the map, so an arrow at
+     one end would point at nothing in particular. &.is-up for the specificity,
+     as on the clock callout -- a bare ::v-deep ties with the component's own
+     rule and the tie is settled by bundle order. */
+  &.guest-callout.is-up ::v-deep .guest-callout-arrow {
+    left: 50%;
+    margin-left: -0.5rem;
+  }
+}
+
+/* Below about 960px the two bubbles are each up to 19rem wide and would sit on
+   top of each other, so the twilight one stacks ABOVE the Mercator one rather
+   than beside it. Still centred, still pointing up into the map. */
+@media screen and (max-width: 60rem) {
+  .guest-callout-twilight {
+    bottom: 12rem;
+  }
 }
 
 .map-blurred {
