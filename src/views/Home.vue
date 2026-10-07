@@ -35,12 +35,13 @@
           @dismiss="dismissGuestWelcome"
         />
 
-        <!-- Lower left of the map, arrow up into it. Inside .map-region so it
-             is positioned against the map rather than the page, and after the
-             welcome so it cannot sit on top of it. -->
+        <!-- Left edge, vertically centred, arrow pointing right into the
+             map. Inside .map-region so it is positioned against the map rather
+             than the page, and after the welcome so it cannot sit on top of
+             it. -->
         <GuestCallout
           v-if="!showGuestWelcome && guestCalloutVisible('map')"
-          direction="up"
+          direction="right"
           class="guest-callout-map"
           @dismiss="dismissCallout('map')"
         >
@@ -305,10 +306,11 @@ export default {
 
 .guest-callout-map {
   position: absolute;
-  /* Clear of the map's own bottom-left furniture -- Google puts its logo and
-     terms link there. */
+  /* Left edge, halfway down. Being off the bottom also keeps it clear of the
+     map's own furniture -- Google puts its logo and terms link down there. */
   left: 1rem;
-  bottom: 3.5rem;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 15;
 }
 
@@ -332,14 +334,6 @@ export default {
   }
 }
 
-/* Below about 960px the two bubbles are each up to 19rem wide and would sit on
-   top of each other, so the twilight one stacks ABOVE the Mercator one rather
-   than beside it. Still centred, still pointing up into the map. */
-@media screen and (max-width: 60rem) {
-  .guest-callout-twilight {
-    bottom: 12rem;
-  }
-}
 
 .map-blurred {
   filter: blur(6px);
