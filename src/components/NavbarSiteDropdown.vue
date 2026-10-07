@@ -77,7 +77,7 @@
                   </div>
                 </div>
                 <div class="obs-name-expanded">
-                  {{ obs.telescope_description }}
+                  {{ describe_telescope(obs) }}
                 </div>
               </router-link>
             </li>
@@ -107,7 +107,7 @@ export default {
   },
   computed: {
     ...mapState('site_config', ['selected_site', 'global_config']),
-    ...mapGetters('site_config', ['all_sites', 'all_sites_real', 'all_sites_simulated']),
+    ...mapGetters('site_config', ['all_sites', 'all_sites_real', 'all_sites_simulated', 'site_is_simulated']),
     ...mapState('sitestatus', ['site_open_status', 'stale_age_ms']),
     ...mapGetters('sitestatus', ['all_sites_status_color']),
     ...mapState('user_data', ['userIsAdmin']),
@@ -201,6 +201,25 @@ export default {
     update_site_status () {
       this.$store.dispatch('sitestatus/getSiteOpenStatus')
     },
+    /* The description, with "(simulated)" on it when the site is one.
+
+       It used to be part of the description text, and renaming the telescopes
+       dropped it from four of them -- so the dropdown stopped saying which
+       sites were simulators while the image cards below the map went on
+       stamping them. Derived from site_is_simulated now, the same getter the
+       cards and the map's info card read, so the two cannot disagree again and
+       nothing has to be remembered when a site is added.
+
+       A description that already says so is left alone: DPO-TEC carries
+       "(1260mm, simulated)" in its own text, and appending would have produced
+       it twice. */
+    describe_telescope (obs) {
+      const description = obs.telescope_description || ''
+      if (!this.site_is_simulated(obs.id)) return description
+      if (/simulated/i.test(description)) return description
+      return description ? `${description} (simulated)` : '(simulated)'
+    },
+
     site_online_class (site) {
       return this.all_sites_status_color[site]
     }
