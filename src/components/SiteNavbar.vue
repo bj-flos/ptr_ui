@@ -180,29 +180,61 @@
           </div>
         </div>
 
-        <div
-          v-else
-          class="navbar-item not-authenticated"
-        >
-          <!-- Apply leads to the application form; it was disabled behind an
-               "Under Development" tooltip while there was nowhere for it to go.
-               tag="router-link" so it is a real link -- middle-click and
-               open-in-new-tab work, which a @click handler would break. -->
-          <b-button
-            tag="router-link"
-            to="/apply"
-            class="button"
+        <template v-else>
+          <div class="navbar-item not-authenticated">
+            <!-- Apply leads to the application form; it was disabled behind an
+                 "Under Development" tooltip while there was nowhere for it to
+                 go. tag="router-link" so it is a real link -- middle-click and
+                 open-in-new-tab work, which a @click handler would break.
+                 Kept for a guest, who is exactly the person it is for. -->
+            <b-button
+              tag="router-link"
+              to="/apply"
+              class="button"
+            >
+              apply
+            </b-button>
+            <!-- Replaced by the guest avatar beside it once signed in as a
+                 guest: offering Log in to somebody already looking around as a
+                 guest says nothing about how to stop. -->
+            <b-button
+              v-if="!isGuest"
+              class="button"
+              @click="login"
+            >
+              Log in
+            </b-button>
+          </div>
+
+          <!-- A guest gets the same avatar affordance as a signed-in user, so
+               the bar always says which of the three states you are in. Only
+               Log out under it: a guest has no profile and no admin area, and
+               listing doors they cannot open is what the admin link already
+               taught us not to do. -->
+          <div
+            v-if="isGuest"
+            class="navbar-item has-dropdown is-hoverable is-dark"
           >
-            apply
-          </b-button>
-          <b-button
-            v-if="!userIsAuthenticated"
-            class="button"
-            @click="login"
-          >
-            Log in
-          </b-button>
-        </div>
+            <div class="navbar-link">
+              <p class="greeting is-hidden-touch">
+                Guest
+              </p>
+              <div style="width:8px" />
+              <UserAvatar
+                :size="25"
+                name="Guest"
+                initials="G"
+              />
+            </div>
+
+            <div class="navbar-dropdown">
+              <a
+                class="navbar-item has-link"
+                @click="logoutGuest"
+              >Log out</a>
+            </div>
+          </div>
+        </template>
 
         <b-tooltip
           v-if="showCautionButton"
@@ -327,6 +359,19 @@ export default {
        a reload does not bring back something already read. */
     dismissCallout (id) {
       this.$store.commit('user_data/guestCalloutDismissed', id)
+    },
+
+    /* Not the shared logout(): that one ends a Descope session, and a guest
+     * never started one. Sending them through the provider's logout endpoint
+     * would be a round trip to sign out of something they are not signed in
+     * to, and it lands on the post-logout route rather than leaving them
+     * where they were reading.
+     *
+     * Clearing the store is the whole job -- logoutUser already resets
+     * isGuest, the welcome card and the callouts, so logging back in as a
+     * guest starts clean. */
+    logoutGuest () {
+      this.$store.dispatch('user_data/logoutUser')
     },
 
     updateSiteStatus () {

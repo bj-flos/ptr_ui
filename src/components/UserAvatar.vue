@@ -18,7 +18,7 @@
     :aria-label="label"
     :title="label"
   >
-    {{ initials }}
+    {{ displayInitials }}
   </div>
 </template>
 
@@ -33,6 +33,21 @@ const COLOURS = [
   '#3f6b6b', '#7a5a2f', '#54527a', '#8a4160'
 ]
 
+/* "Ada Lovelace" in a single field still has two initials in it. Lifted out
+ * of the computed so the override path can use it too.
+ *
+ * Taken as stored: upper-casing "BJ" is harmless but lower-casing it is not,
+ * and reshaping names is how "McDonald" becomes "Mcdonald". */
+function initialsFrom (value) {
+  const single = String(value || '').trim()
+  if (!single) { return '?' }
+  const parts = single.split(/[\s._-]+/).filter(Boolean)
+  if (parts.length > 1) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return single.slice(0, 2).toUpperCase()
+}
+
 export default {
   name: 'UserAvatar',
 
@@ -40,6 +55,18 @@ export default {
     size: {
       type: Number,
       default: 25
+    },
+
+    /* Overrides, for a subject that is not the signed-in user -- today the
+     * guest avatar, which has no account behind it to read. Both default to
+     * null so every existing call site keeps reading the store. */
+    name: {
+      type: String,
+      default: null
+    },
+    initials: {
+      type: String,
+      default: null
     }
   },
 
@@ -62,13 +89,15 @@ export default {
       'userId'
     ]),
 
+    /* An overridden subject never borrows the signed-in user's picture: the
+     * guest avatar must not come out wearing the last person's face. */
     showPicture () {
-      return !!this.profileUrl && !this.pictureFailed
+      return !this.name && !!this.profileUrl && !this.pictureFailed
     },
 
     label () {
-      return this.userGivenName || this.userName || this.userNickname ||
-        this.userEmail || 'Signed in'
+      return this.name || this.userGivenName || this.userName ||
+        this.userNickname || this.userEmail || 'Signed in'
     },
 
     /* Given plus family where both are known, because two initials identify a
@@ -76,9 +105,12 @@ export default {
      * usually present, and finally to the email local part -- never to a
      * character from the domain, which would put "g" on every gmail user.
      *
-     * Taken as stored: upper-casing "BJ" is harmless but lower-casing it is
-     * not, and reshaping names is how "McDonald" becomes "Mcdonald". */
-    initials () {
+     * An explicit `initials` wins outright, and `name` is treated as a single
+     * field; the casing rules live with initialsFrom above. */
+    displayInitials () {
+      if (this.initials) { return this.initials }
+      if (this.name) { return initialsFrom(this.name) }
+
       const first = (this.userGivenName || '').trim()
       const last = (this.userFamilyName || '').trim()
       if (first && last) {
@@ -89,19 +121,13 @@ export default {
         (this.userNickname || '').trim() ||
         (this.userEmail || '').split('@')[0]
       if (!single) { return '?' }
-
-      /* "Ada Lovelace" in a single field still has two initials in it. */
-      const parts = single.split(/[\s._-]+/).filter(Boolean)
-      if (parts.length > 1) {
-        return (parts[0][0] + parts[1][0]).toUpperCase()
-      }
-      return single.slice(0, 2).toUpperCase()
+      return initialsFrom(single)
     },
 
     /* Stable per person: the same account gets the same colour on every
      * machine and every login, because it is derived rather than assigned. */
     colour () {
-      const seed = this.userId || this.userEmail || this.label
+      const seed = this.name || this.userId || this.userEmail || this.label
       let hash = 0
       for (let i = 0; i < seed.length; i++) {
         hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
