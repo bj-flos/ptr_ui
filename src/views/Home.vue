@@ -259,15 +259,26 @@ export default {
 }
 /* Both wrappers are layout pass-throughs: MapToolbar and the map were direct
    flex children of .page-content, and anything that broke that chain left the
-   map at its min-height instead of filling the page. min-height: 0 is the
-   usual flex-child fix -- without it the map cannot shrink below its content
-   and overflows instead. */
+   map at its min-height instead of filling the page.
+
+   NO min-height: 0 on either, and that is the whole point of this comment.
+   It was here, because it is the reflexive fix for a flex child, and it was
+   exactly wrong: .page-content is a FIXED 100vh column, so when the navbar and
+   the cards need room the flex algorithm shrinks whatever it is allowed to.
+   min-height: 0 gave it permission to crush these two to well under the
+   map's 70vh, and .map-display -- which keeps that 70vh -- then overflowed
+   them and painted over the site cards below. Only the second row of cards
+   stayed visible, being past the bottom of the spill.
+
+   Leaving min-height at auto means the wrappers are at least their content,
+   so the column overflows 100vh honestly and .page-content scrolls, which is
+   what overflow-y: auto on it is for. They still GROW: flex-grow is 1, so a
+   tall window gives the map the slack as before. */
 .map-region {
   position: relative;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  min-height: 0;
   width: 100%;
 }
 
@@ -275,7 +286,6 @@ export default {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  min-height: 0;
   width: 100%;
 }
 
