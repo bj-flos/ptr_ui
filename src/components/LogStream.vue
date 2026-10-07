@@ -210,12 +210,21 @@ export default {
     // Add the log level in front of the message if it is a warning, error,
     // or critical level.
     format_log_message_text (log) {
-      // Handle case of no message
-      if (!('message' in log)) {
+      /* obs sends the text as `log_message`, and so do both test senders in
+         this very file -- but this read `message`, so every line rendered with
+         a timestamp and nothing after it. It went unnoticed for as long as the
+         panel was empty: the stub discarded logs on the way in and answered []
+         on the way out, so there was never a line to render wrongly.
+
+         `message` is kept as a fallback rather than replaced. Nothing in this
+         repo produces it, but this component is the consumer, and a consumer
+         that accepts both spellings cannot be broken by whichever one a future
+         transport picks. */
+      const message = log.log_message != null ? log.log_message : log.message
+      if (message == null || message === '') {
         return ''
       }
 
-      const message = log.message
       const log_level = log.log_level || 'info'
 
       if (['debug', 'info'].includes(log_level.toLowerCase())) {
@@ -315,6 +324,17 @@ $log-critical: $danger;
 .log-timestamp {
     color: #bbb;
     animation: blinkonce 1s;
+    /* The tooltip trigger styles itself as interactive, so the timestamp
+       advertised a click that does nothing. It reveals the date on hover and
+       that is all it does, so say so. The styles here are scoped, and Buefy
+       renders the trigger as its own element inside this one, so the deep
+       selector is what actually reaches it. */
+    cursor: help;
+
+    ::v-deep .b-tooltip,
+    ::v-deep .tooltip-trigger {
+        cursor: help;
+    }
     grid-column-start: 1;
     padding-top: 2pt;
     font-size: 9pt;
