@@ -140,6 +140,19 @@ export default {
 
     const ten_minutes = 10 * 60 * 1000 // ms
     this.refreshForecastInterval = setInterval(this.refreshForecast, ten_minutes)
+
+    /* The log panel had no way to learn anything after the page loaded.
+       fetch_recent_logs ran once, in site_changed_routine, and the websocket
+       that was meant to carry new lines is an empty stub in
+       user_status_mixin -- so a block that started while someone watched
+       appeared only if they navigated away and back.
+
+       Fifteen seconds is well inside the hour the query asks for, so a missed
+       tick loses nothing: the next one re-reads the same window. The request
+       is cheap, one file read and a filter, and it replaces the whole list
+       rather than appending, so repeats cannot duplicate lines. */
+    const fifteen_seconds = 15 * 1000 // ms
+    this.refreshLogsInterval = setInterval(this.refreshLogs, fifteen_seconds)
   },
 
   // If the site changes while the component is still loaded, make sure to update the current site in vuex.
@@ -184,6 +197,7 @@ export default {
     this.$store.dispatch('drawshapes/deleteAllShapes')
     this.datastreamer.close()
     clearInterval(this.refreshForecastInterval)
+    clearInterval(this.refreshLogsInterval)
   },
 
   mounted () {
@@ -245,6 +259,10 @@ export default {
 
     refreshForecast () {
       this.$store.dispatch('sitestatus/getLatestForecast')
+    },
+
+    refreshLogs () {
+      this.$store.dispatch('userstatus/fetch_recent_logs')
     }
   }
 }
