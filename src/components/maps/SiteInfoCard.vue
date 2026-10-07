@@ -23,8 +23,14 @@
             simulated
           </p>
         </div>
-        <p class="card-code">
-          site code: {{ site.site }}
+        <!-- Label over value rather than "site code: MRC-17" on one line.
+             Two elements, not one with a line break, so the grid can put each
+             in its own row beside the name. -->
+        <p class="card-code-label">
+          site code
+        </p>
+        <p class="card-code-value">
+          {{ site.site }}
         </p>
       </div>
 
@@ -178,18 +184,43 @@ export default {
   color: black;
 }
 
+/* Two columns, two rows: the name occupies the whole left column, and the
+   site code stacks its label above its value on the right.
+
+       +---------------------------+-----------+
+       |                           | site code |
+       |  Mountain Ranch Camp Obs  +-----------+
+       |  simulated                |  MRC-17   |
+       +---------------------------+-----------+
+
+   Grid rather than the flex row Bulma gives .card-header, because the name has
+   to span both rows and flex has no way to say that.
+
+   max-content on the second column is what makes the label set the width: it
+   is the wider of the two strings for every site code in use, so the value
+   lines up under it. Expressed as max-content rather than a fixed em value so
+   an unusually long code widens the column instead of spilling out of it.
+
+   minmax(0, 1fr) on the first is the grid equivalent of the min-width: 0 that
+   was on .card-identity -- without the 0 floor a long name refuses to wrap and
+   pushes the card wider than the InfoWindow. */
 .card-header {
   padding-bottom: 4px;
   border-bottom: 1px solid black;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-rows: auto auto;
+  column-gap: 0.9rem;
+  align-items: center;
 }
 
-/* .card-header is Bulma's class name as well as ours, and Bulma lays it out
-   as a flex row. The name and the simulated note are wrapped together so they
-   stack as one item, rather than the note becoming a third column beside the
-   site code. min-width: 0 lets a long name wrap instead of forcing the row
-   wider than the card. */
+/* The name and the simulated note stay wrapped together as one grid item, so
+   the note sits under the name rather than becoming a cell of its own. The
+   span is what puts the pair opposite BOTH code rows. */
 .card-identity {
   min-width: 0;
+  grid-column: 1;
+  grid-row: 1 / span 2;
 }
 
 .card-name {
@@ -208,9 +239,27 @@ export default {
   line-height: 1.3;
 }
 
-.card-code {
+.card-code-label {
+  grid-column: 2;
+  grid-row: 1;
+  color: #555;
+  font-size: 0.75rem;
+  /* Never wrap: this string is the column's measuring stick, and a wrapped
+     one would measure half its own width. */
+  white-space: nowrap;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.card-code-value {
+  grid-column: 2;
+  grid-row: 2;
   color: #333;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .status-entry {
