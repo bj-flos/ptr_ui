@@ -1038,6 +1038,11 @@ export default {
     }
   },
   created () {
+    /* Everything below is a NEW-project default, so it is skipped when this
+       form is opening onto an existing one. It used to run unconditionally,
+       which is half of why Inspect and Modify showed the wrong values. */
+    if (this.pendingProject) return
+
     // initialize expiry date to one lunar month from now, and start date to today
     const today = new Date()
     this.expiry_date.setDate(today.getDate() + this.project_window)
@@ -1049,6 +1054,31 @@ export default {
     this.project_sites = [this.sitecode]
   },
   mounted () {
+    /* The project arrives before this component exists.
+
+       b-modal destroys its contents on hide, so this form is mounted fresh
+       every time Inspect, Modify or Clone opens it -- and both handlers set
+       project_to_load BEFORE flipping the modal open. A watcher without
+       `immediate` does not fire for a prop's initial value, so the watcher
+       below never ran on an open and loadProject was never called at all.
+       What appeared in the form was whatever the shared project_params store
+       happened to be holding, overwritten in places by the defaults above and
+       below -- which is why SOME fields looked right and the rest came back
+       as the current telescope's pointing and filter.
+
+       So load here instead, where the prop is known to be populated. The
+       watcher is kept for the case it was written for: the prop changing
+       while this form stays mounted. */
+    if (this.pendingProject) {
+      this.applyProjectToLoad(this.project_to_load)
+      return
+    }
+
+    /* A new project. Reset first: the store is shared and outlives this
+       component, so without this the blank form starts out holding the last
+       project that was opened. */
+    this.clearProjectForm()
+
     // initialize to the telescope command field ra/dec/name
     const targets_index = 0 // remove this when we change targets to be a single dict, not an array with a dict
     this.updateTargetsValue(targets_index, 'ra', this.mount_ra)
@@ -1073,14 +1103,8 @@ export default {
 
     // This runs any time an existing project is passed into the component.
     // It transforms the project data into a format that works nicely with the form elements and user interaction.
-    project_to_load ({ project, is_modifying_project, is_cloned_project }) {
-      if (project == '') this.clearProjectForm()
-      this.modifying_existing_project = is_modifying_project
-      this.cloning_existing_project = is_cloned_project
-      this.loaded_project_name = project.project_name
-      this.loaded_project_created_at = project.created_at
-
-      this.loadProject(project)
+    project_to_load (payload) {
+      this.applyProjectToLoad(payload)
     },
 
     sitecode (newVal, oldVal) {
@@ -1162,6 +1186,22 @@ export default {
         return index === indexToMatch ? { ...obj, [key]: val } : obj
       })
     },
+    /* Put a project into the form. Called from mounted() for a form that is
+       opening onto a project, and from the watcher when the prop changes under
+       a form that is already mounted. */
+    applyProjectToLoad ({ project, is_modifying_project, is_cloned_project }) {
+      if (!project || project === '') {
+        this.clearProjectForm()
+        return
+      }
+      this.modifying_existing_project = is_modifying_project
+      this.cloning_existing_project = is_cloned_project
+      this.loaded_project_name = project.project_name
+      this.loaded_project_created_at = project.created_at
+
+      this.loadProject(project)
+    },
+
     clearProjectForm () {
       this.modifying_existing_project = false
       this.cloning_existing_project = false
@@ -1529,6 +1569,16 @@ export default {
     }
   },
   computed: {
+    /* The project this form is opening onto, or null for a blank form.
+       openCreateModal passes { project: '' } to mean "new", so an empty string
+       and an absent project are the same answer. */
+    pendingProject () {
+      const project = this.project_to_load && this.project_to_load.project
+      if (!project || project === '') return null
+      return project
+    },
+
+
 
     // This provides the getter/setter pattern for each item
     // e.g.
