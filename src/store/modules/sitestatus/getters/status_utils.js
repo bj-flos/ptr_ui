@@ -91,6 +91,31 @@ function status_age_seconds (timestamp_ms) {
  * that is not an envelope. parseTrueFalse below already does this for
  * booleans; this is the same idea for every other value.
  */
+/**
+ * Read a weather flag that two publishers spell two different ways.
+ *
+ * ptr-wema fills wx_ok / wx_hold with booleans; the older lane -- and
+ * ptr-local-stack's seed_status.py -- fills them with the strings Wayne
+ * specified: 'Yes'/'No', 'Holding'/'No Hold'. photonranch-status already
+ * normalises the same pair server side (handler.py, possible_trues), so this
+ * is only the display half of a convention that already exists.
+ *
+ * Returns true, false, or null when the value means neither -- callers show
+ * an unrecognised value as it came rather than mistranslating it.
+ */
+const WEATHER_TRUE = ['yes', 'true', 'holding', 'hold']
+const WEATHER_FALSE = ['no', 'false', 'no hold', 'nohold']
+
+function asWeatherBool (raw) {
+  if (raw === true || raw === false) { return raw }
+  if (typeof raw === 'string') {
+    const t = raw.trim().toLowerCase()
+    if (WEATHER_TRUE.includes(t)) { return true }
+    if (WEATHER_FALSE.includes(t)) { return false }
+  }
+  return null
+}
+
 function unwrapVal (entry, fallback = '-') {
   let node = entry
   for (let depth = 0; depth < 5; depth++) {
@@ -149,6 +174,7 @@ export {
   statusAgeDisplay,
   parseTrueFalse,
   unwrapVal,
+  asWeatherBool,
   displayNumber,
   withUnit
 }

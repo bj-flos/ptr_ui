@@ -1,4 +1,4 @@
-import { isItemStale, display_colors, unwrapVal, displayNumber, withUnit } from './status_utils'
+import { isItemStale, display_colors, unwrapVal, asWeatherBool, displayNumber, withUnit } from './status_utils'
 
 // Handle status before and after the individual timestamp inclusion
 function get_val (getters, key) {
@@ -11,10 +11,14 @@ const weather_state = (state, getters, rootState) => {
 
 const weather_ok = (state, getters) => {
   const name = 'Weather OK'
-  let color = display_colors.red
-  const val = get_val(getters, 'wx_ok')
+  const raw = get_val(getters, 'wx_ok')
   const is_stale = isItemStale(getters, 'weather_state', 'wx_ok')
-  if (val === true || (typeof val === 'string' && val.toLowerCase() == 'yes')) { color = display_colors.green }
+  // One site read 'Yes' while the other four read 'true', because two
+  // publishers fill this lane with two vocabularies. Say the same word for the
+  // same state, and pass anything unrecognised through untranslated.
+  const ok = asWeatherBool(raw)
+  const val = ok === null ? raw : (ok ? 'Yes' : 'No')
+  const color = ok === true ? display_colors.green : display_colors.red
   return { name, val, is_stale, color }
 }
 
@@ -127,14 +131,18 @@ const wx_hold = (state, getters) => {
     val = 'missing key'
     color = 'grey'
   } else {
-    const is_holding = getters.weather_state.wx_hold.val
-    if (is_holding == 'Holding') {
+    const raw = get_val(getters, 'wx_hold')
+    const holding = asWeatherBool(raw)
+    // A boolean true matched neither branch here, so a site actually on a
+    // weather hold displayed `true` in the ordinary colour and never turned
+    // red -- which was the whole point of the field.
+    if (holding === true) {
       color = display_colors.red
-      val = is_holding
-    } else if (is_holding == 'No Hold') {
+      val = 'Holding'
+    } else if (holding === false) {
       val = 'No Hold'
     } else {
-      val = is_holding
+      val = raw
     }
   }
   return { name, val, is_stale, color }
@@ -151,7 +159,7 @@ const hold_duration = (state, getters) => {
   } else {
     color = display_colors.default
     val = get_val(getters, 'hold_duration')
-    if (getters.weather_state?.wx_hold?.val == 'Holding') { color = display_colors.red }
+    if (asWeatherBool(getters.weather_state?.wx_hold?.val) === true) { color = display_colors.red }
   }
   return { name, val, is_stale, color }
 }
