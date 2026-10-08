@@ -412,6 +412,10 @@ export default {
 
   pointer-events: none;
 }
+.status-dot.status-blue {
+  opacity: 0.8;
+  background-color: $ptr_blue;
+}
 .status-dot.status-green {
   opacity: 0.8;
   background-color: $ptr-green;

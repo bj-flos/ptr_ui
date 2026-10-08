@@ -504,6 +504,8 @@ export default {
         'status-yellow': { r: 221, g: 156, b: 0 },
         'status-red': { r: 205, g: 0, b: 0 },
         'status-green': { r: 53, g: 154, b: 34 },
+        // Shut for daylight: normal, and distinct from both "open" and "fault".
+        'status-blue': { r: 32, g: 120, b: 196 },
         'status-grey': { r: 100, g: 100, b: 100 }
       }
       return colors[this.all_sites_status_color[site]] || colors['status-grey']

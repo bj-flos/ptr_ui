@@ -276,7 +276,21 @@ const getters = {
         // enclosureIsOpen is shared with the map popup so the dot and the word
         // "Shut" cannot disagree about what open means.
         if (helpers.enclosureIsOpen(enclosure) === false) {
-          color = enclosure.shut_reason === 'bad_weather' ? 'status-red' : 'status-yellow'
+          /* A shut roof is not automatically a problem. Shut because the sun is
+             up is the normal state of every site for half of every day, and
+             painting that yellow makes the map amber at noon and trains people
+             to ignore the colour. Only an unexplained closure is a warning.
+
+             blue matches the site page, which already says "enclosure closed"
+             in blue for this exact condition -- before this the page and the
+             map disagreed about the same roof. */
+          if (enclosure.shut_reason === 'bad_weather') {
+            color = 'status-red'
+          } else if (enclosure.shut_reason === 'daytime') {
+            color = 'status-blue'
+          } else {
+            color = 'status-yellow'
+          }
         }
       }
 

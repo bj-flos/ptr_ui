@@ -282,6 +282,9 @@ export default {
   background-color: $ptr-grey;
 }
 
+.dot.status-blue {
+  background-color: $ptr_blue;
+}
 .dot.status-green {
   background-color: $ptr-green;
 }
