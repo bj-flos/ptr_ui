@@ -301,7 +301,14 @@ $calendar-height: calc(#{$content-view-height} - #{$content-padding * 2});
     display: grid;
     /* 3:1 rather than 2:1 -- the controls column takes a quarter of the width
        instead of a third, which is a 25% cut, and the calendar keeps it. */
-    grid-template-columns: 3fr 1fr;
+    /* minmax(0, 1fr), not 1fr. A bare 1fr is minmax(auto, 1fr), and that auto
+       floor is the track's min-content width -- so one wide child in the
+       adjacent column widens the column past its share and takes the space out
+       of the calendar's 3fr. The projects palette did exactly that: enough
+       projects and the calendar was squeezed to an unreadable strip. Capping
+       the floor at 0 means this column can never do that again, whatever ends
+       up in it. */
+    grid-template-columns: 3fr minmax(0, 1fr);
     grid-template-rows: $calendar-height;
   }
 }
@@ -343,9 +350,27 @@ $calendar-height: calc(#{$content-view-height} - #{$content-padding * 2});
 }
 
 .projects-section {
+  /* A flex item will not shrink below its min-content width unless told it
+     may. Without this the palette pushes its column wider instead of
+     wrapping. */
+  min-width: 0;
+
   & .projects-container {
     display: flex;
     gap: 1em;
+    /* The palette is a bag of tags, not a row. Wrap it: a project list is
+       unbounded, the column it sits in is not. */
+    flex-wrap: wrap;
+    min-width: 0;
+
+    /* Long project names are the other way this gets wide. Let one break
+       rather than force the whole row to fit it. */
+    & .draggable-project-tag {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      height: auto;
+      white-space: normal;
+    }
   }
 }
 
