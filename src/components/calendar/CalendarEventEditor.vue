@@ -443,6 +443,17 @@ import { mapState, mapGetters } from 'vuex'
 import TrashCheckIcon from '@/components/projects/TrashCheckIcon'
 import { siteFilterNames, unavailableProjectFilters } from '@/utils/filters'
 
+/* A project record is not guaranteed to carry its site list. A partially
+   written one arrives with only user_id, project_name and created_at, and
+   reading .includes() off its missing project_sites threw inside a computed
+   property -- which aborts the whole editor's render, so dropping a project on
+   the calendar opened a bare overlay with a close button and nothing in it.
+   A project naming no sites is treated as belonging to none, so it still shows
+   up under "other sites" rather than silently disappearing. */
+function projectSites (project) {
+  return Array.isArray(project && project.project_sites) ? project.project_sites : []
+}
+
 export default {
   name: 'CalendarEventEditor',
   components: { TrashCheckIcon },
@@ -693,22 +704,22 @@ export default {
     },
     userProjectsAtThisSite () {
       return this.user_projects.filter(p => {
-        return p.project_sites.includes(this.site)
+        return projectSites(p).includes(this.site)
       })
     },
     userProjectsNotAtThisSite () {
       return this.user_projects.filter(p => {
-        return !p.project_sites.includes(this.site)
+        return !projectSites(p).includes(this.site)
       })
     },
     nonUserProjectsAtThisSite () {
       return this.nonUserProjects.filter(p => {
-        return p.project_sites.includes(this.site)
+        return projectSites(p).includes(this.site)
       })
     },
     nonUserProjectsNotAtThisSite () {
       return this.nonUserProjects.filter(p => {
-        return !p.project_sites.includes(this.site)
+        return !projectSites(p).includes(this.site)
       })
     },
     nonUserProjects () {
