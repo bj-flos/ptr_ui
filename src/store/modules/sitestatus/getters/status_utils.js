@@ -116,6 +116,28 @@ function asWeatherBool (raw) {
   return null
 }
 
+/**
+ * Render a weather hold's remaining time.
+ *
+ * ptr-wema publishes a NUMBER -- seconds until the roof may reopen, from
+ * `enclosure_next_open_time - time.time()`. The older lane publishes an
+ * already-formatted clock string such as '0:00'. Numbers are rendered into the
+ * same H:MM shape so the two read alike; strings are returned untouched,
+ * because their unit is decided by a publisher outside this repository and
+ * guessing at it would be worse than leaving it alone.
+ *
+ * Seconds round to the nearest minute, so a hold of under a minute reads 0:01
+ * rather than 0:00 -- a live hold should never display as no time remaining.
+ */
+function formatHoldDuration (raw) {
+  const seconds = typeof raw === 'number'
+    ? raw
+    : (typeof raw === 'string' && raw.trim() !== '' && Number.isFinite(Number(raw)) ? Number(raw) : null)
+  if (seconds === null) { return raw }
+  const minutes = Math.max(0, Math.round(seconds / 60))
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`
+}
+
 function unwrapVal (entry, fallback = '-') {
   let node = entry
   for (let depth = 0; depth < 5; depth++) {
@@ -175,6 +197,7 @@ export {
   parseTrueFalse,
   unwrapVal,
   asWeatherBool,
+  formatHoldDuration,
   displayNumber,
   withUnit
 }

@@ -1,4 +1,4 @@
-import { isItemStale, display_colors, unwrapVal, asWeatherBool, displayNumber, withUnit } from './status_utils'
+import { isItemStale, display_colors, unwrapVal, asWeatherBool, formatHoldDuration, displayNumber, withUnit } from './status_utils'
 
 // Handle status before and after the individual timestamp inclusion
 function get_val (getters, key) {
@@ -158,7 +158,9 @@ const hold_duration = (state, getters) => {
     color = 'grey'
   } else {
     color = display_colors.default
-    val = get_val(getters, 'hold_duration')
+    // ptr-wema sends seconds, the older lane sends a clock string; show both
+    // as H:MM so the row means the same thing whichever site is selected.
+    val = formatHoldDuration(get_val(getters, 'hold_duration'))
     if (asWeatherBool(getters.weather_state?.wx_hold?.val) === true) { color = display_colors.red }
   }
   return { name, val, is_stale, color }
