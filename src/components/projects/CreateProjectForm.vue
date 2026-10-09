@@ -1340,7 +1340,7 @@ export default {
       console.log(this.warn)
     },
 
-    modifyProject () {
+    async modifyProject () {
       this.resetInputWarnings()
       this.verifyForm()
       const url = this.projects_api_url + '/modify-project'
@@ -1355,7 +1355,11 @@ export default {
       // Make sure all warnings are false, otherwise don't create the project.
       if (Object.values(this.warn).every(x => !x)) {
         this.createProjectButtonIsLoading = true
-        axios.post(url, request_body).then(response => {
+        // Send the caller's token: the service only lets a project's owner
+        // (or an admin) change it, and without this the request arrives with
+        // no caller for it to check.
+        const header = await this.getAuthRequestHeader()
+        axios.post(url, request_body, header).then(response => {
           this.project_events = []
           this.clearProjectForm()
           this.$buefy.toast.open({
