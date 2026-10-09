@@ -211,7 +211,6 @@ export default {
   grid-template-columns: minmax(0, 1fr) max-content;
   grid-template-rows: auto auto;
   column-gap: 0.9rem;
-  align-items: center;
 }
 
 /* The name and the simulated note stay wrapped together as one grid item, so
@@ -221,6 +220,7 @@ export default {
   min-width: 0;
   grid-column: 1;
   grid-row: 1 / span 2;
+  align-self: center;
 }
 
 .card-name {
@@ -239,9 +239,17 @@ export default {
   line-height: 1.3;
 }
 
+/* The label and the value sit either side of the row boundary -- label pushed
+   to the bottom of row 1, value to the top of row 2 -- so they stay together
+   as one block. They used to be centred in their own rows, which was fine
+   while the name was one line and made the pair drift apart as soon as it
+   wrapped: the rows grew to match the taller name and each item floated to the
+   middle of its own taller row, opening a gap between the label and the code
+   it belongs to. */
 .card-code-label {
   grid-column: 2;
   grid-row: 1;
+  align-self: end;
   color: #555;
   font-size: 0.75rem;
   /* Never wrap: this string is the column's measuring stick, and a wrapped
@@ -255,6 +263,7 @@ export default {
 .card-code-value {
   grid-column: 2;
   grid-row: 2;
+  align-self: start;
   color: #333;
   font-size: 0.95rem;
   font-weight: 600;

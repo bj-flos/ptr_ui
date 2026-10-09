@@ -190,7 +190,8 @@ export default {
 
         el.src = makeIcon(markerData.rgb, white,
           showPlus ? white : false,
-          showName ? markerData.name : false)
+          showName ? markerData.name : false,
+          markerData.hatched)
       }
 
       // AdvancedMarkerElement has no mouseover/mouseout of its own, so these go
@@ -532,6 +533,11 @@ export default {
           lat: site.latitude,
           lng: site.longitude,
           rgb: this.getSiteMapColor(site.site),
+          // Cross-hatched if this telescope is a simulator. Read from the same
+          // getter the info card's "simulated" note uses, which reads the
+          // obs config's own site_is_simulated -- there is no list of
+          // simulated sites anywhere and there must not be one.
+          hatched: this.site_is_simulated(site.site),
           site,
           name: site.site.toUpperCase()
         })
@@ -543,7 +549,7 @@ export default {
   },
 
   computed: {
-    ...mapGetters('site_config', ['all_sites']),
+    ...mapGetters('site_config', ['all_sites', 'site_is_simulated']),
     ...mapState('sitestatus', ['site_open_status']),
     ...mapGetters('sitestatus', ['all_sites_status_color']),
     ...mapGetters('calendar', ['isBookableNow'])
