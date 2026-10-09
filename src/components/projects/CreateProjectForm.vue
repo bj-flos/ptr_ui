@@ -1280,7 +1280,7 @@ export default {
         .catch(console.error)
     },
 
-    saveNewProject () {
+    async saveNewProject () {
       this.resetInputWarnings()
       this.verifyForm()
       const url = this.projects_api_url + '/new-project'
@@ -1301,7 +1301,12 @@ export default {
       // Make sure all warnings are false, otherwise don't create the project.
       if (Object.values(this.warn).every(x => !x)) {
         this.createProjectButtonIsLoading = true
-        axios.post(url, project).then(response => {
+        // Send the caller's token. The projects service takes the owner from
+        // the authorizer rather than from this body, so a create without one
+        // is attributed to whatever principal the gateway falls back to --
+        // which locally is a shared dev user, not the person clicking.
+        const header = await this.getAuthRequestHeader()
+        axios.post(url, project, header).then(response => {
           this.project_events = []
           this.clearProjectForm()
           const message = this.is_cloned_project
